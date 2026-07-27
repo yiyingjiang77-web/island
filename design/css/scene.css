@@ -1,0 +1,192 @@
+/* === 海岛日记 - 场景与图层 === */
+
+/* 游戏容器 */
+#game {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--cream);
+}
+
+/* 场景根 */
+#scene {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  cursor: grab;
+  touch-action: none;
+}
+#scene.dragging { cursor: grabbing; }
+
+/* 图层 */
+.layer {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: var(--scene-width);
+  height: var(--scene-height);
+  will-change: transform;
+}
+.layer.far {
+  z-index: 1;
+  transform: translate(-50%, -50%)
+             translate(var(--px, 0px), var(--py, 0px));
+}
+.layer.mid {
+  z-index: 2;
+  transform: translate(-50%, -50%)
+             translate(var(--px, 0px), var(--py, 0px));
+}
+.layer.near {
+  z-index: 3;
+  transform: translate(-50%, -50%)
+             translate(var(--px, 0px), var(--py, 0px));
+}
+
+/* === 远景层 === */
+
+/* 场景背景图 */
+.scene-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 20px;
+  pointer-events: none;
+}
+
+/* 天空背景（CSS渐变兜底） */
+.far-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+    #FFF8E7 0%, #FFF0D4 40%, #E8F4F8 70%, #D4ECF5 100%);
+  border-radius: 20px;
+}
+
+/* 森林边缘 */
+.forest-edge {
+  position: absolute;
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+  opacity: 0.8;
+  pointer-events: none;
+}
+.forest-top    { top: 0; left: 0; right: 0; height: 55px; align-items: flex-start; justify-content: center; }
+.forest-bottom { bottom: 0; left: 0; right: 0; height: 55px; align-items: flex-end; justify-content: center; }
+.forest-left   { top: 55px; bottom: 55px; left: 0; width: 55px; flex-direction: column; align-items: center; }
+.forest-right  { top: 55px; bottom: 55px; right: 0; width: 55px; flex-direction: column; align-items: center; }
+
+/* 云朵 */
+.cloud {
+  position: absolute;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.cloud:nth-child(2) { top: 60px;  }
+.cloud:nth-child(3) { top: 100px; }
+.cloud:nth-child(4) { top: 160px; }
+.cloud:nth-child(5) { top: 40px; }
+
+/* === CSS 松树 === */
+.css-tree {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* 树干 */
+.css-tree::before {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 14px;
+  background: linear-gradient(180deg, #C49560, #8B6F47);
+  border-radius: 2px;
+  margin-bottom: -3px;
+  z-index: 0;
+}
+
+/* 树叶 - 三层三角 */
+.css-tree::after {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 28px;
+  background:
+    /* 顶层 */
+    radial-gradient(ellipse 35% 40% at 50% 30%, #6DBE4A, #4A8C2A),
+    /* 中层左 */
+    radial-gradient(ellipse 35% 40% at 35% 55%, #5CAF3A, #3D7A22),
+    /* 中层右 */
+    radial-gradient(ellipse 35% 40% at 65% 55%, #5CAF3A, #3D7A22),
+    /* 底层左 */
+    radial-gradient(ellipse 30% 35% at 30% 75%, #4DA336, #35701C),
+    /* 底层右 */
+    radial-gradient(ellipse 30% 35% at 70% 75%, #4DA336, #35701C),
+    /* 底层中 */
+    radial-gradient(ellipse 30% 30% at 50% 80%, #4DA336, #3D7A22);
+  border-radius: 50% 50% 40% 40%;
+  z-index: 1;
+}
+
+/* 松树大小变体 */
+.css-tree.small::after { width: 22px; height: 22px; }
+.css-tree.small::before { width: 6px; height: 10px; }
+.css-tree.large::after { width: 34px; height: 34px; }
+.css-tree.large::before { width: 10px; height: 16px; }
+
+/* === CSS 云朵 === */
+.css-cloud {
+  position: absolute;
+  pointer-events: none;
+}
+.css-cloud:nth-child(2) { top: 40px; }
+.css-cloud:nth-child(3) { top: 85px; }
+.css-cloud:nth-child(4) { top: 140px; }
+.css-cloud:nth-child(5) { top: 20px; }
+
+.css-cloud:nth-child(2) .cloud-body { animation: cloudDrift 30s linear infinite; }
+.css-cloud:nth-child(3) .cloud-body { animation: cloudDrift 45s linear infinite; animation-delay: -10s; }
+.css-cloud:nth-child(4) .cloud-body { animation: cloudDrift 38s linear infinite; animation-delay: -20s; }
+.css-cloud:nth-child(5) .cloud-body { animation: cloudDrift 50s linear infinite; animation-delay: -30s; }
+
+.css-cloud .cloud-body {
+  position: relative;
+  width: 80px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 20px;
+}
+.css-cloud .cloud-body::before {
+  content: '';
+  position: absolute;
+  top: -18px; left: 12px;
+  width: 36px; height: 36px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+}
+.css-cloud .cloud-body::after {
+  content: '';
+  position: absolute;
+  top: -10px; left: 32px;
+  width: 28px; height: 28px;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+}
+
+/* 昼夜覆盖层 */
+#dayNightOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  transition: background 2s ease;
+}

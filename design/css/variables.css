@@ -1,0 +1,43 @@
+/* === 海岛日记 - CSS 变量与主题 === */
+
+:root {
+  /* 主色调 */
+  --cream: #FFF8E7;
+  --yellow: #F4D35E;
+  --purple: #C5A3D6;
+  --green: #7EC850;
+  --wood: #B8865B;
+  --sky: #87CEEB;
+  --pink: #FFB7C5;
+
+  /* 土壤色 */
+  --soil: #8B6F47;
+  --soil-dark: #6B5337;
+  --soil-light: #A68B5F;
+
+  /* 文字 */
+  --text: #4A3C28;
+  --text-light: #8B7E6A;
+
+  /* UI */
+  --panel-bg: rgba(255, 248, 231, 0.97);
+  --border: rgba(184, 134, 91, 0.25);
+  --shadow: 0 2px 12px rgba(74, 60, 40, 0.12);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.15);
+
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 20px;
+  --radius-round: 50%;
+
+  /* 安全区 */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* 场景尺寸 */
+  --scene-width: 1350px;
+  --scene-height: 900px;
+
+  /* 字体 */
+  --font: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+}

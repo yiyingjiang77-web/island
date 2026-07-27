@@ -1,0 +1,12 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: game-server
+  config:
+    import: classpath:application-common.yml
+
+logging:
+  level:
+    com.fruitisland: debug

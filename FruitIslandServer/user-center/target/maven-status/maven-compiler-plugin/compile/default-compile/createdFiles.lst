@@ -1,0 +1,6 @@
+com/fruitisland/user/entity/UserProfile.class
+com/fruitisland/user/UserCenterApplication.class
+com/fruitisland/user/entity/User.class
+com/fruitisland/user/entity/UserLogin.class
+com/fruitisland/user/entity/UserDevice.class
+com/fruitisland/user/entity/UserToken.class

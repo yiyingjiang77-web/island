@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>海岛日记</title>
+<style>
+:root{
+  --cream:#FFF8E7;--yellow:#F4D35E;--purple:#C5A3D6;--green:#7EC850;
+  --wood:#B8865B;--sky:#87CEEB;--pink:#FFB7C5;--soil:#8B6F47;--soil-dk:#6B5337;
+  --text:#4A3C28;--text-lt:#8B7E6A;--panel:rgba(255,248,231,.97);
+  --border:rgba(184,134,91,.25);--shadow:0 2px 12px rgba(74,60,40,.12);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:#1a1a1a;user-select:none;-webkit-user-select:none}
+#game{position:relative;width:100%;max-width:480px;height:100%;margin:0 auto;overflow:hidden;background:var(--cream)}
+
+/* === SCENE === */
+#scene{position:absolute;top:0;left:0;width:100%;height:100%;cursor:grab;touch-action:none}
+#scene.dragging{cursor:grabbing}
+.layer{position:absolute;top:50%;left:50%;width:1200px;height:900px;will-change:transform}
+.layer.far{transform:translate(-50%,-50%) translate(calc(var(--px,0px) * .3),calc(var(--py,0px) * .3));z-index:1}
+.layer.mid{transform:translate(-50%,-50%) translate(calc(var(--px,0px) * .6),calc(var(--py,0px) * .6));z-index:2}
+.layer.near{transform:translate(-50%,-50%) translate(var(--px,0px),var(--py,0px));z-index:3}
+
+/* Far layer: sky + forest border */
+.far-bg{position:absolute;inset:0;background:linear-gradient(180deg,#FFF8E7 0%,#FFF0D4 40%,#E8F4F8 70%,#D4ECF5 100%);border-radius:20px}
+.forest-edge{position:absolute;display:flex;gap:2px;font-size:28px;line-height:1;flex-wrap:wrap;opacity:.7}
+.forest-top{top:0;left:0;right:0;height:50px;align-items:flex-start}
+.forest-bottom{bottom:0;left:0;right:0;height:50px;align-items:flex-end;transform:rotate(180deg)}
+.forest-left{top:50px;bottom:50px;left:0;width:50px;flex-direction:column;writing-mode:vertical-lr}
+.forest-right{top:50px;bottom:50px;right:0;width:50px;flex-direction:column;writing-mode:vertical-lr}
+.cloud{position:absolute;font-size:36px;opacity:.6;animation:cloudDrift 30s linear infinite}
+.cloud:nth-child(2){top:80px;animation-duration:45s;animation-delay:-10s}
+.cloud:nth-child(3){top:140px;animation-duration:38s;animation-delay:-20s;font-size:28px}
+@keyframes cloudDrift{0%{left:-60px}100%{left:1300px}}
+
+/* Mid layer: cottage, character, path, tree (image-based assets) */
+.cottage{position:absolute;left:520px;top:80px;width:130px;height:110px;overflow:hidden;z-index:5}
+.cottage img{width:100%;height:120%;object-fit:cover;object-position:center 30%;filter:drop-shadow(0 2px 4px rgba(0,0,0,.1))}
+
+/* Character */
+.character{position:absolute;left:470px;top:270px;width:36px;height:50px;overflow:hidden;animation:charBounce 2s ease-in-out infinite;z-index:5}
+.character img{width:100%;height:120%;object-fit:cover;object-position:center 35%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.1))}
+@keyframes charBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
+/* Path */
+.stone-path{position:absolute;left:400px;top:260px;width:300px;height:180px;pointer-events:none}
+.stone{position:absolute;width:24px;height:18px;background:#C4B49A;border-radius:6px;opacity:.7;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+
+/* Cherry tree */
+.cherry-tree{position:absolute;left:330px;top:110px;width:70px;height:90px;overflow:hidden;animation:sway 4s ease-in-out infinite;transform-origin:bottom center;z-index:4}
+.cherry-tree img{width:100%;height:120%;object-fit:cover;object-position:center 25%;filter:drop-shadow(0 2px 4px rgba(0,0,0,.1))}
+@keyframes sway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+
+/* Near layer: farm, river, bridge, decorations */
+.river{position:absolute;left:300px;top:350px;width:500px;height:65px;background:linear-gradient(180deg,#87CEEB 0%,#6BB8DD 50%,#87CEEB 100%);border-radius:20px;overflow:hidden}
+.river::before,.river::after{content:'';position:absolute;width:100%;height:100%;background:repeating-linear-gradient(90deg,transparent,transparent 20px,rgba(255,255,255,.2) 20px,rgba(255,255,255,.2) 40px);animation:waterFlow 4s linear infinite}
+.river::after{animation-duration:6s;animation-direction:reverse;opacity:.5}
+@keyframes waterFlow{0%{transform:translateX(0)}100%{transform:translateX(40px)}}
+.bridge{position:absolute;left:450px;top:345px;width:90px;height:75px;z-index:4}
+.bridge-plank{position:absolute;width:100%;height:100%;background:repeating-linear-gradient(0deg,#B8865B,#B8865B 8px,#A8764B 8px,#A8764B 16px);border-radius:6px;border:2px solid #8B6F47;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.boat{position:absolute;left:680px;top:360px;width:50px;height:35px;cursor:pointer;animation:boatBob 3s ease-in-out infinite;z-index:4}
+.boat-hull{position:absolute;bottom:0;left:0;width:100%;height:20px;background:#8B6F47;border-radius:0 0 25px 25px;border:2px solid #6B5337}
+.boat-sail{position:absolute;top:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:20px solid #F4D35E}
+.boat-flag{position:absolute;top:-8px;left:50%;width:2px;height:8px;background:#8B6F47}
+@keyframes boatBob{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-3px) rotate(1deg)}}
+.duck{position:absolute;left:610px;top:375px;font-size:20px;animation:duckSwim 5s ease-in-out infinite}
+@keyframes duckSwim{0%,100%{transform:translateX(0)}50%{transform:translateX(20px)}}
+
+/* Fence */
+.fence{position:absolute;border:3px solid var(--wood);border-radius:12px;background:transparent}
+.fence-h{position:absolute;height:6px;background:repeating-linear-gradient(90deg,var(--wood) 0,var(--wood) 15px,transparent 15px,transparent 25px);border-radius:3px}
+
+/* Decorations */
+.decor{position:absolute;font-size:22px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.1))}
+
+/* Farm grid */
+#farmGrid{position:absolute;left:430px;top:440px;display:grid;grid-template-columns:repeat(4,48px);grid-template-rows:repeat(4,48px);gap:3px;padding:8px;background:var(--soil-dk);border-radius:14px;border:4px solid var(--wood);box-shadow:0 4px 15px rgba(0,0,0,.2),inset 0 2px 4px rgba(0,0,0,.15);z-index:5}
+.plot{background:var(--soil);border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;transition:transform .12s,box-shadow .12s;overflow:visible}
+.plot:active{transform:scale(.92)}
+.plot.watered{background:linear-gradient(135deg,#7A5F3D,#6B5337)}
+.plot.dry{background:linear-gradient(135deg,#A68B5F,#8B6F47)}
+.plot.mature{box-shadow:0 0 12px rgba(244,211,94,.5),inset 0 0 8px rgba(244,211,94,.15);animation:matureGlow 2s ease-in-out infinite}
+@keyframes matureGlow{0%,100%{box-shadow:0 0 8px rgba(244,211,94,.4)}50%{box-shadow:0 0 16px rgba(244,211,94,.7)}}
+.plot-emoji{font-size:28px;transition:transform .3s;filter:drop-shadow(0 2px 3px rgba(0,0,0,.15))}
+.plot-seed{width:6px;height:6px;background:#3D2E1F;border-radius:50%}
+.plot-sprout{font-size:16px}
+.plot-growing{font-size:22px}
+.plot-progress{position:absolute;bottom:2px;left:3px;right:3px;height:3px;background:rgba(0,0,0,.3);border-radius:2px;overflow:hidden}
+.plot-progress-fill{height:100%;background:var(--green);border-radius:2px;transition:width .5s}
+.plot-water-icon{position:absolute;top:1px;right:1px;font-size:12px;animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.2);opacity:1}}
+.plot-water-bar{position:absolute;top:2px;left:3px;right:3px;height:2px;background:rgba(0,0,0,.2);border-radius:1px;overflow:hidden}
+.plot-water-fill{height:100%;border-radius:1px;transition:width .3s,background .3s}
+
+/* === TOP BAR === */
+#topbar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:8px 10px;z-index:50;pointer-events:none}
+#topbar>div{pointer-events:auto}
+.player-info{display:flex;align-items:center;gap:8px;background:var(--panel);border-radius:14px;padding:5px 10px 5px 5px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--yellow),var(--pink));display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid #fff;flex-shrink:0}
+.level-badge{font-size:12px;font-weight:600;color:var(--text)}
+.exp-bar{width:50px;height:4px;background:rgba(0,0,0,.1);border-radius:2px;overflow:hidden;margin-top:2px}
+.exp-fill{height:100%;background:var(--yellow);border-radius:2px;transition:width .5s}
+.quest-box{display:flex;align-items:center;gap:5px;background:var(--panel);border-radius:14px;padding:6px 12px;box-shadow:var(--shadow);border:1px solid var(--border);font-size:12px;color:var(--text);max-width:140px}
+.quest-icon{font-size:14px}
+.currency-box{display:flex;align-items:center;gap:8px;background:var(--panel);border-radius:14px;padding:6px 10px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.coin-display{display:flex;align-items:center;gap:3px;font-size:14px;font-weight:600;color:var(--text)}
+.heart-display{display:flex;align-items:center;gap:3px;font-size:13px;color:var(--text)}
+
+/* === BAR HANDLE (always visible) === */
+#barHandle{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:56px;height:30px;background:var(--panel);border-radius:14px 14px 0 0;border:1px solid var(--border);border-bottom:none;box-shadow:0 -2px 8px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:52;transition:bottom .3s cubic-bezier(.32,.72,0,1)}
+#barHandle:active{transform:translateX(-50%) scale(.95)}
+#barHandle span{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:8px solid var(--text-lt);transition:transform .3s}
+#barHandle.up{bottom:72px}
+#barHandle.up span{transform:rotate(180deg)}
+
+/* === BOTTOM BAR (collapsible) === */
+#bottombar{position:absolute;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-around;padding:8px 6px 12px;background:var(--panel);border-top:1px solid var(--border);box-shadow:0 -2px 12px rgba(0,0,0,.06);z-index:51;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1)}
+#bottombar.expanded{transform:translateY(0)}
+.bb-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 6px;border-radius:12px;cursor:pointer;transition:transform .15s,background .15s;position:relative}
+.bb-btn:active{transform:scale(.9)}
+.bb-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,.1);border:2px solid rgba(255,255,255,.6)}
+.bb-btn[data-fn="seeds"] .bb-icon{background:#D4F0C4;border-color:#A8D88A}
+.bb-btn[data-fn="inventory"] .bb-icon{background:#F5E0C4;border-color:#E8C88A}
+.bb-btn[data-fn="boat"] .bb-icon{background:#C4E0F0;border-color:#88C4E0}
+.bb-btn[data-fn="diary"] .bb-icon,.bb-btn[data-fn="friends"] .bb-icon{background:#E0E0E0;border-color:#C0C0C0;filter:grayscale(.7)}
+.bb-btn[data-fn="menu"] .bb-icon{background:#E8E0F0;border-color:#C8B8E0}
+.bb-label{font-size:10px;color:var(--text-lt);font-weight:500}
+.bb-btn.locked .bb-label{color:#B0A090}
+.bb-badge{position:absolute;top:0;right:2px;min-width:16px;height:16px;background:#E24B4A;color:#fff;font-size:10px;font-weight:600;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:1.5px solid #fff}
+.bb-lock{position:absolute;top:2px;right:2px;font-size:9px;color:#999}
+
+/* === OVERLAY & PANELS === */
+#overlay{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .3s;z-index:90}
+#overlay.active{opacity:1;pointer-events:auto}
+.panel{position:absolute;bottom:0;left:0;right:0;background:var(--panel);border-radius:20px 20px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.15);transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);z-index:100;max-height:70vh;display:flex;flex-direction:column}
+.panel.active{transform:translateY(0)}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.panel-header h2{font-size:16px;font-weight:600;color:var(--text)}
+.panel-close{width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.06);border:none;font-size:18px;color:var(--text-lt);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.panel-close:active{background:rgba(0,0,0,.12)}
+.panel-body{padding:12px 18px 20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.panel-body::-webkit-scrollbar{width:3px}
+.panel-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* Seed shop item */
+.shop-item{display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,.5);border-radius:12px;margin-bottom:8px;border:1px solid var(--border)}
+.shop-emoji{font-size:32px;width:44px;text-align:center;flex-shrink:0}
+.shop-info{flex:1;min-width:0}
+.shop-name{font-size:14px;font-weight:600;color:var(--text)}
+.shop-meta{font-size:11px;color:var(--text-lt);margin-top:2px}
+.shop-price{font-size:13px;font-weight:600;color:#D4962E}
+.shop-actions{display:flex;gap:6px;flex-shrink:0}
+.btn-buy{padding:6px 12px;background:var(--yellow);border:none;border-radius:8px;font-size:12px;font-weight:600;color:#5A4410;cursor:pointer;transition:transform .12s;box-shadow:0 2px 4px rgba(244,211,94,.3)}
+.btn-buy:active{transform:scale(.92)}
+.btn-buy:disabled{background:#E0D8C8;color:#999;box-shadow:none;cursor:not-allowed}
+.shop-locked{opacity:.5;pointer-events:none}
+.shop-locked-tag{font-size:10px;color:#999;background:#F0F0F0;padding:2px 6px;border-radius:4px}
+
+/* Inventory item */
+.inv-section{margin-bottom:14px}
+.inv-section-title{font-size:12px;font-weight:600;color:var(--text-lt);margin-bottom:6px;padding-left:4px}
+.inv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.inv-item{background:rgba(255,255,255,.5);border-radius:10px;padding:8px 4px;text-align:center;border:1px solid var(--border)}
+.inv-emoji{font-size:28px}
+.inv-count{font-size:12px;font-weight:600;color:var(--text);margin-top:2px}
+.inv-empty{text-align:center;padding:20px;color:var(--text-lt);font-size:13px}
+
+/* Boat sell item */
+.sell-item{display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,.5);border-radius:12px;margin-bottom:8px;border:1px solid var(--border)}
+.sell-emoji{font-size:28px;width:36px;text-align:center;flex-shrink:0}
+.sell-info{flex:1}
+.sell-name{font-size:13px;font-weight:600;color:var(--text)}
+.sell-price{font-size:12px;color:#D4962E;font-weight:600}
+.btn-sell{padding:6px 14px;background:#6BB8DD;border:none;border-radius:8px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;transition:transform .12s}
+.btn-sell:active{transform:scale(.92)}
+.btn-sell:disabled{background:#C0C0C0;cursor:not-allowed}
+.btn-sell-all{width:100%;padding:12px;background:var(--green);border:none;border-radius:12px;font-size:14px;font-weight:600;color:#fff;cursor:pointer;margin-top:8px;transition:transform .12s;box-shadow:0 2px 8px rgba(126,200,80,.3)}
+.btn-sell-all:active{transform:scale(.97)}
+.btn-sell-all:disabled{background:#C0C0C0;box-shadow:none;cursor:not-allowed}
+
+/* Menu */
+.menu-item{display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,.5);border-radius:12px;margin-bottom:8px;border:1px solid var(--border);cursor:pointer;transition:background .15s}
+.menu-item:active{background:rgba(255,255,255,.8)}
+.menu-icon{font-size:20px;width:28px;text-align:center}
+.menu-label{flex:1;font-size:14px;color:var(--text)}
+.menu-value{font-size:12px;color:var(--text-lt)}
+.toggle{width:40px;height:22px;border-radius:11px;background:#CCC;position:relative;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--green)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on::after{transform:translateX(18px)}
+
+/* === PLOT ACTION POPUP === */
+#plotAction{position:absolute;background:var(--panel);border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,.2);border:1px solid var(--border);padding:8px;z-index:80;display:none;transform:translate(-50%,calc(-100% - 8px));min-width:120px}
+#plotAction.show{display:block;animation:popUp .2s ease-out}
+@keyframes popUp{from{transform:translate(-50%,calc(-100% - 4px));opacity:0}to{transform:translate(-50%,calc(-100% - 8px));opacity:1}}
+#plotAction::after{content:'';position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:7px solid var(--panel)}
+.pa-title{font-size:11px;color:var(--text-lt);text-align:center;margin-bottom:6px}
+.pa-seeds{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+.pa-seed-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.5);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:transform .12s}
+.pa-seed-btn:active{transform:scale(.9)}
+.pa-seed-btn:disabled{opacity:.3;cursor:not-allowed}
+.pa-seed-emoji{font-size:20px}
+.pa-seed-count{font-size:9px;color:var(--text-lt)}
+.pa-action{width:100%;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:transform .12s;margin-top:4px}
+.pa-action:active{transform:scale(.95)}
+.pa-water{background:var(--sky);color:#1a5a7a}
+.pa-harvest{background:var(--yellow);color:#5a4410}
+.pa-progress-text{font-size:11px;color:var(--text);text-align:center;padding:4px}
+
+/* === TOAST === */
+#toast{position:absolute;top:70px;left:50%;transform:translateX(-50%) translateY(-20px);background:rgba(74,60,40,.92);color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;z-index:200;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* === LEVEL UP === */
+#levelUp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:300;pointer-events:none;opacity:0;transition:opacity .3s}
+#levelUp.show{opacity:1}
+#levelUp .lu-bg{position:absolute;inset:0;background:rgba(0,0,0,.3)}
+#levelUp .lu-text{position:relative;font-size:28px;font-weight:700;color:var(--yellow);text-shadow:0 2px 8px rgba(0,0,0,.3);animation:luBounce .6s ease-out}
+#levelUp .lu-stars{position:absolute;font-size:20px;animation:luStar 1s ease-out}
+@keyframes luBounce{0%{transform:scale(.3)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes luStar{0%{opacity:1;transform:translate(0,0) scale(0)}100%{opacity:0;transform:translate(var(--dx,0),var(--dy,0)) scale(1.5)}}
+
+/* === COIN FLY === */
+.coin-fly{position:absolute;font-size:18px;z-index:150;pointer-events:none;animation:coinFly .8s ease-out forwards}
+@keyframes coinFly{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx,0),var(--dy,0)) scale(.5)}}
+
+/* === WELCOME === */
+#welcome{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:400;display:flex;align-items:center;justify-content:center;transition:opacity .4s}
+#welcome.hide{opacity:0;pointer-events:none}
+.welcome-card{background:var(--panel);border-radius:20px;padding:28px 24px;width:80%;max-width:320px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.2);border:1px solid var(--border)}
+.welcome-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:6px}
+.welcome-sub{font-size:13px;color:var(--text-lt);margin-bottom:16px}
+.welcome-tips{text-align:left;margin-bottom:18px}
+.welcome-tip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);margin-bottom:8px}
+.welcome-tip-icon{font-size:18px;width:24px;text-align:center}
+.welcome-btn{width:100%;padding:12px;background:var(--green);border:none;border-radius:12px;font-size:15px;font-weight:600;color:#fff;cursor:pointer;transition:transform .15s;box-shadow:0 3px 10px rgba(126,200,80,.3)}
+.welcome-btn:active{transform:scale(.96)}
+
+/* === RECENTER BTN === */
+#recenterBtn{position:absolute;bottom:50px;right:12px;width:36px;height:36px;border-radius:50%;background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;z-index:45;opacity:0;transition:opacity .3s;pointer-events:none}
+#recenterBtn.show{opacity:1;pointer-events:auto}
+#recenterBtn:active{transform:scale(.9)}
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="scene">
+    <div class="layer far">
+      <div class="far-bg"></div>
+      <div class="cloud">☁️</div>
+      <div class="cloud">☁️</div>
+      <div class="cloud">☁️</div>
+      <div class="forest-edge forest-top">🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲</div>
+      <div class="forest-edge forest-bottom">🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲</div>
+      <div class="forest-edge forest-left">🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲</div>
+      <div class="forest-edge forest-right">🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲</div>
+    </div>
+    <div class="layer mid">
+      <div class="cottage"><img src="assets/Q_style_chibi_cute_thatched_co_2026-07-25T05-12-08.png" alt="茅草屋"></div>
+      <div class="character"><img src="assets/Q_style_chibi_cute_girl_charac_2026-07-25T05-12-35.png" alt="角色"></div>
+      <div class="cherry-tree"><img src="assets/Q_style_chibi_cute_cherry_blos_2026-07-25T05-13-01.png" alt="樱花树"></div>
+      <div class="stone-path" id="stonePath"></div>
+    </div>
+    <div class="layer near">
+      <div class="river"></div>
+      <div class="bridge"><div class="bridge-plank"></div></div>
+      <div class="boat" id="boatIcon">
+        <div class="boat-flag"></div>
+        <div class="boat-sail"></div>
+        <div class="boat-hull"></div>
+      </div>
+      <div class="duck">🦆</div>
+      <div id="farmGrid"></div>
+      <div class="decor" style="left:395px;top:680px">🎃</div>
+      <div class="decor" style="left:670px;top:680px">🏺</div>
+      <div class="decor" style="left:395px;top:415px">🌸</div>
+      <div class="decor" style="left:670px;top:415px">🌷</div>
+    </div>
+  </div>
+
+  <div id="topbar">
+    <div class="player-info">
+      <div class="avatar" id="avatar">👧</div>
+      <div>
+        <div class="level-badge" id="levelText">Lv.1</div>
+        <div class="exp-bar"><div class="exp-fill" id="expFill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="quest-box" id="questBox">
+      <span class="quest-icon">📋</span>
+      <span id="questText">收获 0/3 🥬</span>
+    </div>
+    <div class="currency-box">
+      <div class="coin-display"><span>🪙</span><span id="coinText">500</span></div>
+    </div>
+  </div>
+
+  <div id="barHandle"><span></span></div>
+  <div id="bottombar">
+    <div class="bb-btn" data-fn="seeds">
+      <div class="bb-icon">🌱</div>
+      <div class="bb-label">种子</div>
+    </div>
+    <div class="bb-btn" data-fn="inventory">
+      <div class="bb-icon">📦</div>
+      <div class="bb-label">仓库</div>
+    </div>
+    <div class="bb-btn" data-fn="boat">
+      <div class="bb-icon">⛵</div>
+      <div class="bb-label">收购船</div>
+    </div>
+    <div class="bb-btn locked" data-fn="diary">
+      <div class="bb-icon">📔</div>
+      <div class="bb-label">日记</div>
+      <div class="bb-lock">🔒</div>
+    </div>
+    <div class="bb-btn locked" data-fn="friends">
+      <div class="bb-icon">👥</div>
+      <div class="bb-label">好友</div>
+      <div class="bb-lock">🔒</div>
+    </div>
+    <div class="bb-btn" data-fn="menu">
+      <div class="bb-icon">⚙️</div>
+      <div class="bb-label">菜单</div>
+    </div>
+  </div>
+
+  <div id="overlay"></div>
+  <div class="panel" id="panel"></div>
+  <div id="plotAction"></div>
+  <div id="toast"></div>
+  <div id="levelUp"><div class="lu-bg"></div><div class="lu-text"></div></div>
+  <div id="recenterBtn">🏠</div>
+
+  <div id="welcome">
+    <div class="welcome-card">
+      <div class="welcome-title">🏝️ 海岛日记</div>
+      <div class="welcome-sub">种菜 · 收菜 · 慢慢长大</div>
+      <div class="welcome-tips">
+        <div class="welcome-tip"><span class="welcome-tip-icon">👆</span>点击菜地格子种菜</div>
+        <div class="welcome-tip"><span class="welcome-tip-icon">💧</span>作物需要浇水才能生长</div>
+        <div class="welcome-tip"><span class="welcome-tip-icon">🚤</span>把蔬菜卖给收购船赚星币</div>
+        <div class="welcome-tip"><span class="welcome-tip-icon">🖐️</span>拖动屏幕查看更多区域</div>
+      </div>
+      <button class="welcome-btn" id="welcomeBtn">开始游戏</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+var VEGS={
+  cabbage:{name:'小白菜',emoji:'🥬',seed:2,sell:3,grow:10,exp:5,lvl:1,color:'#7EC850'},
+  carrot:{name:'胡萝卜',emoji:'🥕',seed:5,sell:8,grow:20,exp:10,lvl:1,color:'#E8923C'},
+  tomato:{name:'番茄',emoji:'🍅',seed:4,sell:6,grow:30,exp:8,lvl:2,color:'#E54B4B'},
+  potato:{name:'土豆',emoji:'🥔',seed:3,sell:5,grow:40,exp:7,lvl:3,color:'#C49560'},
+  chili:{name:'辣椒',emoji:'🌶️',seed:10,sell:20,grow:60,exp:25,lvl:4,color:'#D4382E'},
+};
+var LEVELS=[0,100,250,450,700,9999];
+var LEVEL_NAMES=['新手农夫','勤劳农夫','田园农夫','资深农夫','海岛农夫长'];
+var STAGE_EMOJI={0:'',1:'seed',2:'🌱',3:'🌿',4:''};
+
+var els={
+  game:document.getElementById('game'),
+  scene:document.getElementById('scene'),
+  farmGrid:document.getElementById('farmGrid'),
+  topbar:document.getElementById('topbar'),
+  bottombar:document.getElementById('bottombar'),
+  overlay:document.getElementById('overlay'),
+  panel:document.getElementById('panel'),
+  plotAction:document.getElementById('plotAction'),
+  toast:document.getElementById('toast'),
+  levelUp:document.getElementById('levelUp'),
+  recenterBtn:document.getElementById('recenterBtn'),
+  welcome:document.getElementById('welcome'),
+  welcomeBtn:document.getElementById('welcomeBtn'),
+  boatIcon:document.getElementById('boatIcon'),
+  stonePath:document.getElementById('stonePath'),
+  barHandle:document.getElementById('barHandle'),
+};
+
+var state={
+  player:{coins:500,level:1,exp:0},
+  plots:[],
+  seeds:{cabbage:5,carrot:3,tomato:0,potato:0,chili:0},
+  veg:{cabbage:0,carrot:0,tomato:0,potato:0,chili:0},
+  quest:{type:'harvest',veg:'cabbage',target:3,current:0,reward:30},
+  debugMode:false,
+  sceneX:0,sceneY:0,
+};
+var DEFAULT_X=0,DEFAULT_Y=0;
+
+function initPlots(){
+  state.plots=[];
+  for(var i=0;i<16;i++){
+    state.plots.push({idx:i,veg:null,progress:0,water:100,updated:Date.now()});
+  }
+}
+
+function saveState(){
+  try{
+    var s={player:state.player,plots:state.plots,seeds:state.seeds,veg:state.veg,quest:state.quest,debugMode:state.debugMode};
+    localStorage.setItem('island_mvp',JSON.stringify(s));
+  }catch(e){}
+}
+
+function loadState(){
+  try{
+    var s=JSON.parse(localStorage.getItem('island_mvp'));
+    if(s){
+      state.player=s.player||state.player;
+      state.plots=s.plots||[];
+      state.seeds=s.seeds||state.seeds;
+      state.veg=s.veg||state.veg;
+      state.quest=s.quest||state.quest;
+      state.debugMode=s.debugMode||false;
+      if(state.plots.length===0)initPlots();
+      state.plots.forEach(function(p){p.updated=p.updated||Date.now();});
+    }else{initPlots();}
+  }catch(e){initPlots();}
+}
+
+function showToast(msg){
+  els.toast.textContent=msg;
+  els.toast.classList.add('show');
+  clearTimeout(els.toast._t);
+  els.toast._t=setTimeout(function(){els.toast.classList.remove('show');},2200);
+}
+
+function showCoinFly(x,y,amount){
+  var fly=document.createElement('div');
+  fly.className='coin-fly';
+  fly.textContent='+'+amount+'🪙';
+  fly.style.left=x+'px';
+  fly.style.top=y+'px';
+  var coinEl=document.getElementById('coinText');
+  var rect=coinEl.getBoundingClientRect();
+  var gameRect=els.game.getBoundingClientRect();
+  fly.style.setProperty('--dx',(rect.left-gameRect.left-x+20)+'px');
+  fly.style.setProperty('--dy',(rect.top-gameRect.top-y-10)+'px');
+  els.game.appendChild(fly);
+  setTimeout(function(){if(fly.parentNode)fly.parentNode.removeChild(fly);},800);
+}
+
+function showLevelUp(lvl){
+  var lu=els.levelUp;
+  lu.querySelector('.lu-text').textContent='Lv.'+lvl+' '+LEVEL_NAMES[lvl-1];
+  lu.classList.add('show');
+  for(var i=0;i<8;i++){
+    (function(i){
+      var star=document.createElement('div');
+      star.className='lu-stars';
+      star.textContent=['⭐','✨','🌟','💫'][i%4];
+      star.style.left='50%';star.style.top='50%';
+      var angle=Math.PI*2*i/8;
+      star.style.setProperty('--dx',Math.cos(angle)*120+'px');
+      star.style.setProperty('--dy',Math.sin(angle)*120+'px');
+      lu.appendChild(star);
+      setTimeout(function(){if(star.parentNode)star.parentNode.removeChild(star);},1000);
+    })(i);
+  }
+  setTimeout(function(){lu.classList.remove('show');},1500);
+}
+
+function updateScenePos(x,y){
+  state.sceneX=x;state.sceneY=y;
+  els.scene.style.setProperty('--px',x+'px');
+  els.scene.style.setProperty('--py',y+'px');
+  els.recenterBtn.classList.toggle('show',Math.abs(x-DEFAULT_X)>30||Math.abs(y-DEFAULT_Y)>30);
+}
+
+function centerScene(){
+  DEFAULT_X=0;
+  DEFAULT_Y=30;
+  updateScenePos(DEFAULT_X,DEFAULT_Y);
+}
+
+function setupDrag(){
+  var down=false,moved=false,sx=0,sy=0,startSX=0,startSY=0;
+  function getX(e){return e.touches?e.touches[0].clientX:e.clientX}
+  function getY(e){return e.touches?e.touches[0].clientY:e.clientY}
+  function onDown(e){
+    down=true;moved=false;
+    sx=getX(e);sy=getY(e);
+    startSX=state.sceneX;startSY=state.sceneY;
+    els.scene.classList.add('dragging');
+  }
+  function onMove(e){
+    if(!down)return;
+    var dx=getX(e)-sx,dy=getY(e)-sy;
+    if(Math.abs(dx)>5||Math.abs(dy)>5)moved=true;
+    if(moved){
+      e.preventDefault();
+      var nx=startSX+dx,ny=startSY+dy;
+      var vw=els.game.offsetWidth,vh=els.game.offsetHeight;
+      nx=Math.max(vw-1150,Math.min(150,nx));
+      ny=Math.max(vh-850,Math.min(120,ny));
+      updateScenePos(nx,ny);
+    }
+  }
+  function onUp(e){
+    els.scene.classList.remove('dragging');
+    if(down&&!moved){
+      var plot=e.target.closest('.plot');
+      if(plot)handlePlotClick(parseInt(plot.dataset.idx),plot);
+      var boat=e.target.closest('#boatIcon');
+      if(boat)openPanel('boat');
+    }
+    down=false;
+  }
+  els.scene.addEventListener('pointerdown',onDown);
+  els.scene.addEventListener('pointermove',onMove);
+  els.scene.addEventListener('pointerup',onUp);
+  els.scene.addEventListener('pointercancel',onUp);
+  els.scene.addEventListener('dblclick',function(){
+    var anim=0;
+    var fromX=state.sceneX,fromY=state.sceneY;
+    function step(){
+      anim+=0.08;
+      if(anim>=1){updateScenePos(DEFAULT_X,DEFAULT_Y);return;}
+      var e=1-Math.pow(1-anim,3);
+      updateScenePos(fromX+(DEFAULT_X-fromX)*e,fromY+(DEFAULT_Y-fromY)*e);
+      requestAnimationFrame(step);
+    }
+    step();
+  });
+  els.recenterBtn.addEventListener('click',function(){
+    var anim=0;
+    var fromX=state.sceneX,fromY=state.sceneY;
+    function step(){
+      anim+=0.08;
+      if(anim>=1){updateScenePos(DEFAULT_X,DEFAULT_Y);return;}
+      var e=1-Math.pow(1-anim,3);
+      updateScenePos(fromX+(DEFAULT_X-fromX)*e,fromY+(DEFAULT_Y-fromY)*e);
+      requestAnimationFrame(step);
+    }
+    step();
+  });
+}
+
+function renderPlots(){
+  var cells=els.farmGrid.querySelectorAll('.plot');
+  for(var i=0;i<16;i++){
+    var p=state.plots[i];
+    var cell=cells[i];
+    if(!cell)continue;
+    cell.className='plot';
+    var html='';
+    if(!p.veg){
+      cell.classList.add('dry');
+    }else{
+      if(p.water>50)cell.classList.add('watered');
+      else cell.classList.add('dry');
+      var stage=p.progress>=1?4:(p.progress>=0.66?3:(p.progress>=0.33?2:1));
+      if(stage===4){
+        cell.classList.add('mature');
+        html='<span class="plot-emoji">'+VEGS[p.veg].emoji+'</span>';
+      }else if(stage===1){
+        html='<span class="plot-seed"></span>';
+      }else{
+        html='<span class="plot-emoji plot-'+(stage===2?'sprout':'growing')+'">'+STAGE_EMOJI[stage]+'</span>';
+      }
+      if(p.progress<1){
+        html+='<div class="plot-progress"><div class="plot-progress-fill" style="width:'+Math.round(p.progress*100)+'%"></div></div>';
+      }
+      if(p.water<40&&p.progress<1){
+        html+='<span class="plot-water-icon">💧</span>';
+      }
+      html+='<div class="plot-water-bar"><div class="plot-water-fill" style="width:'+Math.round(p.water)+'%;background:'+(p.water<40?'#E8923C':p.water<70?'#F4D35E':'#6BB8DD')+'"></div></div>';
+    }
+    cell.innerHTML=html;
+  }
+}
+
+function buildFarmGrid(){
+  els.farmGrid.innerHTML='';
+  for(var i=0;i<16;i++){
+    var cell=document.createElement('div');
+    cell.className='plot dry';
+    cell.dataset.idx=i;
+    els.farmGrid.appendChild(cell);
+  }
+}
+
+function buildStonePath(){
+  var positions=[[0,150],[25,140],[55,130],[30,100],[60,90],[35,60],[65,50],[40,20],[70,10]];
+  positions.forEach(function(pos){
+    var s=document.createElement('div');
+    s.className='stone';
+    s.style.left=pos[0]+'px';
+    s.style.top=pos[1]+'px';
+    els.stonePath.appendChild(s);
+  });
+}
+
+function handlePlotClick(idx,cellEl){
+  var p=state.plots[idx];
+  var rect=cellEl.getBoundingClientRect();
+  var gameRect=els.game.getBoundingClientRect();
+  var x=rect.left-gameRect.left+rect.width/2;
+  var y=rect.top-gameRect.top;
+  if(!p.veg){
+    showPlotAction(idx,x,y,'seed');
+  }else if(p.progress>=1){
+    showPlotAction(idx,x,y,'harvest');
+  }else{
+    showPlotAction(idx,x,y,'water');
+  }
+}
+
+function showPlotAction(idx,x,y,type){
+  var p=state.plots[idx];
+  var html='';
+  if(type==='seed'){
+    html+='<div class="pa-title">选择种子</div><div class="pa-seeds">';
+    Object.keys(VEGS).forEach(function(vk){
+      var v=VEGS[vk];
+      var unlocked=state.player.level>=v.lvl;
+      var count=state.seeds[vk]||0;
+      html+='<button class="pa-seed-btn" data-seed="'+vk+'" '+(unlocked&&count>0?'':'disabled')+'>'+
+        '<span class="pa-seed-emoji">'+v.emoji+'</span>'+
+        '<span class="pa-seed-count">'+(unlocked?(count+'粒'):'Lv'+v.lvl)+'</span>'+
+        '</button>';
+    });
+    html+='</div>';
+  }else if(type==='water'){
+    html+='<div class="pa-title">'+VEGS[p.veg].name+' · 生长中</div>';
+    html+='<div class="pa-progress-text">进度 '+Math.round(p.progress*100)+'% · 水分 '+Math.round(p.water)+'%</div>';
+    if(p.water<100){
+      html+='<button class="pa-action pa-water" data-action="water">💧 浇水</button>';
+    }else{
+      html+='<div class="pa-progress-text" style="color:var(--green)">水分充足，等待生长~</div>';
+    }
+  }else if(type==='harvest'){
+    html+='<div class="pa-title">'+VEGS[p.veg].name+' · 成熟了！</div>';
+    html+='<button class="pa-action pa-harvest" data-action="harvest">🧺 收获 (+'+VEGS[p.veg].exp+'经验)</button>';
+  }
+  els.plotAction.innerHTML=html;
+  els.plotAction.style.left=x+'px';
+  els.plotAction.style.top=y+'px';
+  els.plotAction.classList.add('show');
+
+  els.plotAction.querySelectorAll('[data-seed]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      plantSeed(idx,btn.dataset.seed);
+      hidePlotAction();
+    });
+  });
+  var waterBtn=els.plotAction.querySelector('[data-action="water"]');
+  if(waterBtn)waterBtn.addEventListener('click',function(){waterPlot(idx);showPlotAction(idx,parseInt(els.plotAction.style.left),parseInt(els.plotAction.style.top),'water');});
+  var harvestBtn=els.plotAction.querySelector('[data-action="harvest"]');
+  if(harvestBtn)harvestBtn.addEventListener('click',function(){harvestPlot(idx);hidePlotAction();});
+
+  setTimeout(function(){
+    document.addEventListener('pointerdown',hidePlotActionOutside,{once:true});
+  },10);
+}
+
+function hidePlotAction(){
+  els.plotAction.classList.remove('show');
+}
+
+function hidePlotActionOutside(e){
+  if(!els.plotAction.contains(e.target)){
+    hidePlotAction();
+  }else{
+    document.addEventListener('pointerdown',hidePlotActionOutside,{once:true});
+  }
+}
+
+function plantSeed(idx,vegKey){
+  var p=state.plots[idx];
+  if(p.veg){showToast('这块地已经种了东西');return;}
+  if(state.player.level<VEGS[vegKey].lvl){showToast('等级不足，需要Lv'+VEGS[vegKey].lvl);return;}
+  if((state.seeds[vegKey]||0)<=0){showToast('没有'+VEGS[vegKey].name+'种子了');return;}
+  state.seeds[vegKey]--;
+  p.veg=vegKey;p.progress=0;p.water=100;p.updated=Date.now();
+  showToast('🌱 种下了'+VEGS[vegKey].name+'！');
+  renderPlots();updateUI();saveState();
+}
+
+function waterPlot(idx){
+  var p=state.plots[idx];
+  if(!p.veg||p.progress>=1)return;
+  p.water=100;
+  showToast('💧 浇水完成！');
+  renderPlots();saveState();
+}
+
+function harvestPlot(idx){
+  var p=state.plots[idx];
+  if(!p.veg||p.progress<1)return;
+  var v=VEGS[p.veg];
+  state.veg[p.veg]=(state.veg[p.veg]||0)+1;
+  var cell=els.farmGrid.querySelectorAll('.plot')[idx];
+  if(cell){
+    var rect=cell.getBoundingClientRect();
+    var gameRect=els.game.getBoundingClientRect();
+    showCoinFly(rect.left-gameRect.left+rect.width/2,rect.top-gameRect.top,0);
+  }
+  showToast('🧺 收获了'+v.name+'！+'+v.exp+'经验');
+  addExp(v.exp);
+  if(state.quest.type==='harvest'&&state.quest.veg===p.veg){
+    state.quest.current++;
+    if(state.quest.current>=state.quest.target){
+      showToast('📋 任务完成！+'+state.quest.reward+'🪙');
+      state.player.coins+=state.quest.reward;
+      generateNewQuest();
+    }
+  }
+  p.veg=null;p.progress=0;p.water=100;p.updated=Date.now();
+  renderPlots();updateUI();saveState();
+}
+
+function addExp(amount){
+  state.player.exp+=amount;
+  while(state.player.level<5&&state.player.exp>=LEVELS[state.player.level]){
+    state.player.level++;
+    showLevelUp(state.player.level);
+    var unlocked=Object.keys(VEGS).filter(function(k){return VEGS[k].lvl===state.player.level;});
+    if(unlocked.length>0){
+      setTimeout(function(){
+        showToast('🎉 解锁新蔬菜：'+unlocked.map(function(k){return VEGS[k].name;}).join('、')+'！');
+      },800);
+    }
+  }
+}
+
+function generateNewQuest(){
+  var pool=Object.keys(VEGS).filter(function(k){return state.player.level>=VEGS[k].lvl;});
+  var vk=pool[Math.floor(Math.random()*pool.length)];
+  state.quest={type:'harvest',veg:vk,target:2+Math.floor(Math.random()*3),current:0,reward:20+Math.floor(Math.random()*30)};
+}
+
+function openPanel(name){
+  if(name==='diary'||name==='friends'){
+    showToast('🔒 该功能将在后续版本开放');
+    return;
+  }
+  var html='';
+  if(name==='seeds'){
+    html='<div class="panel-header"><h2>🌱 种子商店</h2><button class="panel-close">×</button></div><div class="panel-body">';
+    html+='<div style="font-size:12px;color:var(--text-lt);margin-bottom:10px">选择种子购买，种在菜地里生长</div>';
+    Object.keys(VEGS).forEach(function(vk){
+      var v=VEGS[vk];
+      var unlocked=state.player.level>=v.lvl;
+      var canBuy=unlocked&&state.player.coins>=v.seed;
+      html+='<div class="shop-item'+(unlocked?'':' shop-locked')+'">';
+      html+='<div class="shop-emoji">'+v.emoji+'</div>';
+      html+='<div class="shop-info"><div class="shop-name">'+v.name+'</div>';
+      html+='<div class="shop-meta">生长 '+(state.debugMode?'2秒':v.grow+'秒')+' · 卖价 '+v.sell+'🪙 · +'+v.exp+'经验</div></div>';
+      if(unlocked){
+        html+='<div class="shop-actions"><button class="btn-buy" data-buy="'+vk+'" data-qty="1" '+(canBuy?'':'disabled')+'>'+v.seed+'🪙</button></div>';
+      }else{
+        html+='<div class="shop-actions"><span class="shop-locked-tag">Lv'+v.lvl+'解锁</span></div>';
+      }
+      html+='</div>';
+    });
+    html+='</div>';
+  }else if(name==='inventory'){
+    html='<div class="panel-header"><h2>📦 仓库</h2><button class="panel-close">×</button></div><div class="panel-body">';
+    html+='<div class="inv-section"><div class="inv-section-title">种子</div><div class="inv-grid">';
+    var hasSeeds=false;
+    Object.keys(VEGS).forEach(function(vk){
+      var count=state.seeds[vk]||0;
+      if(count>0){
+        hasSeeds=true;
+        html+='<div class="inv-item"><div class="inv-emoji">'+VEGS[vk].emoji+'</div><div class="inv-count">×'+count+'</div></div>';
+      }
+    });
+    if(!hasSeeds)html+='<div class="inv-empty" style="grid-column:1/-1">还没有种子，去商店买一些吧~</div>';
+    html+='</div></div>';
+    html+='<div class="inv-section"><div class="inv-section-title">蔬菜</div><div class="inv-grid">';
+    var hasVeg=false;
+    Object.keys(VEGS).forEach(function(vk){
+      var count=state.veg[vk]||0;
+      if(count>0){
+        hasVeg=true;
+        html+='<div class="inv-item"><div class="inv-emoji">'+VEGS[vk].emoji+'</div><div class="inv-count">×'+count+'</div></div>';
+      }
+    });
+    if(!hasVeg)html+='<div class="inv-empty" style="grid-column:1/-1">还没有蔬菜，去种菜吧~</div>';
+    html+='</div></div>';
+    html+='</div>';
+  }else if(name==='boat'){
+    html='<div class="panel-header"><h2>⛵ 收购船</h2><button class="panel-close">×</button></div><div class="panel-body">';
+    html+='<div style="font-size:12px;color:var(--text-lt);margin-bottom:10px">🚤 收购船今日停靠中，把蔬菜卖给它赚星币！</div>';
+    var hasVeg=false;
+    var totalValue=0;
+    Object.keys(VEGS).forEach(function(vk){
+      var count=state.veg[vk]||0;
+      if(count>0){
+        hasVeg=true;
+        var v=VEGS[vk];
+        totalValue+=v.sell*count;
+        html+='<div class="sell-item">';
+        html+='<div class="sell-emoji">'+v.emoji+'</div>';
+        html+='<div class="sell-info"><div class="sell-name">'+v.name+' ×'+count+'</div><div class="sell-price">'+v.sell+'🪙/个</div></div>';
+        html+='<button class="btn-sell" data-sell="'+vk+'" data-qty="1">卖1个</button>';
+        html+='</div>';
+      }
+    });
+    if(!hasVeg){
+      html+='<div class="inv-empty">仓库里没有蔬菜可以出售~</div>';
+    }
+    html+='<button class="btn-sell-all" id="sellAllBtn" '+(hasVeg?'':'disabled')+'>全部出售 ('+totalValue+'🪙)</button>';
+    html+='</div>';
+  }else if(name==='menu'){
+    html='<div class="panel-header"><h2>⚙️ 菜单</h2><button class="panel-close">×</button></div><div class="panel-body">';
+    html+='<div class="menu-item"><div class="menu-icon">⚡</div><div class="menu-label">加速模式</div><div class="menu-value">作物2秒成熟</div><div class="toggle'+(state.debugMode?' on':'')+'" id="debugToggle"></div></div>';
+    html+='<div class="menu-item" id="resetBtn"><div class="menu-icon">🔄</div><div class="menu-label">重新开始</div><div class="menu-value">清除存档</div></div>';
+    html+='<div class="menu-item"><div class="menu-icon">ℹ️</div><div class="menu-label">关于</div><div class="menu-value">v0.1 MVP</div></div>';
+    html+='<div style="margin-top:16px;padding:12px;background:rgba(255,255,255,.4);border-radius:12px;font-size:12px;color:var(--text-lt);line-height:1.8">';
+    html+='<b style="color:var(--text)">海岛日记 MVP (P0)</b><br>';
+    html+='核心循环：买种子 → 种菜 → 浇水 → 收获 → 卖菜 → 赚星币<br>';
+    html+='当前等级 Lv.'+state.player.level+' ('+LEVEL_NAMES[state.player.level-1]+')<br>';
+    html=_('累计经验：'+state.player.exp+' / '+(state.player.level<5?LEVELS[state.player.level]:'满级'));
+    html+='</div>';
+    html+='</div>';
+  }
+  els.panel.innerHTML=html;
+  els.panel.classList.add('active');
+  els.overlay.classList.add('active');
+
+  els.panel.querySelector('.panel-close').addEventListener('click',closePanel);
+  els.overlay.addEventListener('click',closePanel,{once:true});
+
+  els.panel.querySelectorAll('[data-buy]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var vk=btn.dataset.buy;
+      buySeed(vk);
+    });
+  });
+  els.panel.querySelectorAll('[data-sell]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var vk=btn.dataset.sell;
+      sellVeg(vk,1);
+    });
+  });
+  var sellAll=document.getElementById('sellAllBtn');
+  if(sellAll)sellAll.addEventListener('click',function(){sellAllVeg();});
+  var dt=document.getElementById('debugToggle');
+  if(dt)dt.addEventListener('click',function(){
+    state.debugMode=!state.debugMode;
+    dt.classList.toggle('on',state.debugMode);
+    showToast(state.debugMode?'⚡ 加速模式开启！':'加速模式关闭');
+    saveState();
+    closePanel();
+  });
+  var rb=document.getElementById('resetBtn');
+  if(rb)rb.addEventListener('click',function(){
+    if(confirm('确定要重新开始吗？所有进度将被清除。')){
+      localStorage.removeItem('island_mvp');
+      location.reload();
+    }
+  });
+}
+
+function _(s){return s}
+
+function closePanel(){
+  els.panel.classList.remove('active');
+  els.overlay.classList.remove('active');
+}
+
+function buySeed(vk){
+  var v=VEGS[vk];
+  if(state.player.coins<v.seed){showToast('星币不足！');return;}
+  state.player.coins-=v.seed;
+  state.seeds[vk]=(state.seeds[vk]||0)+1;
+  showToast('🌱 购买了'+v.name+'种子！');
+  updateUI();saveState();openPanel('seeds');
+}
+
+function sellVeg(vk,qty){
+  var v=VEGS[vk];
+  if((state.veg[vk]||0)<qty){showToast('数量不足');return;}
+  state.veg[vk]-=qty;
+  var earned=v.sell*qty;
+  state.player.coins+=earned;
+  showToast('💰 卖出'+v.name+'×'+qty+'，获得'+earned+'星币！');
+  updateUI();saveState();openPanel('boat');
+}
+
+function sellAllVeg(){
+  var total=0,count=0;
+  Object.keys(VEGS).forEach(function(vk){
+    var c=state.veg[vk]||0;
+    if(c>0){total+=VEGS[vk].sell*c;count+=c;state.veg[vk]=0;}
+  });
+  if(count===0){showToast('没有蔬菜可卖');return;}
+  state.player.coins+=total;
+  showToast('💰 卖出'+count+'个蔬菜，获得'+total+'星币！');
+  updateUI();saveState();closePanel();
+}
+
+function updateUI(){
+  document.getElementById('coinText').textContent=state.player.coins;
+  document.getElementById('levelText').textContent='Lv.'+state.player.level;
+  var expPct=state.player.level>=5?100:(state.player.exp-LEVELS[state.player.level-1])/(LEVELS[state.player.level]-LEVELS[state.player.level-1])*100;
+  document.getElementById('expFill').style.width=Math.max(0,Math.min(100,expPct))+'%';
+  var q=state.quest;
+  document.getElementById('questText').textContent='收获'+q.current+'/'+q.target+' '+VEGS[q.veg].emoji;
+}
+
+function gameLoop(){
+  var now=Date.now();
+  var changed=false;
+  state.plots.forEach(function(p){
+    if(!p.veg||p.progress>=1)return;
+    var dt=(now-p.updated)/1000;
+    p.updated=now;
+    p.water=Math.max(0,p.water-dt*2.5);
+    if(p.water>0){
+      var growSec=state.debugMode?2:VEGS[p.veg].grow;
+      p.progress=Math.min(1,p.progress+dt/growSec);
+    }
+    changed=true;
+  });
+  if(changed){
+    renderPlots();
+    saveState();
+  }
+}
+
+function init(){
+  loadState();
+  if(state.plots.length===0)initPlots();
+  buildFarmGrid();
+  buildStonePath();
+  renderPlots();
+  updateUI();
+  centerScene();
+  setupDrag();
+
+  els.barHandle.addEventListener('click',function(){
+    var expanded=els.bottombar.classList.toggle('expanded');
+    els.barHandle.classList.toggle('up',expanded);
+  });
+
+  els.bottombar.querySelectorAll('.bb-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      openPanel(btn.dataset.fn);
+      els.bottombar.classList.remove('expanded');
+      els.barHandle.classList.remove('up');
+    });
+  });
+  els.boatIcon.addEventListener('click',function(e){e.stopPropagation();openPanel('boat');});
+
+  els.welcomeBtn.addEventListener('click',function(){
+    els.welcome.classList.add('hide');
+    setTimeout(function(){els.welcome.style.display='none';},400);
+  });
+
+  window.addEventListener('resize',function(){
+    centerScene();
+  });
+
+  setInterval(gameLoop,500);
+  showToast('🏝️ 欢迎来到海岛日记！');
+}
+
+init();
+})();
+</script>
+</body>
+</html>

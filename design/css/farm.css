@@ -1,0 +1,140 @@
+/* === 海岛日记 - 菜地网格 === */
+
+/* 土地底图 */
+.land-img {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12));
+}
+
+#farmGrid {
+  position: absolute;
+  left: 430px; top: 440px;
+  display: grid;
+  grid-template-columns: repeat(3, 48px);
+  grid-template-rows: repeat(3, 48px);
+  gap: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  z-index: 5;
+}
+
+/* 单个格子：透明，土地图作为整体背景单独放 */
+.plot {
+  background: none;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.12s;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+}
+.plot:active {
+  transform: scale(0.92);
+}
+
+/* 格子状态 */
+.plot.watered {
+  box-shadow: inset 0 0 8px rgba(60, 100, 200, 0.25);
+}
+.plot.dry {
+  /* 默认透明 */
+}
+.plot.mature {
+  box-shadow:
+    inset 0 0 8px rgba(244, 211, 94, 0.15);
+  animation: matureGlow 2s ease-in-out infinite;
+}
+
+/* 成熟可收获的脉冲边框 */
+.plot.mature::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 8px;
+  border: 2px solid rgba(244, 211, 94, 0.5);
+  animation: pulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* 作物显示 */
+.plot-emoji {
+  font-size: 28px;
+  transition: transform 0.3s;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.15));
+}
+.plot-seed {
+  width: 6px; height: 6px;
+  background: #3D2E1F;
+  border-radius: 50%;
+}
+.plot-sprout {
+  font-size: 16px;
+}
+.plot-growing {
+  font-size: 22px;
+}
+
+/* 生长进度条 */
+.plot-progress {
+  position: absolute;
+  bottom: 2px; left: 3px; right: 3px;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.plot-progress-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 0.5s;
+}
+
+/* 水分图标 */
+.plot-water-icon {
+  position: absolute;
+  top: 1px; right: 1px;
+  font-size: 12px;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+/* 水分条 */
+.plot-water-bar {
+  position: absolute;
+  top: 2px; left: 3px; right: 3px;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.plot-water-fill {
+  height: 100%;
+  border-radius: 1px;
+  transition: width 0.3s, background 0.3s;
+}
+
+/* 格子悬浮提示 */
+.plot:hover .plot-tooltip {
+  opacity: 1;
+}
+.plot-tooltip {
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(74, 60, 40, 0.9);
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}

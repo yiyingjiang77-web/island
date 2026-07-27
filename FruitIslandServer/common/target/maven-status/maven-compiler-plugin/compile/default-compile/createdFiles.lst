@@ -1,0 +1,11 @@
+com/fruitisland/common/config/RedisConfig.class
+com/fruitisland/common/base/BaseMapperX.class
+com/fruitisland/common/constant/ErrorCode.class
+com/fruitisland/common/result/Result.class
+com/fruitisland/common/base/BaseEntity.class
+com/fruitisland/common/config/MyBatisPlusConfig.class
+com/fruitisland/common/config/MyBatisPlusConfig$1.class
+com/fruitisland/common/utils/JwtUtils.class
+com/fruitisland/common/base/BaseServiceX.class
+com/fruitisland/common/base/BaseServiceImplX.class
+com/fruitisland/common/exception/GlobalExceptionHandler.class
