@@ -1,0 +1,54 @@
+-- Demo1 H2 测试表结构
+-- 使用反引号包裹保留字 user
+
+CREATE TABLE IF NOT EXISTS `user` (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nickname VARCHAR(32),
+    avatar VARCHAR(255),
+    status TINYINT DEFAULT 1,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_login (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    platform VARCHAR(32) NOT NULL,
+    platform_uid VARCHAR(128) NOT NULL,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_platform_uid ON user_login(platform, platform_uid);
+
+CREATE TABLE IF NOT EXISTS user_token (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    token VARCHAR(512) NOT NULL,
+    expire_time TIMESTAMP,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_token ON user_token(token);
+
+CREATE TABLE IF NOT EXISTS game_player (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    game_id VARCHAR(32) DEFAULT 'fruit_island',
+    nickname VARCHAR(32),
+    level INT DEFAULT 1,
+    exp INT DEFAULT 0,
+    gold BIGINT DEFAULT 1000,
+    diamond INT DEFAULT 20,
+    avatar_id VARCHAR(64),
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS island (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    player_id BIGINT NOT NULL,
+    island_name VARCHAR(64),
+    level INT DEFAULT 1,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2015",
+    "module": "ES2015",
+    "lib": ["ES2017", "DOM"],
+    "strict": true,
+    "experimentalDecorators": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "paths": {
+      "*": ["./*"]
+    }
+  },
+  "include": [
+    "assets/scripts/**/*.ts"
+  ]
+}

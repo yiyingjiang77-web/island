@@ -1,6 +1,7 @@
 /Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/service/BuildingService.java
 /Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/mapper/ItemConfigMapper.java
 /Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/entity/Building.java
+/Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/controller/GameController.java
 /Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/service/PlayerQuestService.java
 /Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/service/impl/InventoryServiceImpl.java
 /Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/entity/ShopConfig.java
@@ -14,6 +15,7 @@
 /Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/service/BuildingUpgradeService.java
 /Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/service/CustomerOrderService.java
 /Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/entity/GamePlayer.java
+/Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/dto/GameInitVO.java
 /Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/entity/Animal.java
 /Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/mapper/GamePlayerMapper.java
 /Users/yy/Documents/island/FruitIslandServer/game-server/src/main/java/com/fruitisland/game/service/impl/BuildingUpgradeServiceImpl.java

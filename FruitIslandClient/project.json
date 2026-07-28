@@ -1,0 +1,15 @@
+{
+  "engineVersion": "3.8.0",
+  "projectName": "FruitIslandClient",
+  "version": "1.0.0",
+  "description": "果香小岛 - 微信小游戏客户端",
+  "assets": {
+    "scripts": {
+      "core": ["GameManager.ts"],
+      "network": ["HttpClient.ts", "Api.ts"],
+      "player": ["PlayerController.ts"],
+      "ui": ["LoginUI.ts"],
+      "types": ["index.ts"]
+    }
+  }
+}

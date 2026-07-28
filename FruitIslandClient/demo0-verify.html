@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>果香小岛 Demo0 - 验证</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+  }
+  .game-wrapper {
+    position: relative;
+    border: 3px solid #4a9eff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(74,158,255,0.3);
+  }
+  canvas {
+    display: block;
+    cursor: crosshair;
+  }
+  .hud {
+    position: absolute;
+    top: 12px; left: 12px; right: 12px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .hud-item {
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    backdrop-filter: blur(4px);
+  }
+  .info-bar {
+    position: absolute;
+    bottom: 12px; left: 12px; right: 12px;
+    background: rgba(0,0,0,0.6);
+    color: #aaa;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    text-align: center;
+    pointer-events: none;
+    backdrop-filter: blur(4px);
+  }
+</style>
+</head>
+<body>
+<div class="game-wrapper">
+  <canvas id="game"></canvas>
+  <div class="hud">
+    <span class="hud-item">🏝️ 果香小岛 Demo0</span>
+    <span class="hud-item" id="hud-pos">📍 (0, 0)</span>
+  </div>
+  <div class="info-bar" id="info-bar">点击地图任意位置，岛主会走过去</div>
+</div>
+
+<script>
+// ============================================================
+// Demo0 验证模拟器
+//
+// 完全复刻我们 TypeScript 脚本的游戏逻辑：
+// - MapManager:     20×15 网格，蓝水+黄沙+绿草
+// - PlayerController: moveTo() → update() 直线插值移动
+// - CameraFollow:   摄像机实时跟踪玩家
+// - InputManager:   点击 → 屏幕坐标 → 世界坐标 → Player.moveTo()
+// - GameManager:    初始化顺序 Map→Player→Camera→Input
+// ============================================================
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const hudPos = document.getElementById('hud-pos');
+const infoBar = document.getElementById('info-bar');
+
+// ---------- 画布尺寸 ----------
+const W = 800, H = 600;
+canvas.width = W; canvas.height = H;
+
+// ============================================================
+// 1. MapManager 逻辑（复刻 MapManager.ts）
+// ============================================================
+const GRID_ROWS = 15;
+const GRID_COLS = 20;
+const TILE_SIZE = 48;
+const MAP_OFFSET_X = -(GRID_COLS * TILE_SIZE) / 2;
+const MAP_OFFSET_Y = -(GRID_ROWS * TILE_SIZE) / 2;
+
+function getTileColor(row, col) {
+  const isEdge = row === 0 || row === GRID_ROWS - 1 || col === 0 || col === GRID_COLS - 1;
+  if (isEdge) return '#64a0dc'; // 蓝色水
+
+  const isSand =
+    row === 1 || row === GRID_ROWS - 2 || col === 1 || col === GRID_COLS - 2;
+  if (isSand) return '#f0dcb4'; // 浅黄沙滩
+
+  // 随机深浅绿色
+  const shade = 140 + Math.floor(Math.random() * 40);
+  return `rgb(120,${shade},80)`;
+}
+
+// 预计算所有地块颜色
+const tileColors = [];
+for (let row = 0; row < GRID_ROWS; row++) {
+  tileColors[row] = [];
+  for (let col = 0; col < GRID_COLS; col++) {
+    tileColors[row][col] = getTileColor(row, col);
+  }
+}
+
+// 网格坐标 → 世界坐标
+function gridToWorld(row, col) {
+  return {
+    x: MAP_OFFSET_X + col * TILE_SIZE + TILE_SIZE / 2,
+    y: MAP_OFFSET_Y + row * TILE_SIZE + TILE_SIZE / 2,
+  };
+}
+
+// 世界坐标 → 网格坐标
+function worldToGrid(wx, wy) {
+  return {
+    row: Math.floor((wy - MAP_OFFSET_Y) / TILE_SIZE),
+    col: Math.floor((wx - MAP_OFFSET_X) / TILE_SIZE),
+  };
+}
+
+// ============================================================
+// 2. 玩家状态（复刻 PlayerController.ts）
+// ============================================================
+// ---- 配置（复刻 configs/） ----
+const PLAYER_SPEED = 250;
+const ARRIVE_THRESHOLD = 5;
+const WATER_EDGE = 1;    // 边缘几行是水
+const BEACH_ROWS = 1;    // 沙滩行数
+const WALKABLE_MIN_ROW = WATER_EDGE + BEACH_ROWS;
+const WALKABLE_MAX_ROW = GRID_ROWS - WATER_EDGE - BEACH_ROWS - 1;
+const WALKABLE_MIN_COL = WATER_EDGE + BEACH_ROWS;
+const WALKABLE_MAX_COL = GRID_COLS - WATER_EDGE - BEACH_ROWS - 1;
+
+// --- 边界检查（复刻 MapManager.isInBounds / isWalkable） ---
+function isInBounds(wx, wy) {
+  return (
+    wx >= MAP_OFFSET_X &&
+    wx <= MAP_OFFSET_X + GRID_COLS * TILE_SIZE &&
+    wy >= MAP_OFFSET_Y &&
+    wy <= MAP_OFFSET_Y + GRID_ROWS * TILE_SIZE
+  );
+}
+
+function isWalkable(wx, wy) {
+  if (!isInBounds(wx, wy)) return false;
+  const g = worldToGrid(wx, wy);
+  if (g.row < WALKABLE_MIN_ROW || g.row > WALKABLE_MAX_ROW) return false;
+  if (g.col < WALKABLE_MIN_COL || g.col > WALKABLE_MAX_COL) return false;
+  return true;
+}
+
+const player = {
+  x: 0, y: 0,          // 当前位置（世界坐标）
+  targetX: null,       // 目标位置
+  targetY: null,
+  isMoving: false,
+};
+
+function movePlayerTo(worldX, worldY) {
+  player.targetX = worldX;
+  player.targetY = worldY;
+  player.isMoving = true;
+  infoBar.textContent = '🏃 岛主正在走过去...';
+}
+
+function stopPlayer() {
+  player.targetX = null;
+  player.targetY = null;
+  player.isMoving = false;
+  infoBar.textContent = '点击地图任意位置，岛主会走过去';
+}
+
+// 每秒 60 帧的逻辑更新
+function updatePlayer(dt) {
+  if (!player.isMoving || player.targetX === null) return;
+
+  const dx = player.targetX - player.x;
+  const dy = player.targetY - player.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist <= ARRIVE_THRESHOLD) {
+    player.x = player.targetX;
+    player.y = player.targetY;
+    stopPlayer();
+    return;
+  }
+
+  const step = PLAYER_SPEED * dt;
+  if (step >= dist) {
+    player.x = player.targetX;
+    player.y = player.targetY;
+    stopPlayer();
+    return;
+  }
+
+  player.x += (dx / dist) * step;
+  player.y += (dy / dist) * step;
+}
+
+// ============================================================
+// 3. 摄像机（复刻 CameraFollow.ts）
+// ============================================================
+const camera = {
+  x: 0, y: 0,
+  offsetX: 0,
+  offsetY: 0,
+};
+
+function updateCamera() {
+  // 玩家世界坐标 → 摄像机位置（屏幕中心 = 玩家位置）
+  camera.x = player.x - W / 2;
+  camera.y = player.y - H / 2;
+}
+
+// 世界坐标 → 屏幕坐标
+function worldToScreen(wx, wy) {
+  return {
+    x: wx - camera.x,
+    y: wy - camera.y,
+  };
+}
+
+// 屏幕坐标 → 世界坐标（供点击使用）
+function screenToWorld(sx, sy) {
+  return {
+    x: sx + camera.x,
+    y: sy + camera.y,
+  };
+}
+
+// ============================================================
+// 4. 渲染
+// ============================================================
+function drawMap() {
+  for (let row = 0; row < GRID_ROWS; row++) {
+    for (let col = 0; col < GRID_COLS; col++) {
+      const world = gridToWorld(row, col);
+      const screen = worldToScreen(world.x, world.y);
+
+      // 不在屏幕内的跳过
+      if (screen.x < -TILE_SIZE || screen.x > W + TILE_SIZE ||
+          screen.y < -TILE_SIZE || screen.y > H + TILE_SIZE) continue;
+
+      // 地块
+      ctx.fillStyle = tileColors[row][col];
+      ctx.fillRect(
+        screen.x - TILE_SIZE / 2,
+        screen.y - TILE_SIZE / 2,
+        TILE_SIZE,
+        TILE_SIZE,
+      );
+
+      // 网格线
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(
+        screen.x - TILE_SIZE / 2,
+        screen.y - TILE_SIZE / 2,
+        TILE_SIZE,
+        TILE_SIZE,
+      );
+    }
+  }
+}
+
+function drawPlayer() {
+  const s = worldToScreen(player.x, player.y);
+  const size = 20;
+
+  // 身体阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(s.x, s.y + size * 0.5, size * 0.5, size * 0.15, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 身体
+  ctx.fillStyle = '#ffc864';
+  ctx.beginPath();
+  ctx.arc(s.x, s.y - size * 0.1, size * 0.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 帽子
+  ctx.fillStyle = '#dc503c';
+  ctx.beginPath();
+  ctx.moveTo(s.x - size * 0.45, s.y - size * 0.3);
+  ctx.lineTo(s.x, s.y - size * 0.95);
+  ctx.lineTo(s.x + size * 0.45, s.y - size * 0.3);
+  ctx.closePath();
+  ctx.fill();
+
+  // 边框
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(s.x, s.y - size * 0.1, size * 0.5, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 移动目标指示
+  if (player.isMoving && player.targetX !== null) {
+    const t = worldToScreen(player.targetX, player.targetY);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
+
+function drawTargetMarker() {
+  // 如果有移动目标，画路径线
+  if (!player.isMoving || player.targetX === null) return;
+  const from = worldToScreen(player.x, player.y);
+  const to = worldToScreen(player.targetX, player.targetY);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  ctx.lineTo(to.x, to.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function render() {
+  // 清屏（背景色）
+  ctx.fillStyle = '#2d5a27';
+  ctx.fillRect(0, 0, W, H);
+
+  drawMap();
+  drawTargetMarker();
+  drawPlayer();
+
+  // HUD 更新
+  const grid = worldToGrid(player.x, player.y);
+  hudPos.textContent = `📍 网格(${grid.col},${grid.row})  |  世界(${Math.round(player.x)}, ${Math.round(player.y)})`;
+}
+
+// ---- 点击处理（复刻 InputManager → GameManager.handleMapClick） ----
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left;
+  const sy = e.clientY - rect.top;
+  const world = screenToWorld(sx, sy);
+
+  // 边界 + 可行走检查
+  if (!isInBounds(world.x, world.y)) {
+    infoBar.textContent = '🚫 超出地图边界，不能走';
+    return;
+  }
+  if (!isWalkable(world.x, world.y)) {
+    infoBar.textContent = '🌊 那是水/沙滩，不能走！点击绿色草地';
+    return;
+  }
+
+  movePlayerTo(world.x, world.y);
+});
+
+// ============================================================
+// 6. 游戏循环（复刻 GameManager 的初始化 + 每帧 update）
+// ============================================================
+console.log('[GameManager] Demo0 启动！🏝️');
+console.log(`  地图: ${GRID_COLS}×${GRID_ROWS} 网格, 每格${TILE_SIZE}px`);
+console.log('  点击地图任意位置，岛主会走过去');
+
+let lastTime = performance.now();
+
+function gameLoop(now) {
+  let dt = (now - lastTime) / 1000;
+  lastTime = now;
+
+  // 防止大帧跳跃（切标签页回来）
+  if (dt > 0.1) dt = 0.016;
+
+  updatePlayer(dt);   // PlayerController.update()
+  updateCamera();     // CameraFollow.update()
+  render();           // 绘制
+
+  requestAnimationFrame(gameLoop);
+}
+
+// 初始化摄像机（居中玩家）
+updateCamera();
+render();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
