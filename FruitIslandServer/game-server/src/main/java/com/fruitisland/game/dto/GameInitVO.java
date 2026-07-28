@@ -1,6 +1,7 @@
 package com.fruitisland.game.dto;
 
 import com.fruitisland.game.entity.GamePlayer;
+import com.fruitisland.game.entity.Inventory;
 import com.fruitisland.game.entity.Island;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -23,26 +24,18 @@ public class GameInitVO implements Serializable {
     /** 岛屿信息 */
     private Island island;
 
-    /** 岛屿区域列表（Demo2 启用） */
-    private List<?> areas;
+    /** 土地列表 */
+    private List<LandVO> lands;
 
-    /** 土地列表（Demo2 启用） */
-    private List<?> lands;
+    /** 背包物品 */
+    private List<Inventory> inventory;
 
-    /** 建筑列表（Demo2 启用） */
-    private List<?> buildings;
-
-    /** 背包物品（Demo2 启用） */
-    private List<?> inventory;
-
-    public static GameInitVO of(GamePlayer player, Island island) {
+    public static GameInitVO of(GamePlayer player, Island island, List<LandVO> lands, List<Inventory> inventory) {
         GameInitVO vo = new GameInitVO();
         vo.setPlayer(player);
         vo.setIsland(island);
-        vo.setAreas(List.of());
-        vo.setLands(List.of());
-        vo.setBuildings(List.of());
-        vo.setInventory(List.of());
+        vo.setLands(lands);
+        vo.setInventory(inventory);
         return vo;
     }
 }

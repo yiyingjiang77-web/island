@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>果香小岛 Demo2.2 — 紧凑版</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;height:100vh;font-family:'PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden}
+.game{position:relative;border:3px solid #4a9eff;border-radius:12px;overflow:hidden;box-shadow:0 0 40px rgba(74,158,255,.3)}
+canvas{display:block}
+.hud{position:absolute;top:10px;left:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.hud-i{background:rgba(0,0,0,.65);color:#fff;padding:4px 10px;border-radius:14px;font-size:12px}
+.info{position:absolute;bottom:10px;left:10px;right:10px;background:rgba(0,0,0,.65);color:#bbb;padding:5px 12px;border-radius:14px;font-size:11px;text-align:center;pointer-events:none}
+.minimap{position:absolute;bottom:48px;right:10px;background:rgba(0,0,0,.7);border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.2)}
+.minimap canvas{display:block}
+.legend{position:absolute;top:48px;right:10px;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;font-size:10px;pointer-events:none;line-height:1.6;color:#ccc}
+
+/* 弹窗 */
+.land-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);z-index:100;justify-content:center;align-items:center}
+.land-modal.show{display:flex}
+.land-panel{background:#2a3040;border-radius:14px;padding:18px;min-width:440px;max-height:85vh;overflow-y:auto}
+.land-panel h3{font-size:16px;color:#fff;text-align:center;margin-bottom:4px}
+.land-panel .sub{font-size:11px;color:#888;text-align:center;margin-bottom:12px}
+.land-grid{display:grid;grid-template-columns:repeat(4,80px);grid-template-rows:repeat(4,80px);gap:4px;justify-content:center;margin-bottom:12px}
+.land-cell{width:80px;height:80px;border-radius:8px;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid transparent;transition:.12s;background:#2a2a3a}
+.land-cell:hover{transform:scale(1.08);z-index:5}
+.land-cell.LOCKED{background:#2a2a3a;border-color:#333;cursor:not-allowed}
+.land-cell.UNPURCHASED{background:#4a3a1a;border-color:#8a7a3a}
+.land-cell.EMPTY{background:#4a2a18;border-color:#7a5a3a}
+.land-cell.PLANTED{background:#2a4a22;border-color:#4a8a3a;animation:pulse 1.5s infinite}
+.land-cell.READY{background:#5a4a0a;border-color:#ca9a2a;animation:glow .8s infinite}
+.land-cell .emo{font-size:26px;line-height:1}
+.land-cell .lbl{font-size:9px;color:#bbb;margin-top:2px}
+.land-cell .prc{font-size:10px;color:#f4d35e}
+.land-cell .wbar{position:absolute;bottom:3px;left:6px;right:6px;height:3px;background:rgba(0,0,0,.4);border-radius:2px;overflow:hidden}
+.land-cell .wfil{height:100%;border-radius:2px}
+.wf-h{background:#4dc9f6}.wf-m{background:#f4a460}.wf-l{background:#e74c3c}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+@keyframes glow{0%,100%{box-shadow:0 0 4px #f4d35e}50%{box-shadow:0 0 14px #f4d35e}}
+.acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.btn{color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px}
+.btn:hover{opacity:.85}
+.btn.close{background:#555}.btn.buy{background:#f0a030}.btn.plant{background:#4ac44a}.btn.water{background:#4dc9f6}.btn.harvest{background:#f0a030}
+.crop-list{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin:6px 0}
+.crop-opt{padding:4px 10px;border-radius:6px;cursor:pointer;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:11px;color:#ddd}
+.crop-opt:hover,.crop-opt.sel{background:rgba(74,194,74,.3);border-color:#4ac44a}
+.msg{text-align:center;font-size:12px;color:#aaa;margin-top:6px;min-height:18px}
+</style>
+</head>
+<body>
+<div class="game" id="game-wrapper">
+  <canvas id="game"></canvas>
+  <div class="hud">
+    <span class="hud-i">🏝️ 果香小岛</span>
+    <span class="hud-i">⭐ <span id="hud-gold">-</span></span>
+    <span class="hud-i">📊 Lv.<span id="hud-level">-</span></span>
+    <span class="hud-i">🌱<span id="hud-seed">-</span></span>
+    <span class="hud-i">🥕<span id="hud-crop">-</span></span>
+    <span class="hud-i" id="hud-pos">📍-</span>
+  </div>
+  <div class="legend" id="legend"></div>
+  <div class="minimap"><canvas id="minimap" width="100" height="100"></canvas></div>
+  <div class="info" id="info">点击农田 🟩 管理土地 | 点击草地移动 | 拖拽视野</div>
+</div>
+
+<!-- 土地弹窗 -->
+<div class="land-modal" id="land-modal">
+  <div class="land-panel">
+    <h3 id="modal-title">🌱 农田</h3><div class="sub" id="modal-sub"></div>
+    <div class="land-grid" id="land-grid"></div>
+    <div class="crop-list" id="crop-list" style="display:none"></div>
+    <div class="msg" id="msg"></div>
+    <div class="acts" id="acts"><button class="btn close" onclick="closeLandModal()">关闭</button></div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// 紧凑版 48×48 Grid, 120px, 5760×5760
+// ================================================================
+const MS=120,N=48,WORLD=N*MS,WE=1,BW=1,GS=WE+BW,GE=N-WE-BW-1;
+const CW=960,CH=700;
+
+// 建筑 — 紧凑布局
+const BUILDINGS=[
+  {id:'chicken_coop',name:'鸡舍',type:'animal',gx:12,gy:5,w:6,h:5,color:'#A0D468',icon:'🐔'},
+  {id:'cow_barn',name:'牛棚',type:'animal',gx:20,gy:5,w:8,h:6,color:'#A0D468',icon:'🐄'},
+  {id:'bee_house',name:'蜂箱',type:'decoration',gx:46,gy:16,w:2,h:2,color:'#FFB7C5',icon:'🐝'},
+  {id:'cake_shop',name:'蛋糕店',type:'shop',gx:32,gy:22,w:6,h:5,color:'#FF9F43',icon:'🍰'},
+  {id:'drink_shop',name:'饮品店',type:'shop',gx:32,gy:29,w:6,h:5,color:'#FF9F43',icon:'🥤'},
+  {id:'exchange_shop',name:'交易所',type:'shop',gx:32,gy:36,w:6,h:4,color:'#FF9F43',icon:'💱'},
+  {id:'dock',name:'码头',type:'dock',gx:36,gy:44,w:5,h:3,color:'#64A0DC',icon:'⚓'},
+];
+
+// 农田 → 后端 block
+const FARM_ZONES=[
+  {id:'农田A',blockId:'Farm-A',gx:38,gy:25,color:'#7EC850'},
+  {id:'农田B',blockId:'Farm-B',gx:42,gy:25,color:'#6DB840'},
+  {id:'农田C',blockId:'Farm-C',gx:38,gy:33,color:'#6DB840'},
+  {id:'农田D',blockId:'Farm-D',gx:42,gy:33,color:'#7EC850'},
+];
+
+// 花园
+const GARDEN_ZONES=[
+  {id:'花园A',blockId:'Flower-A',gx:38,gy:15,color:'#FFB7C5'},
+  {id:'花园B',blockId:'Flower-B',gx:42,gy:15,color:'#FFA0B0'},
+];
+
+// Canvas + Camera
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+canvas.width=CW;canvas.height=CH;
+const S=8;
+
+// 坐标
+const g2wcx=c=>c*MS+60,g2wcy=r=>r*MS+60;
+
+// 初始视野跟随玩家（交易所门前，能看到农田）
+const cam={x:g2wcx(36)-CW/2,y:g2wcy(38)-CH/2};
+const w2gx=wx=>Math.floor(wx/MS),w2gy=wy=>Math.floor(wy/MS);
+
+// 碰撞
+const buildingRects=BUILDINGS.map(b=>({left:b.gx*MS,right:(b.gx+b.w)*MS,bottom:b.gy*MS,top:(b.gy+b.h)*MS}));
+const farmRects=[...FARM_ZONES,...GARDEN_ZONES].map(f=>({...f,left:f.gx*MS,right:(f.gx+4)*MS,bottom:f.gy*MS,top:(f.gy+4)*MS}));
+
+function isWalkable(wx,wy){
+  if(wx<0||wx>=WORLD||wy<0||wy>=WORLD)return false;
+  const gx=w2gx(wx),gy=w2gy(wy);
+  if(gx<GS||gx>GE||gy<GS||gy>GE)return false;
+  for(const r of buildingRects) if(wx>=r.left&&wx<r.right&&wy>=r.bottom&&wy<r.top) return false;
+  return true;
+}
+function getClickedZone(wx,wy){
+  for(const f of farmRects) if(wx>=f.left&&wx<f.right&&wy>=f.bottom&&wy<f.top) return f;
+  return null;
+}
+
+// 玩家 — 80×150px，初始站在交易所前（能看到农田）
+const player={x:g2wcx(36),y:g2wcy(38),tx:null,ty:null,moving:false};
+const P_SPEED=120,TH=8;
+
+// 拖动
+let dragging=false,lmx=0,lmy=0,dx=0,dy=0;
+canvas.addEventListener('mousedown',e=>{dragging=true;lmx=e.clientX;lmy=e.clientY;dx=e.clientX;dy=e.clientY});
+canvas.addEventListener('mousemove',e=>{if(!dragging)return;cam.x-=e.clientX-lmx;cam.y-=e.clientY-lmy;clampCam();lmx=e.clientX;lmy=e.clientY});
+canvas.addEventListener('mouseup',e=>{
+  if(Math.hypot(e.clientX-dx,e.clientY-dy)<4){
+    const wx=cam.x+e.offsetX,wy=cam.y+e.offsetY;
+    const zone=getClickedZone(wx,wy);
+    if(zone){openLandModal(zone);return}
+    if(isWalkable(wx,wy)){player.tx=wx;player.ty=wy;player.moving=true;document.getElementById('info').textContent='🏃 走过去...'}
+  }
+  dragging=false;
+});
+function clampCam(){cam.x=Math.max(0,Math.min(WORLD-CW,cam.x));cam.y=Math.max(0,Math.min(WORLD-CH,cam.y))}
+
+// 地形
+const tc=new Map();
+function tileColor(gx,gy){const k=`${gx},${gy}`;if(tc.has(k))return tc.get(k);let c;if(gx<WE||gx>=N-WE||gy<WE||gy>=N-WE)c='#5a90c8';else if(gx<GS||gx>GE||gy<GS||gy>GE)c='#e8d4a8';else{const s=Math.floor(Math.random()*30)-15;c=`rgb(${110+s},${160+s},${70+Math.floor(s/2)})`}tc.set(k,c);return c}
+
+// ========== 渲染 ==========
+function renderMap(){
+  const sg=Math.max(0,Math.floor(cam.x/MS)-1),eg=Math.min(N-1,Math.ceil((cam.x+CW)/MS)+1);
+  const sh=Math.max(0,Math.floor(cam.y/MS)-1),eh=Math.min(N-1,Math.ceil((cam.y+CH)/MS)+1);
+  // 地形
+  for(let gx=sg;gx<=eg;gx++)for(let gy=sh;gy<=eh;gy++){
+    const sx=g2wcx(gx)-cam.x,sy=g2wcy(gy)-cam.y;
+    ctx.fillStyle=tileColor(gx,gy);ctx.fillRect(sx-60,sy-60,MS,MS);
+    ctx.strokeStyle='rgba(0,0,0,.06)';ctx.lineWidth=.5;ctx.strokeRect(sx-60,sy-60,MS,MS);
+  }
+
+  // 花园（装饰）
+  for(const g of GARDEN_ZONES){
+    const cx=(g.gx+2)*MS,cy=(g.gy+2)*MS,sx=cx-cam.x,sy=cy-cam.y;
+    ctx.fillStyle='#FFB7C555';ctx.fillRect(sx-240,sy-240,480,480);
+    ctx.strokeStyle='rgba(255,183,197,.5)';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+    ctx.strokeRect(sx-240,sy-240,480,480);ctx.setLineDash([]);
+    ctx.font='bold 12px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText('🌸 花园',sx,sy-215);
+  }
+
+  // 农田
+  for(const f of FARM_ZONES){
+    const cx=(f.gx+2)*MS,cy=(f.gy+2)*MS,sx=cx-cam.x,sy=cy-cam.y;
+    const blockLands=allLands.filter(l=>l.blockId===f.blockId);
+    let alpha=.45,clr='#7EC85088',border='rgba(180,220,140,.5)';
+    if(blockLands.length>0){
+      if(blockLands.some(l=>l.status==='READY')){alpha=.75;clr='#f4d35e66';border='rgba(244,211,94,.7)'}
+      else if(blockLands.some(l=>l.status==='PLANTED')){alpha=.65;clr='#4a8a3a88';border='rgba(100,180,80,.6)'}
+    }
+    ctx.globalAlpha=alpha;ctx.fillStyle=clr;ctx.fillRect(sx-240,sy-240,480,480);ctx.globalAlpha=1;
+    ctx.strokeStyle=border;ctx.lineWidth=2.5;ctx.setLineDash([8,4]);ctx.strokeRect(sx-240,sy-240,480,480);ctx.setLineDash([]);
+    ctx.font='bold 14px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(f.id,sx,sy-215);
+    if(blockLands.length>0){
+      const n=blockLands.filter(l=>l.status==='PLANTED'||l.status==='READY').length;
+      ctx.font='10px sans-serif';ctx.fillStyle='#b4dc8c';ctx.fillText(`${n}/${blockLands.length} 种植`,sx,sy+230);
+    }
+  }
+
+  // 建筑
+  for(const b of BUILDINGS){
+    const cx=(b.gx+b.w/2)*MS,cy=(b.gy+b.h/2)*MS,sx=cx-cam.x,sy=cy-cam.y;
+    const hw=b.w*MS/2,hh=b.h*MS/2;
+    if(sx+hw<0||sx-hw>CW||sy+hh<0||sy-hh>CH)continue;
+    ctx.fillStyle=b.color+'88';ctx.fillRect(sx-hw,sy-hh,b.w*MS,b.h*MS);
+    ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=2;ctx.strokeRect(sx-hw,sy-hh,b.w*MS,b.h*MS);
+    ctx.font='24px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(b.icon,sx,sy-10);
+    ctx.font='bold 11px sans-serif';ctx.fillStyle='#fff';ctx.fillText(b.name,sx,sy+20);
+  }
+
+  // 路径提示（商店竖线）
+  ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=8;ctx.setLineDash([10,15]);
+  ctx.beginPath();const px=g2wcx(29)-cam.x;ctx.moveTo(px,g2wcy(22)-cam.y);ctx.lineTo(px,g2wcy(38)-cam.y);ctx.stroke();ctx.setLineDash([]);
+
+  // 玩家 120×210 (占屏幕~30%)
+  const psx=player.x-cam.x,psy=player.y-cam.y,pw=60,ph=105;
+  // 阴影
+  ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(psx,psy+ph*.12,pw*.65,ph*.05,0,0,Math.PI*2);ctx.fill();
+  // 脚
+  ctx.fillStyle='#4a3728';ctx.fillRect(psx-pw*.22,psy+ph*.08,pw*.13,ph*.22);ctx.fillRect(psx+pw*.09,psy+ph*.08,pw*.13,ph*.22);
+  // 身体
+  ctx.fillStyle='#6db3f2';ctx.fillRect(psx-pw*.33,psy-ph*.32,pw*.66,ph*.48);
+  // 头
+  ctx.fillStyle='#ffc864';ctx.beginPath();ctx.arc(psx,psy-ph*.38,pw*.33,0,Math.PI*2);ctx.fill();
+  // 帽子
+  ctx.fillStyle='#dc503c';ctx.beginPath();ctx.moveTo(psx-pw*.38,psy-ph*.48);ctx.lineTo(psx,psy-ph*.82);ctx.lineTo(psx+pw*.38,psy-ph*.48);ctx.closePath();ctx.fill();
+  // 描边
+  ctx.strokeStyle='rgba(0,0,0,.15)';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(psx,psy-ph*.38,pw*.33,0,Math.PI*2);ctx.stroke();
+  // 目标光标
+  if(player.moving&&player.tx!==null){const t=player.tx-cam.x,tt=player.ty-cam.y;ctx.fillStyle='rgba(255,255,255,.4)';ctx.beginPath();ctx.arc(t,tt,10,0,Math.PI*2);ctx.fill()}
+}
+
+function drawMinimap(){
+  const mw=100,mh=100,mm=document.getElementById('minimap').getContext('2d'),s=mw/WORLD;
+  mm.fillStyle='rgba(0,0,0,.7)';mm.fillRect(0,0,mw,mh);
+  for(let gx=0;gx<N;gx+=2)for(let gy=0;gy<N;gy+=2){mm.fillStyle=tileColor(gx,gy);mm.fillRect(gx*MS*s,gy*MS*s,2*MS*s,2*MS*s)}
+  for(const b of BUILDINGS){mm.fillStyle=b.color;mm.fillRect(b.gx*MS*s,b.gy*MS*s,b.w*MS*s,b.h*MS*s)}
+  for(const f of FARM_ZONES){mm.fillStyle='rgba(126,200,80,.6)';mm.fillRect(f.gx*MS*s,f.gy*MS*s,4*MS*s,4*MS*s)}
+  mm.strokeStyle='#fff';mm.lineWidth=1;mm.strokeRect(cam.x*s,cam.y*s,CW*s,CH*s);
+  mm.fillStyle='#ff4444';mm.beginPath();mm.arc(player.x*s,player.y*s,2,0,Math.PI*2);mm.fill();
+}
+
+// ================================================================
+// 后端 API
+// ================================================================
+const API='http://localhost:8082';
+let token='',playerGold=500,playerLevel=1,seedCount=0,cropCount=0,allLands=[];
+let currentFarm=null,pendingCell=null,pendingCrop='strawberry';
+const CROPS=['strawberry','cabbage','carrot','tomato','potato','chili','corn'];
+const C_EMOJI={strawberry:'🍓',cabbage:'🥬',carrot:'🥕',tomato:'🍅',potato:'🥔',chili:'🌶️',corn:'🌽'};
+const S_NAMES={LOCKED:'🔒未解锁',UNPURCHASED:'💰待购买',EMPTY:'🟫空地',PLANTED:'🌱生长中',READY:'✨可收获'};
+
+async function apiLogin(){
+  const r=await fetch('http://localhost:8081/auth/wechat/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:'demo22c_'+Date.now()})}).then(r=>r.json());
+  token=r.data.token;
+}
+async function refresh(){await apiLoadLands();await apiInit();updateHUD()}
+async function apiInit(){
+  const r=await fetch(`${API}/game/init`,{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.json());
+  if(r.data){playerGold=r.data.player.gold;playerLevel=r.data.player.level;let s=0,c=0;for(const i of r.data.inventory){if(i.itemId.endsWith('_seed'))s+=i.count;else c+=i.count}seedCount=s;cropCount=c}
+}
+async function apiLoadLands(){const r=await fetch(`${API}/farm/lands`,{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.json());if(r.data)allLands=r.data}
+async function apiBuy(cfg){await fetch(`${API}/farm/buy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({landConfigId:cfg})})}
+async function apiPlant(id,crop){await fetch(`${API}/farm/plant`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({playerLandId:id,cropId:crop})})}
+async function apiWater(id){await fetch(`${API}/farm/water`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({playerLandId:id})})}
+async function apiHarvest(id){await fetch(`${API}/farm/harvest`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({playerLandId:id})})}
+
+// ========== 农田弹窗 ==========
+function openLandModal(zone){currentFarm=zone;renderLandGrid();document.getElementById('land-modal').classList.add('show')}
+function closeLandModal(){currentFarm=null;pendingCell=null;document.getElementById('land-modal').classList.remove('show')}
+
+function renderLandGrid(){
+  if(!currentFarm)return;
+  const blockLands=allLands.filter(l=>l.blockId===currentFarm.blockId);
+  document.getElementById('modal-title').textContent=`🌱 ${currentFarm.id}`;
+  document.getElementById('modal-sub').textContent=`${currentFarm.blockId} | ${blockLands.length} 块`;
+
+  const grid=Array.from({length:4},()=>Array(4).fill(null));
+  for(const l of blockLands) if(l.gridY<4&&l.gridX<4) grid[l.gridY][l.gridX]=l;
+  let html='';
+  for(let y=0;y<4;y++)for(let x=0;x<4;x++){
+    const l=grid[y][x];if(!l){html+='<div class="land-cell"></div>';continue}
+    const s=l.status;let emo='',lbl='',prc='',wbar='';
+    if(s==='LOCKED'){emo='🔒';lbl=`Lv.${l.unlockLevel}`}
+    else if(s==='UNPURCHASED'){emo='💰';prc=l.buyPrice+'⭐'}
+    else if(s==='EMPTY'){emo='🟫';lbl='空地'}
+    else if(s==='PLANTED'){emo=l.waterLevel>=50?'🌱':'💧';lbl=C_EMOJI[l.cropId]||l.cropId;const w=l.waterLevel||0;const wc=w>=60?'wf-h':w>=30?'wf-m':'wf-l';wbar=`<div class="wbar"><div class="wfil ${wc}" style="width:${w}%"></div></div>`}
+    else if(s==='READY'){emo='✨';lbl=C_EMOJI[l.cropId]||l.cropId}
+    html+=`<div class="land-cell ${s}" data-config="${l.landConfigId}" data-pland="${l.playerLandId||''}" data-status="${s}" data-crop="${l.cropId||''}" data-water="${l.waterLevel||0}" data-price="${l.buyPrice}" title="${S_NAMES[s]||s}"><span class="emo">${emo}</span>${prc?`<span class="prc">${prc}</span>`:''}${lbl?`<span class="lbl">${lbl}</span>`:''}${wbar}</div>`;
+  }
+  document.getElementById('land-grid').innerHTML=html;
+  document.querySelectorAll('.land-cell').forEach(el=>{el.addEventListener('click',()=>{
+    const s=el.dataset.status,cfg=parseInt(el.dataset.config),pl=el.dataset.pland?parseInt(el.dataset.pland):null;
+    handleLandClick(s,cfg,pl,el.dataset.crop);
+  })});
+  document.getElementById('crop-list').style.display='none';
+  document.getElementById('msg').textContent='点击格子操作';
+  document.getElementById('acts').innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button>';
+}
+
+function handleLandClick(status,landConfigId,playerLandId,cropId){
+  pendingCell={landConfigId,playerLandId,cropId};
+  const m=document.getElementById('msg');document.getElementById('crop-list').style.display='none';
+  const acts=document.getElementById('acts');
+  if(status==='LOCKED'){m.textContent='🔒 等级不足';acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button>';return}
+  if(status==='UNPURCHASED'){m.textContent=`💰 购买价格: ${document.querySelector(`[data-config="${landConfigId}"]`)?.dataset.price||'?'} ⭐`;acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button><button class="btn buy" onclick="doBuy()">💰 购买</button>';return}
+  if(status==='EMPTY'){m.textContent='选作物种植:';showCropList();acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button><button class="btn plant" onclick="doPlant()">🌱 种植</button>';return}
+  if(status==='PLANTED'){m.textContent=`💧 水分 ${document.querySelector(`[data-config="${landConfigId}"]`)?.dataset.water||'?'}% — 浇水保持生长`;acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button><button class="btn water" onclick="doWater()">💧 浇水</button>';return}
+  if(status==='READY'){m.textContent=`✨ ${cropId} 可以收获了！`;acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button><button class="btn harvest" onclick="doHarvest()">🥕 收获</button>';return}
+}
+function showCropList(){const el=document.getElementById('crop-list');el.style.display='flex';pendingCrop='strawberry';el.innerHTML=CROPS.map(c=>`<div class="crop-opt${c===pendingCrop?' sel':''}" onclick="selectCrop('${c}')">${C_EMOJI[c]||''} ${c}</div>`).join('')}
+function selectCrop(c){pendingCrop=c;showCropList()}
+
+async function doBuy(){if(!pendingCell)return;await apiBuy(pendingCell.landConfigId);await refresh();renderLandGrid();document.getElementById('msg').textContent='✅ 购买成功！'}
+async function doPlant(){if(!pendingCell)return;await apiPlant(pendingCell.playerLandId,pendingCrop);await refresh();renderLandGrid();document.getElementById('msg').textContent='✅ 种植成功！'}
+async function doWater(){if(!pendingCell)return;await apiWater(pendingCell.playerLandId);await refresh();renderLandGrid();document.getElementById('msg').textContent='💧 浇水成功！'}
+async function doHarvest(){if(!pendingCell)return;await apiHarvest(pendingCell.playerLandId);await refresh();renderLandGrid();document.getElementById('msg').textContent='✅ 收获成功！'}
+
+function updateHUD(){
+  document.getElementById('hud-gold').textContent=playerGold;
+  document.getElementById('hud-level').textContent=playerLevel;
+  document.getElementById('hud-seed').textContent=seedCount;
+  document.getElementById('hud-crop').textContent=cropCount;
+  document.getElementById('hud-pos').textContent=`Grid(${w2gx(player.x)},${w2gy(player.y)})`;
+}
+
+// ========== 游戏循环 ==========
+let lt=performance.now();
+function loop(now){
+  let dt=(now-lt)/1000;lt=now;if(dt>.1)dt=.016;
+  if(player.moving&&player.tx!==null){
+    const ddx=player.tx-player.x,ddy=player.ty-player.y,dist=Math.hypot(ddx,ddy);
+    if(dist<=TH){player.x=player.tx;player.y=player.ty;player.moving=false;document.getElementById('info').textContent='点击农田 🟩 管理土地 | 点击草地移动 | 拖拽视野'}
+    else{const st=P_SPEED*dt;player.x+=(ddx/dist)*st;player.y+=(ddy/dist)*st}
+  }
+  if(!dragging){cam.x+=(player.x-CW/2-cam.x)*Math.min(1,dt*S);cam.y+=(player.y-CH/2-cam.y)*Math.min(1,dt*S);clampCam()}
+  ctx.fillStyle='#1a2a10';ctx.fillRect(0,0,CW,CH);
+  renderMap();drawMinimap();updateHUD();
+  requestAnimationFrame(loop);
+}
+
+// ========== 启动 ==========
+(async()=>{
+  await apiLogin();await apiInit();await apiLoadLands();
+  document.getElementById('legend').innerHTML=`🍰蛋糕 🥤饮品 💱交易 ⚓码头<br>🐔鸡舍 🐄牛棚 🐝蜂箱 🌸花园 🌱农田<br>48×48 Grid | 5760×5760 px`;
+  updateHUD();
+  requestAnimationFrame(loop);
+  console.log('🏝️ Demo2.2 紧凑版就绪');
+})();
+</script>
+</body>
+</html>

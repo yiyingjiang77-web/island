@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo2.1 土地系统 - 验证</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  font-family: 'PingFang SC','Microsoft YaHei',sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  min-height: 100vh; padding: 16px;
+}
+h1 { font-size: 20px; margin-bottom: 4px; }
+.sub { color: #888; font-size: 12px; margin-bottom: 12px; }
+
+/* 玩家状态栏 */
+.status-bar {
+  display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+  margin-bottom: 16px;
+}
+.stat {
+  background: rgba(255,255,255,0.08); border-radius: 8px;
+  padding: 8px 16px; text-align: center; min-width: 80px;
+}
+.stat .val { font-size: 22px; font-weight: bold; }
+.stat .lbl { font-size: 11px; color: #888; }
+.stat.gold .val { color: #f4d35e; }
+.stat.seed .val { color: #7ec850; }
+.stat.crop .val { color: #ffb7c5; }
+
+/* 图例 */
+.legend { display:flex; gap:12px; margin-bottom:12px; font-size:12px; flex-wrap:wrap; justify-content:center; }
+.leg { display:flex; align-items:center; gap:4px; }
+.leg .dot { width:14px; height:14px; border-radius:3px; }
+
+/* 区块容器 */
+.blocks { display:flex; flex-direction:column; gap:4px; }
+.farm-blocks { display:flex; gap:4px; flex-wrap:wrap; justify-content:center; }
+.flower-blocks { display:flex; gap:4px; justify-content:center; }
+.block-wrap { background:rgba(255,255,255,0.03); border-radius:8px; padding:6px; }
+.block-label { font-size:11px; color:#888; text-align:center; margin-bottom:4px; }
+.block-grid { display:grid; grid-template-columns:repeat(4,36px); grid-template-rows:repeat(4,36px); gap:2px; }
+
+/* 土地格子 */
+.cell {
+  width:36px; height:36px; border-radius:4px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:bold; position:relative;
+  transition: transform .1s; border:2px solid transparent;
+}
+.cell:hover { transform:scale(1.15); z-index:10; }
+.cell.LOCKED    { background:#2a2a3a; color:#555; cursor:not-allowed; border-color:#333; }
+.cell.UNPURCHASED { background:#5a4a2a; color:#c8a84e; border-color:#8a7a3a; }
+.cell.EMPTY     { background:#5a3a28; color:#c8946e; border-color:#7a5a3a; }
+.cell.PLANTED   { background:#2a5a2a; color:#7ec850; border-color:#3a7a3a; animation:pulse 1.5s infinite; }
+.cell.READY     { background:#5a4a0a; color:#f4d35e; border-color:#aa8a0a; animation:glow .8s infinite; }
+
+.cell.EMPTY::after,.cell.PLANTED::after,.cell.READY::after {
+  position:absolute; bottom:1px; font-size:16px; line-height:1;
+}
+.cell.EMPTY::after  { content:'🟫'; }
+.cell.PLANTED::after { content:'🌱'; }
+.cell.READY::after  { content:'✨'; }
+
+/* 水分条 */
+.water-bar {
+  position:absolute; bottom:0; left:2px; right:2px; height:3px;
+  background:rgba(0,0,0,.4); border-radius:0 0 2px 2px; overflow:hidden;
+}
+.water-bar .fill {
+  height:100%; border-radius:0 0 2px 2px; transition:width .3s;
+}
+.water-bar .fill.high  { background:#4dc9f6; }
+.water-bar .fill.medium { background:#f4a460; }
+.water-bar .fill.low   { background:#e74c3c; }
+
+.cell.PLANTED .water-drop {
+  position:absolute; top:-4px; right:-2px; font-size:10px;
+}
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.7} }
+@keyframes glow  { 0%,100%{box-shadow:0 0 4px #f4d35e} 50%{box-shadow:0 0 12px #f4d35e} }
+
+/* 弹窗 */
+.modal {
+  display:none; position:fixed; top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,.6); z-index:100;
+  justify-content:center; align-items:center;
+}
+.modal.show { display:flex; }
+.modal .box {
+  background:#2a2a40; border-radius:12px; padding:20px;
+  min-width:240px; text-align:center;
+}
+.modal h3 { margin-bottom:12px; }
+.modal .actions { display:flex; gap:8px; justify-content:center; margin-top:12px; }
+.btn {
+  background:#4a9eff; color:#fff; border:none;
+  padding:8px 20px; border-radius:8px; cursor:pointer; font-size:14px;
+}
+.btn:hover { background:#5aafff; }
+.btn.cancel { background:#555; }
+.btn.danger { background:#cc4444; }
+.btn.success { background:#4ac44a; }
+
+.crop-select { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin:8px 0; }
+.crop-opt {
+  padding:6px 12px; border-radius:6px; cursor:pointer;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+  font-size:12px; transition:.15s;
+}
+.crop-opt:hover { background:rgba(74,158,255,.2); border-color:#4a9eff; }
+.crop-opt.selected { background:rgba(74,158,255,.3); border-color:#4a9eff; }
+
+.log { margin-top:12px; font-size:11px; color:#888; }
+</style>
+</head>
+<body>
+<h1>🏝️ Demo2.1 土地系统验证</h1>
+<div class="sub" id="player-name">未登录</div>
+
+<div class="status-bar">
+  <div class="stat gold"><div class="val" id="gold">-</div><div class="lbl">⭐ 金币</div></div>
+  <div class="stat"><div class="val" id="level">-</div><div class="lbl">📊 等级</div></div>
+  <div class="stat seed"><div class="val" id="seed-count">-</div><div class="lbl">🌱 种子</div></div>
+  <div class="stat crop"><div class="val" id="crop-count">-</div><div class="lbl">🥕 作物</div></div>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<div class="blocks" id="blocks"></div>
+
+<div class="log" id="log"></div>
+
+<!-- 弹窗 -->
+<div class="modal" id="modal-buy">
+  <div class="box">
+    <h3>购买土地</h3>
+    <p id="buy-info"></p>
+    <div class="actions">
+      <button class="btn cancel" onclick="closeModal()">取消</button>
+      <button class="btn" onclick="doBuy()">购买</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="modal-plant">
+  <div class="box">
+    <h3>🌱 种植</h3>
+    <p id="plant-info"></p>
+    <div class="crop-select" id="crop-select"></div>
+    <div class="actions">
+      <button class="btn cancel" onclick="closeModal()">取消</button>
+      <button class="btn success" id="btn-plant" onclick="doPlant()">种植</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="modal-water">
+  <div class="box">
+    <h3>💧 浇水</h3>
+    <p id="water-info"></p>
+    <div class="actions">
+      <button class="btn cancel" onclick="closeModal()">取消</button>
+      <button class="btn" style="background:#4dc9f6" onclick="doWater()">💧 浇水</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="modal-harvest">
+  <div class="box">
+    <h3>🥕 收获</h3>
+    <p id="harvest-info"></p>
+    <div class="actions">
+      <button class="btn cancel" onclick="closeModal()">取消</button>
+      <button class="btn success" onclick="doHarvest()">收获</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 状态 ==========
+const BASE = 'http://localhost:8082';
+let token = '';
+let playerId = null;
+let lands = [];
+let pendingLandConfigId = null;
+let pendingPlayerLandId = null;
+let pendingCropId = 'strawberry';
+
+const CROPS = ['strawberry','cabbage','carrot','tomato','potato','chili','corn'];
+const STATUS_COLORS = {
+  LOCKED: '🔒', UNPURCHASED: '💲', EMPTY: '🟫', PLANTED: '🌱', READY: '✨'
+};
+const STATUS_NAMES = {
+  LOCKED:'未解锁', UNPURCHASED:'待购买', EMPTY:'空地', PLANTED:'生长中', READY:'可收获'
+};
+
+// ========== 初始化 ==========
+async function init() {
+  // 1. 登录
+  const login = await fetch('http://localhost:8081/auth/wechat/login', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({code:'demo2_vis_' + Date.now()})
+  }).then(r=>r.json());
+  token = login.data.token;
+  document.getElementById('player-name').textContent =
+    `👤 ${login.data.nickname}  |  userId=${login.data.userId}`;
+
+  // 2. 游戏初始化
+  const init = await fetch(`${BASE}/game/init`, {
+    headers:{'Authorization':`Bearer ${token}`}
+  }).then(r=>r.json());
+  playerId = init.data.player.id;
+
+  // 3. 加载土地
+  await refresh();
+}
+
+async function refresh() {
+  const res = await fetch(`${BASE}/farm/lands`, {
+    headers:{'Authorization':`Bearer ${token}`}
+  }).then(r=>r.json());
+  lands = res.data;
+  updateUI();
+}
+
+function updateUI() {
+  renderStats();
+  renderLegend();
+  renderBlocks();
+}
+
+// ========== 统计 ==========
+function renderStats() {
+  const stats = {};
+  for (const l of lands) {
+    stats[l.status] = (stats[l.status]||0) + 1;
+  }
+  // 从 lands 里估算种子和作物数量（从 PLANTED/READY 状态）
+  let seedCount = 0, cropCount = 0;
+  for (const l of lands) {
+    if (l.cropId) {
+      if (l.status === 'PLANTED') seedCount++;
+      if (l.status === 'READY') cropCount++;
+    }
+  }
+  // 从 /game/init 获取准确数据
+  fetch(`${BASE}/game/init`, {headers:{'Authorization':`Bearer ${token}`}})
+    .then(r=>r.json()).then(d=>{
+      const p = d.data.player;
+      document.getElementById('gold').textContent = p.gold;
+      document.getElementById('level').textContent = `Lv.${p.level}`;
+      let seeds=0, crops=0;
+      for (const inv of d.data.inventory) {
+        if (inv.itemId.endsWith('_seed')) seeds += inv.count;
+        else crops += inv.count;
+      }
+      document.getElementById('seed-count').textContent = seeds;
+      document.getElementById('crop-count').textContent = crops;
+    });
+}
+
+// ========== 图例 ==========
+function renderLegend() {
+  document.getElementById('legend').innerHTML = Object.entries(STATUS_NAMES).map(([s,name])=>`
+    <div class="leg"><div class="dot cell ${s}"></div>${STATUS_COLORS[s]} ${name}</div>
+  `).join('');
+}
+
+// ========== 土地网格 ==========
+function renderBlocks() {
+  // 按 block_id 分组
+  const blocks = {};
+  for (const l of lands) {
+    if (!blocks[l.blockId]) blocks[l.blockId] = [];
+    blocks[l.blockId].push(l);
+  }
+
+  const farmOrder = ['Farm-A','Farm-B','Farm-C','Farm-D'];
+  const flowerOrder = ['Flower-A','Flower-B'];
+
+  let html = '<div class="farm-blocks">';
+  for (const b of farmOrder) {
+    if (!blocks[b]) continue;
+    html += renderBlock(b, blocks[b]);
+  }
+  html += '</div><div class="flower-blocks">';
+  for (const b of flowerOrder) {
+    if (!blocks[b]) continue;
+    html += renderBlock(b, blocks[b]);
+  }
+  html += '</div>';
+  document.getElementById('blocks').innerHTML = html;
+
+  // 绑定点击
+  document.querySelectorAll('.cell').forEach(el => {
+    el.addEventListener('click', () => {
+      const status = el.dataset.status;
+      const landConfigId = parseInt(el.dataset.config);
+      const playerLandId = el.dataset.pland ? parseInt(el.dataset.pland) : null;
+      const cropId = el.dataset.crop || null;
+      handleCellClick(status, landConfigId, playerLandId, cropId);
+    });
+  });
+}
+
+function renderBlock(name, blockLands) {
+  const grid = Array.from({length:4}, ()=>Array(4).fill(null));
+  for (const l of blockLands) grid[l.gridY][l.gridX] = l;
+
+  let cells = '';
+  for (let y=0; y<4; y++) {
+    for (let x=0; x<4; x++) {
+      const l = grid[y][x];
+      if (!l) { cells += '<div class="cell" style="background:transparent"></div>'; continue; }
+      const cls = l.status;
+      let icon = '';
+      if (l.status==='LOCKED') icon='🔒';
+      else if (l.status==='UNPURCHASED') icon='💰';
+      else if (l.status==='EMPTY') icon='';
+      else icon='🌱';
+
+      // 水分条 + 状态图标
+      let waterHtml = '';
+      if (l.status==='PLANTED') {
+        const w = l.waterLevel || 0;
+        const wCls = w >= 60 ? 'high' : w >= 30 ? 'medium' : 'low';
+        waterHtml = `<div class="water-bar"><div class="fill ${wCls}" style="width:${w}%"></div></div>`;
+        // 水分 < 50%: 显示水滴💧, >= 50%: 显示发芽🌱
+        icon = w >= 50 ? '🌱' : '💧';
+      } else if (l.status==='READY') {
+        icon = '✨';
+        const w = l.waterLevel || 0;
+        waterHtml = `<div class="water-bar"><div class="fill high" style="width:${w}%"></div></div>`;
+      }
+
+      const wl = l.waterLevel !== undefined ? ` 💧${l.waterLevel}%` : '';
+      const title = `#${l.landConfigId} ${l.blockId}(${x},${y}) [${STATUS_NAMES[l.status]}]${wl} ${l.cropId||''}`;
+      cells += `<div class="cell ${cls}" title="${title}"
+        data-config="${l.landConfigId}" data-pland="${l.playerLandId||''}"
+        data-status="${l.status}" data-crop="${l.cropId||''}"
+        data-water="${l.waterLevel||0}" data-price="${l.buyPrice}">
+        ${icon}${waterHtml}</div>`;
+    }
+  }
+  return `<div class="block-wrap">
+    <div class="block-label">${name}</div>
+    <div class="block-grid">${cells}</div>
+  </div>`;
+}
+
+// ========== 点击处理 ==========
+function handleCellClick(status, landConfigId, playerLandId, cropId) {
+  log('');
+  if (status === 'LOCKED') {
+    log('🔒 等级不足，无法操作');
+    return;
+  }
+  if (status === 'UNPURCHASED') {
+    const price = document.querySelector(`[data-config="${landConfigId}"]`).dataset.price;
+    document.getElementById('buy-info').innerHTML = `购买土地 #${landConfigId}<br>💰 价格: <b>${price} ⭐</b>`;
+    pendingLandConfigId = landConfigId;
+    document.getElementById('modal-buy').classList.add('show');
+    return;
+  }
+  if (status === 'EMPTY') {
+    document.getElementById('plant-info').textContent = `土地 #${landConfigId} (空) — 选择作物:`;
+    pendingPlayerLandId = playerLandId;
+    pendingCropId = 'strawberry';
+    renderCropOptions();
+    document.getElementById('modal-plant').classList.add('show');
+    return;
+  }
+  if (status === 'PLANTED') {
+    const wl = document.querySelector(`[data-config="${landConfigId}"][data-status="PLANTED"]`)?.dataset.water || '?';
+    document.getElementById('water-info').innerHTML = `🌱 <b>${cropId}</b> 生长中<br>💧 水分: <b>${wl}%</b><br>土地 #${landConfigId}`;
+    pendingPlayerLandId = playerLandId;
+    document.getElementById('modal-water').classList.add('show');
+    return;
+  }
+  if (status === 'READY') {
+    document.getElementById('harvest-info').innerHTML = `🥕 收获 <b>${cropId}</b><br>土地 #${landConfigId}`;
+    pendingPlayerLandId = playerLandId;
+    document.getElementById('modal-harvest').classList.add('show');
+    return;
+  }
+}
+
+function renderCropOptions() {
+  document.getElementById('crop-select').innerHTML = CROPS.map(c =>
+    `<div class="crop-opt${c===pendingCropId?' selected':''}" onclick="selectCrop('${c}')">${c}</div>`
+  ).join('');
+}
+
+function selectCrop(c) {
+  pendingCropId = c;
+  renderCropOptions();
+}
+
+function closeModal() {
+  document.querySelectorAll('.modal').forEach(m=>m.classList.remove('show'));
+}
+
+// ========== API 操作 ==========
+async function doBuy() {
+  closeModal();
+  log('购买中...');
+  const res = await fetch(`${BASE}/farm/buy`, {
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+    body: JSON.stringify({landConfigId:pendingLandConfigId})
+  }).then(r=>r.json());
+  if (res.code===0) log('✅ 购买成功！');
+  else log(`❌ ${res.message}`);
+  await refresh();
+}
+
+async function doPlant() {
+  closeModal();
+  log(`种植 ${pendingCropId}...`);
+  const res = await fetch(`${BASE}/farm/plant`, {
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+    body: JSON.stringify({playerLandId:pendingPlayerLandId, cropId:pendingCropId})
+  }).then(r=>r.json());
+  if (res.code===0) {
+    const t = res.data.finishTime ? new Date(res.data.finishTime).toLocaleTimeString() : '?';
+    log(`✅ 种植成功！预计 ${t} 成熟`);
+  } else log(`❌ ${res.message}`);
+  await refresh();
+}
+
+async function doWater() {
+  closeModal();
+  log('💧 浇水...');
+  const res = await fetch(`${BASE}/farm/water`, {
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+    body: JSON.stringify({playerLandId:pendingPlayerLandId})
+  }).then(r=>r.json());
+  if (res.code===0) log('💧 浇水成功！水分恢复到 100%');
+  else log(`❌ ${res.message}`);
+  await refresh();
+}
+
+async function doHarvest() {
+  closeModal();
+  log('收获中...');
+  const res = await fetch(`${BASE}/farm/harvest`, {
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+    body: JSON.stringify({playerLandId:pendingPlayerLandId})
+  }).then(r=>r.json());
+  if (res.code===0) log('✅ 收获成功！作物已入背包');
+  else log(`❌ ${res.message}`);
+  await refresh();
+}
+
+function log(msg) {
+  document.getElementById('log').textContent = msg;
+}
+
+// ========== 启动 ==========
+init();
+</script>
+</body>
+</html>

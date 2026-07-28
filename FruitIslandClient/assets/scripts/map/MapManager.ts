@@ -1,179 +1,199 @@
 import { _decorator, Component, Node, Graphics, Color, Vec3 } from 'cc';
+import { GridManager } from './GridManager';
+import { MapLoader, BuildingConfig, FarmBlockConfig } from './MapLoader';
+import { BuildingManager } from './BuildingManager';
+import { MapCollisionManager } from './MapCollisionManager';
 import { MapConfig } from '../../configs/MapConfig';
 
 const { ccclass } = _decorator;
 
 /**
- * 地图管理器 - Demo0
+ * 地图总调度器 — Demo2.1
  *
- * 职责：
- * - 加载/生成地图
- * - 世界坐标 ↔ 网格坐标
- * - 地图边界
- * - 是否可走判断
+ * 流程：
+ *   MapLoader.loadConfigs() → GridManager.init() → 地形 → 建筑 → 农田 → 碰撞
  *
- * 以后替换为 TiledMap 或美术资源
+ * 场景层级：
+ *   WorldRoot/TerrainLayer  — 地形
+ *   WorldRoot/LandLayer     — 农田
+ *   WorldRoot/BuildingLayer — 建筑
  */
 @ccclass('MapManager')
 export class MapManager extends Component {
-  /** 所有地块节点 */
-  private _tiles: Node[][] = [];
+  private _gridManager: GridManager = new GridManager();
+  private _loader: MapLoader = new MapLoader();
+  private _buildingManager: BuildingManager | null = null;
+  private _collisionManager: MapCollisionManager | null = null;
+
+  /** 农场方块节点（供外部查询） */
+  private _farmNodes: Map<string, Node> = new Map();
+
+  // ==================== 初始化 ====================
 
   onLoad(): void {
-    this.generateMap();
-    console.log(
-      `[MapManager] 地图 ${MapConfig.GRID_COLS}×${MapConfig.GRID_ROWS} ` +
-      `(${MapConfig.MAP_WIDTH}×${MapConfig.MAP_HEIGHT}px) ` +
-      `边界: [${MapConfig.BOUND_LEFT}, ${MapConfig.BOUND_BOTTOM}] → [${MapConfig.BOUND_RIGHT}, ${MapConfig.BOUND_TOP}]`,
-    );
+    console.log('[MapManager] Demo2.1 初始化开始');
+    this.init();
   }
 
-  // ==================== 生成地图 ====================
+  init(): void {
+    // 1. 加载配置
+    const { mapConfig, farmConfig } = this._loader.loadConfigs();
 
-  private generateMap(): void {
-    for (let row = 0; row < MapConfig.GRID_ROWS; row++) {
-      this._tiles[row] = [];
-      for (let col = 0; col < MapConfig.GRID_COLS; col++) {
-        const tile = this.createTile(row, col);
-        this._tiles[row][col] = tile;
-        this.node.addChild(tile);
+    // 2. 初始化网格系统
+    this._gridManager.init(mapConfig.map);
+
+    // 3. 创建地形
+    this.createTerrain();
+
+    // 4. 创建建筑
+    this.createBuildings(mapConfig.buildings);
+
+    // 5. 创建农田
+    this.createFarms(farmConfig.farms);
+
+    // 6. 初始化碰撞系统
+    this.initCollision();
+
+    console.log('[MapManager] Demo2.1 初始化完成 ✅');
+  }
+
+  // ==================== 地形 ====================
+
+  private createTerrain(): void {
+    const terrainLayer = this.node.getChildByName('TerrainLayer');
+    if (!terrainLayer) {
+      console.warn('[MapManager] TerrainLayer 不存在，跳过地形');
+      return;
+    }
+
+    const gm = this._gridManager.config;
+    const waterEdge = 1, beachWidth = 2;
+
+    for (let gx = 0; gx < gm.width; gx++) {
+      for (let gy = 0; gy < gm.height; gy++) {
+        const tileNode = new Node(`Tile_${gx}_${gy}`);
+        const pos = this._gridManager.gridToWorldCenter(gx, gy);
+        tileNode.setPosition(pos);
+
+        const g = tileNode.addComponent(Graphics);
+
+        // 根据位置判断地形
+        const isWater =
+          gx < waterEdge || gx >= gm.width - waterEdge ||
+          gy < waterEdge || gy >= gm.height - waterEdge;
+        const grassStart = waterEdge + beachWidth;
+        const grassEnd = gm.width - waterEdge - beachWidth - 1;
+        const isBeach = !isWater &&
+          (gx < grassStart || gx > grassEnd || gy < grassStart || gy > grassEnd);
+
+        if (isWater) {
+          g.fillColor = new Color(100, 160, 220);
+        } else if (isBeach) {
+          g.fillColor = new Color(240, 220, 180);
+        } else {
+          const shade = Math.floor(Math.random() * 30) - 15;
+          g.fillColor = new Color(110 + shade, 160 + shade, 70 + Math.floor(shade / 2));
+        }
+
+        g.rect(-gm.gridSize / 2, -gm.gridSize / 2, gm.gridSize, gm.gridSize);
+        g.fill();
+
+        g.strokeColor = new Color(0, 0, 0, 15);
+        g.lineWidth = 0.5;
+        g.rect(-gm.gridSize / 2, -gm.gridSize / 2, gm.gridSize, gm.gridSize);
+        g.stroke();
+
+        terrainLayer.addChild(tileNode);
       }
     }
+
+    console.log(`[MapManager] 地形: ${gm.width * gm.height} 块 (${gm.width}×${gm.height})`);
   }
 
-  private createTile(row: number, col: number): Node {
-    const size = MapConfig.TILE_SIZE;
-    const pos = this.gridToWorld(row, col);
+  // ==================== 建筑 ====================
 
-    const tileNode = new Node(`Tile_${row}_${col}`);
-    tileNode.setPosition(pos.x, pos.y, 0);
-
-    const g = tileNode.addComponent(Graphics);
-    g.fillColor = this.getTileColor(row, col);
-    g.rect(-size / 2, -size / 2, size, size);
-    g.fill();
-
-    g.strokeColor = new Color(0, 0, 0, 30);
-    g.lineWidth = 0.5;
-    g.rect(-size / 2, -size / 2, size, size);
-    g.stroke();
-
-    return tileNode;
-  }
-
-  private getTileColor(row: number, col: number): Color {
-    const edgeRows = MapConfig.WATER_EDGE_ROWS;
-    const isEdge =
-      row < edgeRows ||
-      row >= MapConfig.GRID_ROWS - edgeRows ||
-      col < edgeRows ||
-      col >= MapConfig.GRID_COLS - edgeRows;
-
-    if (isEdge) return new Color(100, 160, 220); // 水
-
-    const isSand =
-      row < edgeRows + MapConfig.BEACH_ROWS ||
-      row >= MapConfig.GRID_ROWS - edgeRows - MapConfig.BEACH_ROWS ||
-      col < edgeRows + MapConfig.BEACH_ROWS ||
-      col >= MapConfig.GRID_COLS - edgeRows - MapConfig.BEACH_ROWS;
-
-    if (isSand) return new Color(240, 220, 180); // 沙滩
-
-    const shade = 140 + Math.floor(Math.random() * 40);
-    return new Color(120, shade, 80); // 草地
-  }
-
-  // ==================== 坐标转换 ====================
-
-  /**
-   * 网格坐标 → 世界坐标（格子中心）
-   */
-  gridToWorld(row: number, col: number): Vec3 {
-    const x = MapConfig.BOUND_LEFT + col * MapConfig.TILE_SIZE + MapConfig.TILE_SIZE / 2;
-    const y = MapConfig.BOUND_BOTTOM + row * MapConfig.TILE_SIZE + MapConfig.TILE_SIZE / 2;
-    return new Vec3(x, y, 0);
-  }
-
-  /**
-   * 世界坐标 → 网格坐标
-   */
-  worldToGrid(worldPos: Vec3): { row: number; col: number } {
-    const col = Math.floor((worldPos.x - MapConfig.BOUND_LEFT) / MapConfig.TILE_SIZE);
-    const row = Math.floor((worldPos.y - MapConfig.BOUND_BOTTOM) / MapConfig.TILE_SIZE);
-    return { row, col };
-  }
-
-  // ==================== 边界与可行走 ====================
-
-  /**
-   * 判断世界坐标是否在地图范围内
-   */
-  isInBounds(worldPos: Vec3): boolean {
-    return (
-      worldPos.x >= MapConfig.BOUND_LEFT &&
-      worldPos.x <= MapConfig.BOUND_RIGHT &&
-      worldPos.y >= MapConfig.BOUND_BOTTOM &&
-      worldPos.y <= MapConfig.BOUND_TOP
-    );
-  }
-
-  /**
-   * 判断世界坐标是否可走
-   *
-   * Demo0 规则：不在水里（边缘行）即可走
-   * 以后扩展：建筑、树木、NPC 等障碍物
-   */
-  isWalkable(worldPos: Vec3): boolean {
-    if (!this.isInBounds(worldPos)) return false;
-
-    const { row, col } = this.worldToGrid(worldPos);
-    if (row < 0 || row >= MapConfig.GRID_ROWS) return false;
-    if (col < 0 || col >= MapConfig.GRID_COLS) return false;
-
-    // 水和沙滩不可走，草地可走
-    const edgeRows = MapConfig.WATER_EDGE_ROWS + MapConfig.BEACH_ROWS;
-    if (row < edgeRows || row >= MapConfig.GRID_ROWS - edgeRows) return false;
-    if (col < edgeRows || col >= MapConfig.GRID_COLS - edgeRows) return false;
-
-    return true;
-  }
-
-  /**
-   * 将世界坐标限制在地图可走区域内
-   */
-  clampToWalkable(worldPos: Vec3): Vec3 {
-    const walkableLeft = MapConfig.BOUND_LEFT + (MapConfig.WATER_EDGE_ROWS + MapConfig.BEACH_ROWS) * MapConfig.TILE_SIZE;
-    const walkableRight = MapConfig.BOUND_RIGHT - (MapConfig.WATER_EDGE_ROWS + MapConfig.BEACH_ROWS) * MapConfig.TILE_SIZE;
-    const walkableBottom = MapConfig.BOUND_BOTTOM + (MapConfig.WATER_EDGE_ROWS + MapConfig.BEACH_ROWS) * MapConfig.TILE_SIZE;
-    const walkableTop = MapConfig.BOUND_TOP - (MapConfig.WATER_EDGE_ROWS + MapConfig.BEACH_ROWS) * MapConfig.TILE_SIZE;
-
-    return new Vec3(
-      Math.max(walkableLeft, Math.min(walkableRight, worldPos.x)),
-      Math.max(walkableBottom, Math.min(walkableTop, worldPos.y)),
-      0,
-    );
-  }
-
-  /**
-   * 获取地图边界（世界坐标）
-   */
-  getBounds(): { left: number; right: number; bottom: number; top: number } {
-    return {
-      left: MapConfig.BOUND_LEFT,
-      right: MapConfig.BOUND_RIGHT,
-      bottom: MapConfig.BOUND_BOTTOM,
-      top: MapConfig.BOUND_TOP,
-    };
-  }
-
-  // ==================== 查询 ====================
-
-  /** 获取某个格子的世界坐标 */
-  getTileWorldPos(row: number, col: number): Vec3 | null {
-    if (row < 0 || row >= MapConfig.GRID_ROWS || col < 0 || col >= MapConfig.GRID_COLS) {
-      return null;
+  private createBuildings(buildings: BuildingConfig[]): void {
+    let buildingLayer = this.node.getChildByName('BuildingLayer');
+    if (!buildingLayer) {
+      buildingLayer = new Node('BuildingLayer');
+      this.node.addChild(buildingLayer);
     }
-    const tile = this._tiles[row]?.[col];
-    return tile ? tile.position.clone() : null;
+
+    this._buildingManager = buildingLayer.getComponent(BuildingManager)
+      || buildingLayer.addComponent(BuildingManager);
+    this._buildingManager.init(this._gridManager);
+    this._buildingManager.createBuildings(buildings);
+  }
+
+  // ==================== 农田 ====================
+
+  private createFarms(farms: FarmBlockConfig[]): void {
+    let landLayer = this.node.getChildByName('LandLayer');
+    if (!landLayer) {
+      landLayer = new Node('LandLayer');
+      this.node.addChild(landLayer);
+    }
+
+    for (const farm of farms) {
+      const farmNode = new Node(`Farm_${farm.id}`);
+      const pos = this._gridManager.gridToWorldCenter(
+        farm.gx + farm.width / 2 - 0.5,
+        farm.gy + farm.height / 2 - 0.5,
+      );
+      farmNode.setPosition(pos);
+
+      const gs = this._gridManager.config.gridSize;
+      const g = farmNode.addComponent(Graphics);
+
+      // 半透明绿色填充
+      g.fillColor = new Color(126, 200, 80, 100);
+      const hw = (farm.width * gs) / 2;
+      const hh = (farm.height * gs) / 2;
+      g.rect(-hw, -hh, farm.width * gs, farm.height * gs);
+      g.fill();
+
+      // 虚线边框
+      g.strokeColor = new Color(180, 220, 140, 200);
+      g.lineWidth = 2;
+      g.rect(-hw, -hh, farm.width * gs, farm.height * gs);
+      g.stroke();
+
+      landLayer.addChild(farmNode);
+      this._farmNodes.set(farm.id, farmNode);
+    }
+
+    console.log(`[MapManager] 农田: ${farms.length} 块`);
+  }
+
+  // ==================== 碰撞 ====================
+
+  private initCollision(): void {
+    const colNode = this.node.getChildByName('CollisionManager')
+      || (() => { const n = new Node('CollisionManager'); this.node.addChild(n); return n; })();
+
+    this._collisionManager = colNode.getComponent(MapCollisionManager)
+      || colNode.addComponent(MapCollisionManager);
+
+    if (this._buildingManager) {
+      this._collisionManager.init(this._gridManager, this._buildingManager);
+    }
+  }
+
+  // ==================== 公共接口 ====================
+
+  get gridManager(): GridManager { return this._gridManager; }
+  get buildingManager(): BuildingManager | null { return this._buildingManager; }
+  get collisionManager(): MapCollisionManager | null { return this._collisionManager; }
+
+  /** 判断是否可行走 */
+  isWalkable(worldX: number, worldY: number): boolean {
+    return this._collisionManager ? this._collisionManager.isWalkable(worldX, worldY) : true;
+  }
+
+  /** 修正到可行走位置 */
+  clampToWalkable(worldX: number, worldY: number): Vec3 {
+    return this._collisionManager
+      ? this._collisionManager.clampToWalkable(worldX, worldY)
+      : new Vec3(worldX, worldY, 0);
   }
 }

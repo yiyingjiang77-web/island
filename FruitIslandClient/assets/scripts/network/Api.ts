@@ -28,19 +28,22 @@ export const Api = {
   /** 获取岛屿信息 */
   ISLAND_INFO: '/game/island/info',
 
-  // ==================== 土地 ====================
+  // ==================== 土地 / 农场 ====================
 
   /** 获取土地列表 */
-  LAND_LIST: '/game/land/list',
+  LAND_LIST: '/farm/lands',
 
-  /** 解锁土地 */
-  LAND_UNLOCK: '/game/land/unlock',
+  /** 购买土地 */
+  LAND_BUY: '/farm/buy',
 
   /** 种植 */
-  PLANT: '/game/land/plant',
+  PLANT: '/farm/plant',
+
+  /** 浇水 */
+  WATER: '/farm/water',
 
   /** 收获 */
-  HARVEST: '/game/land/harvest',
+  HARVEST: '/farm/harvest',
 
   // ==================== 建筑 ====================
 

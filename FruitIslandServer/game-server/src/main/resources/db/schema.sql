@@ -60,37 +60,59 @@ CREATE TABLE island_area
 ) COMMENT = '岛屿区域表';
 
 -- ============================================================
--- 4. Land
+-- 4. Land Config (全局土地配置)
 -- ============================================================
-CREATE TABLE land
+CREATE TABLE land_config
 (
-    id           BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '土地ID',
-    area_id      BIGINT NOT NULL COMMENT '区域ID',
-    position_x   INT COMMENT '地图X',
-    position_y   INT COMMENT '地图Y',
-    state        VARCHAR(32) DEFAULT 'LOCKED' COMMENT '土地状态',
-    unlock_level INT         DEFAULT 1,
-    create_time  DATETIME    DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_area_id (area_id)
-) COMMENT = '土地表';
+    id           BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '配置ID',
+    area_type    VARCHAR(16)  NOT NULL COMMENT 'FARM / FLOWER',
+    block_id     VARCHAR(32)  NOT NULL COMMENT 'Farm-A, Farm-B, Flower-A 等',
+    grid_x       INT          NOT NULL COMMENT 'Block内X坐标 (0-3)',
+    grid_y       INT          NOT NULL COMMENT 'Block内Y坐标 (0-3)',
+    unlock_level INT          DEFAULT 1 COMMENT '解锁等级',
+    buy_price    BIGINT       DEFAULT 0 COMMENT '购买价格',
+    create_time  DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_area_type (area_type),
+    INDEX idx_block_id (block_id)
+) COMMENT = '土地配置表';
 
 -- ============================================================
--- 5. Crop Plant
+-- 5. Player Land (玩家土地数据)
+-- ============================================================
+CREATE TABLE player_land
+(
+    id             BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '土地ID',
+    player_id      BIGINT       NOT NULL COMMENT '玩家ID',
+    land_config_id BIGINT       NOT NULL COMMENT 'land_config.id',
+    status         VARCHAR(16)  DEFAULT 'EMPTY' COMMENT 'EMPTY / PLANTED / READY',
+    crop_id        VARCHAR(64)  COMMENT '当前种植作物ID',
+    plant_time     DATETIME     COMMENT '种植时间',
+    finish_time    DATETIME     COMMENT '成熟时间',
+    water_level    INT          DEFAULT 100 COMMENT '水分值 0-100',
+    last_watered_at DATETIME    COMMENT '上次浇水时间',
+    create_time    DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    update_time    DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_player_id (player_id),
+    INDEX idx_land_config_id (land_config_id)
+) COMMENT = '玩家土地表';
+
+-- ============================================================
+-- 6. Crop Plant (种植历史记录)
 -- ============================================================
 CREATE TABLE crop_plant
 (
-    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
-    land_id     BIGINT NOT NULL COMMENT '土地ID',
-    crop_id     VARCHAR(64) COMMENT '作物ID',
-    plant_time  DATETIME COMMENT '种植时间',
-    finish_time DATETIME COMMENT '成熟时间',
-    status      VARCHAR(32) COMMENT '状态',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_land_id (land_id)
+    id             BIGINT PRIMARY KEY AUTO_INCREMENT,
+    player_land_id BIGINT NOT NULL COMMENT 'player_land.id',
+    crop_id        VARCHAR(64) COMMENT '作物ID',
+    plant_time     DATETIME COMMENT '种植时间',
+    finish_time    DATETIME COMMENT '成熟时间',
+    status         VARCHAR(32) COMMENT '状态',
+    create_time    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_player_land_id (player_land_id)
 ) COMMENT = '作物种植记录';
 
 -- ============================================================
--- 6. Item Config
+-- 7. Item Config
 -- ============================================================
 CREATE TABLE item_config
 (
@@ -103,7 +125,7 @@ CREATE TABLE item_config
 ) COMMENT = '物品配置表';
 
 -- ============================================================
--- 7. Inventory
+-- 8. Inventory
 -- ============================================================
 CREATE TABLE inventory
 (
@@ -117,7 +139,7 @@ CREATE TABLE inventory
 ) COMMENT = '玩家背包';
 
 -- ============================================================
--- 8. Building
+-- 9. Building
 -- ============================================================
 CREATE TABLE building
 (
@@ -136,7 +158,7 @@ CREATE TABLE building
 ) COMMENT = '建筑表';
 
 -- ============================================================
--- 9. Building Upgrade
+-- 10. Building Upgrade
 -- ============================================================
 CREATE TABLE building_upgrade
 (
@@ -149,7 +171,7 @@ CREATE TABLE building_upgrade
 ) COMMENT = '建筑升级记录';
 
 -- ============================================================
--- 10. Recipe Config
+-- 11. Recipe Config
 -- ============================================================
 CREATE TABLE recipe_config
 (
@@ -161,7 +183,7 @@ CREATE TABLE recipe_config
 ) COMMENT = '制作配方';
 
 -- ============================================================
--- 11. Recipe Material
+-- 12. Recipe Material
 -- ============================================================
 CREATE TABLE recipe_material
 (
@@ -172,7 +194,7 @@ CREATE TABLE recipe_material
 ) COMMENT = '配方材料';
 
 -- ============================================================
--- 12. Production Order
+-- 13. Production Order
 -- ============================================================
 CREATE TABLE production_order
 (
@@ -187,7 +209,7 @@ CREATE TABLE production_order
 ) COMMENT = '生产订单';
 
 -- ============================================================
--- 13. Animal
+-- 14. Animal
 -- ============================================================
 CREATE TABLE animal
 (
@@ -200,7 +222,7 @@ CREATE TABLE animal
 ) COMMENT = '动物表';
 
 -- ============================================================
--- 14. Animal Product
+-- 15. Animal Product
 -- ============================================================
 CREATE TABLE animal_product
 (
@@ -212,7 +234,7 @@ CREATE TABLE animal_product
 ) COMMENT = '动物生产记录';
 
 -- ============================================================
--- 15. Customer Template
+-- 16. Customer Template
 -- ============================================================
 CREATE TABLE customer_template
 (
@@ -223,7 +245,7 @@ CREATE TABLE customer_template
 ) COMMENT = '顾客模板';
 
 -- ============================================================
--- 16. Customer Order
+-- 17. Customer Order
 -- ============================================================
 CREATE TABLE customer_order
 (
@@ -237,7 +259,7 @@ CREATE TABLE customer_order
 ) COMMENT = '顾客订单';
 
 -- ============================================================
--- 17. Quest Config
+-- 18. Quest Config
 -- ============================================================
 CREATE TABLE quest_config
 (
@@ -249,7 +271,7 @@ CREATE TABLE quest_config
 ) COMMENT = '任务配置';
 
 -- ============================================================
--- 18. Player Quest
+-- 19. Player Quest
 -- ============================================================
 CREATE TABLE player_quest
 (
@@ -263,7 +285,7 @@ CREATE TABLE player_quest
 ) COMMENT = '玩家任务';
 
 -- ============================================================
--- 19. Shop Config
+-- 20. Shop Config
 -- ============================================================
 CREATE TABLE shop_config
 (
@@ -274,7 +296,7 @@ CREATE TABLE shop_config
 ) COMMENT = '商店配置';
 
 -- ============================================================
--- 20. Decoration
+-- 21. Decoration
 -- ============================================================
 CREATE TABLE decoration
 (
@@ -286,3 +308,141 @@ CREATE TABLE decoration
     rotation    INT DEFAULT 0,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP
 ) COMMENT = '岛屿装饰';
+
+-- ============================================================
+-- 22. Land Config Seed Data
+-- ============================================================
+
+-- Farm Block A: 4x4 grid, unlock Lv1
+INSERT INTO land_config (area_type, block_id, grid_x, grid_y, unlock_level, buy_price) VALUES
+('FARM', 'Farm-A', 0, 0, 1, 0),
+('FARM', 'Farm-A', 1, 0, 1, 50),
+('FARM', 'Farm-A', 2, 0, 1, 50),
+('FARM', 'Farm-A', 3, 0, 1, 50),
+('FARM', 'Farm-A', 0, 1, 1, 50),
+('FARM', 'Farm-A', 1, 1, 1, 100),
+('FARM', 'Farm-A', 2, 1, 1, 100),
+('FARM', 'Farm-A', 3, 1, 1, 100),
+('FARM', 'Farm-A', 0, 2, 1, 50),
+('FARM', 'Farm-A', 1, 2, 1, 100),
+('FARM', 'Farm-A', 2, 2, 1, 150),
+('FARM', 'Farm-A', 3, 2, 1, 100),
+('FARM', 'Farm-A', 0, 3, 1, 50),
+('FARM', 'Farm-A', 1, 3, 1, 100),
+('FARM', 'Farm-A', 2, 3, 1, 100),
+('FARM', 'Farm-A', 3, 3, 1, 150);
+
+-- Farm Block B: 4x4 grid, unlock Lv3
+INSERT INTO land_config (area_type, block_id, grid_x, grid_y, unlock_level, buy_price) VALUES
+('FARM', 'Farm-B', 0, 0, 3, 100),
+('FARM', 'Farm-B', 1, 0, 3, 100),
+('FARM', 'Farm-B', 2, 0, 3, 100),
+('FARM', 'Farm-B', 3, 0, 3, 100),
+('FARM', 'Farm-B', 0, 1, 3, 100),
+('FARM', 'Farm-B', 1, 1, 3, 150),
+('FARM', 'Farm-B', 2, 1, 3, 150),
+('FARM', 'Farm-B', 3, 1, 3, 150),
+('FARM', 'Farm-B', 0, 2, 3, 100),
+('FARM', 'Farm-B', 1, 2, 3, 150),
+('FARM', 'Farm-B', 2, 2, 3, 200),
+('FARM', 'Farm-B', 3, 2, 3, 150),
+('FARM', 'Farm-B', 0, 3, 3, 100),
+('FARM', 'Farm-B', 1, 3, 3, 150),
+('FARM', 'Farm-B', 2, 3, 3, 150),
+('FARM', 'Farm-B', 3, 3, 3, 200);
+
+-- Farm Block C: 4x4 grid, unlock Lv5
+INSERT INTO land_config (area_type, block_id, grid_x, grid_y, unlock_level, buy_price) VALUES
+('FARM', 'Farm-C', 0, 0, 5, 200),
+('FARM', 'Farm-C', 1, 0, 5, 200),
+('FARM', 'Farm-C', 2, 0, 5, 200),
+('FARM', 'Farm-C', 3, 0, 5, 200),
+('FARM', 'Farm-C', 0, 1, 5, 200),
+('FARM', 'Farm-C', 1, 1, 5, 300),
+('FARM', 'Farm-C', 2, 1, 5, 300),
+('FARM', 'Farm-C', 3, 1, 5, 300),
+('FARM', 'Farm-C', 0, 2, 5, 200),
+('FARM', 'Farm-C', 1, 2, 5, 300),
+('FARM', 'Farm-C', 2, 2, 5, 400),
+('FARM', 'Farm-C', 3, 2, 5, 300),
+('FARM', 'Farm-C', 0, 3, 5, 200),
+('FARM', 'Farm-C', 1, 3, 5, 300),
+('FARM', 'Farm-C', 2, 3, 5, 300),
+('FARM', 'Farm-C', 3, 3, 5, 400);
+
+-- Farm Block D: 4x4 grid, unlock Lv8
+INSERT INTO land_config (area_type, block_id, grid_x, grid_y, unlock_level, buy_price) VALUES
+('FARM', 'Farm-D', 0, 0, 8, 400),
+('FARM', 'Farm-D', 1, 0, 8, 400),
+('FARM', 'Farm-D', 2, 0, 8, 400),
+('FARM', 'Farm-D', 3, 0, 8, 400),
+('FARM', 'Farm-D', 0, 1, 8, 400),
+('FARM', 'Farm-D', 1, 1, 8, 500),
+('FARM', 'Farm-D', 2, 1, 8, 500),
+('FARM', 'Farm-D', 3, 1, 8, 500),
+('FARM', 'Farm-D', 0, 2, 8, 400),
+('FARM', 'Farm-D', 1, 2, 8, 500),
+('FARM', 'Farm-D', 2, 2, 8, 600),
+('FARM', 'Farm-D', 3, 2, 8, 500),
+('FARM', 'Farm-D', 0, 3, 8, 400),
+('FARM', 'Farm-D', 1, 3, 8, 500),
+('FARM', 'Farm-D', 2, 3, 8, 500),
+('FARM', 'Farm-D', 3, 3, 8, 600);
+
+-- Flower Block A: 4x4 grid, unlock Lv10
+INSERT INTO land_config (area_type, block_id, grid_x, grid_y, unlock_level, buy_price) VALUES
+('FLOWER', 'Flower-A', 0, 0, 10, 500),
+('FLOWER', 'Flower-A', 1, 0, 10, 500),
+('FLOWER', 'Flower-A', 2, 0, 10, 500),
+('FLOWER', 'Flower-A', 3, 0, 10, 500),
+('FLOWER', 'Flower-A', 0, 1, 10, 500),
+('FLOWER', 'Flower-A', 1, 1, 10, 800),
+('FLOWER', 'Flower-A', 2, 1, 10, 800),
+('FLOWER', 'Flower-A', 3, 1, 10, 800),
+('FLOWER', 'Flower-A', 0, 2, 10, 500),
+('FLOWER', 'Flower-A', 1, 2, 10, 800),
+('FLOWER', 'Flower-A', 2, 2, 10, 1000),
+('FLOWER', 'Flower-A', 3, 2, 10, 800),
+('FLOWER', 'Flower-A', 0, 3, 10, 500),
+('FLOWER', 'Flower-A', 1, 3, 10, 800),
+('FLOWER', 'Flower-A', 2, 3, 10, 800),
+('FLOWER', 'Flower-A', 3, 3, 10, 1000);
+
+-- Flower Block B: 4x4 grid, unlock Lv13
+INSERT INTO land_config (area_type, block_id, grid_x, grid_y, unlock_level, buy_price) VALUES
+('FLOWER', 'Flower-B', 0, 0, 13, 800),
+('FLOWER', 'Flower-B', 1, 0, 13, 800),
+('FLOWER', 'Flower-B', 2, 0, 13, 800),
+('FLOWER', 'Flower-B', 3, 0, 13, 800),
+('FLOWER', 'Flower-B', 0, 1, 13, 800),
+('FLOWER', 'Flower-B', 1, 1, 13, 1200),
+('FLOWER', 'Flower-B', 2, 1, 13, 1200),
+('FLOWER', 'Flower-B', 3, 1, 13, 1200),
+('FLOWER', 'Flower-B', 0, 2, 13, 800),
+('FLOWER', 'Flower-B', 1, 2, 13, 1200),
+('FLOWER', 'Flower-B', 2, 2, 13, 1500),
+('FLOWER', 'Flower-B', 3, 2, 13, 1200),
+('FLOWER', 'Flower-B', 0, 3, 13, 800),
+('FLOWER', 'Flower-B', 1, 3, 13, 1200),
+('FLOWER', 'Flower-B', 2, 3, 13, 1200),
+('FLOWER', 'Flower-B', 3, 3, 13, 1500);
+
+-- ============================================================
+-- Item Config Seed Data (基础作物)
+-- ============================================================
+INSERT INTO item_config (id, name, type, icon, sell_price) VALUES
+('strawberry', '草莓', 'CROP', 'strawberry', 5),
+('cabbage', '小白菜', 'CROP', 'cabbage', 3),
+('carrot', '胡萝卜', 'CROP', 'carrot', 8),
+('tomato', '番茄', 'CROP', 'tomato', 6),
+('potato', '土豆', 'CROP', 'potato', 5),
+('chili', '辣椒', 'CROP', 'chili', 20),
+('corn', '玉米', 'CROP', 'corn', 40);
+INSERT INTO item_config (id, name, type, icon, sell_price) VALUES
+('strawberry_seed', '草莓种子', 'SEED', 'strawberry_seed', 1),
+('cabbage_seed', '小白菜种子', 'SEED', 'cabbage_seed', 2),
+('carrot_seed', '胡萝卜种子', 'SEED', 'carrot_seed', 5),
+('tomato_seed', '番茄种子', 'SEED', 'tomato_seed', 4),
+('potato_seed', '土豆种子', 'SEED', 'potato_seed', 3),
+('chili_seed', '辣椒种子', 'SEED', 'chili_seed', 10),
+('corn_seed', '玉米种子', 'SEED', 'corn_seed', 25);

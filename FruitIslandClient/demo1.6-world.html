@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>果香小岛 Demo1.6 — 72×72 世界地图</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;height:100vh;font-family:'PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden}
+.game{position:relative;border:3px solid #4a9eff;border-radius:12px;overflow:hidden;box-shadow:0 0 40px rgba(74,158,255,.3)}
+canvas{display:block;cursor:crosshair}
+.hud{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none;gap:8px;flex-wrap:wrap}
+.hud-item{background:rgba(0,0,0,.6);color:#fff;padding:5px 12px;border-radius:16px;font-size:12px;backdrop-filter:blur(4px);white-space:nowrap}
+.info{position:absolute;bottom:12px;left:12px;right:12px;background:rgba(0,0,0,.6);color:#aaa;padding:6px 14px;border-radius:16px;font-size:12px;text-align:center;pointer-events:none;backdrop-filter:blur(4px)}
+
+/* 小地图 */
+.minimap{position:absolute;bottom:50px;right:12px;background:rgba(0,0,0,.7);border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.2)}
+.minimap canvas{display:block}
+
+/* 图例 */
+.legend{position:absolute;top:60px;right:12px;background:rgba(0,0,0,.6);padding:8px;border-radius:8px;font-size:10px;pointer-events:none;backdrop-filter:blur(4px);line-height:1.6}
+.leg-dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="game" id="game-wrapper">
+  <canvas id="game"></canvas>
+  <div class="hud">
+    <span class="hud-item">🏝️ 果香小岛 Demo1.6</span>
+    <span class="hud-item">📐 <span id="hud-grid">Grid(-,-)</span></span>
+    <span class="hud-item">📍 <span id="hud-world">World(-,-)</span></span>
+    <span class="hud-item">🎯 <span id="hud-action"></span></span>
+  </div>
+  <div class="legend">
+    <div><span class="leg-dot" style="background:#64a0dc"></span>水域</div>
+    <div><span class="leg-dot" style="background:#f0dcb4"></span>沙滩</div>
+    <div><span class="leg-dot" style="background:#78a050"></span>草地</div>
+    <div style="margin-top:4px;color:#f4d35e">🏠小屋 🌱农田 🌸花园</div>
+    <div style="color:#f4d35e">⭐广场 ⚓码头 🥤🍰店铺</div>
+    <div style="color:#f4d35e">🐄牧场 🌲森林</div>
+  </div>
+  <div class="info" id="info">点击草地移动小人 | 鼠标拖拽移动视野 | 滚轮缩放</div>
+  <div class="minimap"><canvas id="minimap" width="120" height="120"></canvas></div>
+</div>
+
+<script>
+// ========== 配置（对应 MapConfig.ts） ==========
+const GRID_COUNT=72,TILE=120,WORLD_SIZE=GRID_COUNT*TILE; // 8640
+const WATER_EDGE=1,BEACH_WIDTH=2;
+const GRASS_START=WATER_EDGE+BEACH_WIDTH,GRASS_END=GRID_COUNT-WATER_EDGE-BEACH_WIDTH-1;
+const CANVAS_W=900,CANVAS_H=700;
+
+// ========== 占位区域（对应 MapConfig.ZONES） ==========
+const ZONES=[
+  {name:'小屋',label:'🏠',gx:34,gy:34,w:4,h:4,color:'#B8865B'},
+  {name:'农田A',label:'🌱',gx:28,gy:38,w:4,h:4,color:'#7EC850'},
+  {name:'农田B',label:'🌱',gx:32,gy:38,w:4,h:4,color:'#6DB840'},
+  {name:'农田C',label:'🌱',gx:28,gy:34,w:4,h:4,color:'#6DB840'},
+  {name:'农田D',label:'🌱',gx:32,gy:34,w:4,h:4,color:'#7EC850'},
+  {name:'花园A',label:'🌸',gx:24,gy:34,w:4,h:4,color:'#FFB7C5'},
+  {name:'花园B',label:'🌸',gx:24,gy:30,w:4,h:4,color:'#FFA0B0'},
+  {name:'广场',label:'⭐',gx:36,gy:34,w:4,h:2,color:'#F4D35E'},
+  {name:'码头',label:'⚓',gx:36,gy:18,w:4,h:2,color:'#64A0DC'},
+  {name:'饮品店',label:'🥤',gx:28,gy:42,w:4,h:2,color:'#FF9F43'},
+  {name:'甜品店',label:'🍰',gx:32,gy:42,w:4,h:2,color:'#EE5A6F'},
+  {name:'牧场',label:'🐄',gx:38,gy:38,w:4,h:4,color:'#A0D468'},
+  {name:'森林',label:'🌲',gx:20,gy:38,w:4,h:4,color:'#2D5A27'},
+];
+
+// 地形颜色
+function getTerrainColor(gx,gy){
+  if(gx<WATER_EDGE||gx>=GRID_COUNT-WATER_EDGE||gy<WATER_EDGE||gy>=GRID_COUNT-WATER_EDGE) return '#5a90c8';
+  if(gx<GRASS_START||gx>GRASS_END||gy<GRASS_START||gy>GRASS_END) return '#e8d4a8';
+  const shade=Math.floor(Math.random()*30)-15;
+  const r=110+shade,g=160+shade,b=70+Math.floor(shade/2);
+  return `rgb(${Math.max(0,Math.min(255,r))},${Math.max(0,Math.min(255,g))},${Math.max(0,Math.min(255,b))})`;
+}
+
+// ========== 画布 ==========
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+canvas.width=CANVAS_W;canvas.height=CANVAS_H;
+const mmCanvas=document.getElementById('minimap'),mmCtx=mmCanvas.getContext('2d');
+
+// ========== 摄像机 ==========
+const camera={x:WORLD_SIZE/2-CANVAS_W/2,y:WORLD_SIZE/2-CANVAS_H/2};
+const SMOOTH=8;
+
+// ========== 玩家 ==========
+const player={x:MapConfig_gridToWorldX(36),y:MapConfig_gridToWorldY(36),tx:null,ty:null,moving:false};
+const SPEED=300,THRESHOLD=8;
+
+function MapConfig_gridToWorldX(c){return c*TILE+TILE/2}
+function MapConfig_gridToWorldY(r){return r*TILE+TILE/2}
+function MapConfig_worldToGridX(wx){return Math.floor(wx/TILE)}
+function MapConfig_worldToGridY(wy){return Math.floor(wy/TILE)}
+
+// ========== 拖动 ==========
+let dragging=false,lastMouseX=0,lastMouseY=0;
+
+canvas.addEventListener('mousedown',e=>{
+  dragging=true;lastMouseX=e.clientX;lastMouseY=e.clientY;
+});
+canvas.addEventListener('mousemove',e=>{
+  if(!dragging)return;
+  const dx=e.clientX-lastMouseX,dy=e.clientY-lastMouseY;
+  camera.x-=dx;camera.y-=dy;
+  clampCamera();
+  lastMouseX=e.clientX;lastMouseY=e.clientY;
+});
+canvas.addEventListener('mouseup',e=>{
+  const dist=Math.hypot(e.clientX-lastMouseX,e.clientY-lastMouseY);
+  if(dist<5){ // 点击
+    const sx=e.offsetX,sy=e.offsetY;
+    const wx=camera.x+sx,wy=camera.y+sy;
+    if(isWalkable(wx,wy)){
+      player.tx=wx;player.ty=wy;player.moving=true;
+      document.getElementById('info').textContent='🏃 走过去...';
+    }
+  }
+  dragging=false;
+});
+canvas.addEventListener('mouseleave',()=>{dragging=false});
+
+// 滚轮缩放
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  // 简化：调整视口（不做真实缩放，仅调整摄像机偏移）
+  const dz=e.deltaY>0?50:-50;
+  // 不做真实缩放，就做速度调整
+},{passive:false});
+
+function clampCamera(){
+  camera.x=Math.max(0,Math.min(WORLD_SIZE-CANVAS_W,camera.x));
+  camera.y=Math.max(0,Math.min(WORLD_SIZE-CANVAS_H,camera.y));
+}
+
+function isWalkable(wx,wy){
+  if(wx<0||wx>=WORLD_SIZE||wy<0||wy>=WORLD_SIZE)return false;
+  const gx=MapConfig_worldToGridX(wx),gy=MapConfig_worldToGridY(wy);
+  return gx>=GRASS_START&&gx<=GRASS_END&&gy>=GRASS_START&&gy<=GRASS_END;
+}
+
+// ========== 地形缓存 ==========
+const terrainCache=new Map();
+function getCachedTerrain(gx,gy){
+  const k=`${gx},${gy}`;if(!terrainCache.has(k))terrainCache.set(k,getTerrainColor(gx,gy));
+  return terrainCache.get(k);
+}
+
+// ========== 渲染 ==========
+function drawTerrain(){
+  const startGX=Math.max(0,Math.floor(camera.x/TILE)-1);
+  const endGX=Math.min(GRID_COUNT-1,Math.ceil((camera.x+CANVAS_W)/TILE)+1);
+  const startGY=Math.max(0,Math.floor(camera.y/TILE)-1);
+  const endGY=Math.min(GRID_COUNT-1,Math.ceil((camera.y+CANVAS_H)/TILE)+1);
+
+  for(let gx=startGX;gx<=endGX;gx++){
+    for(let gy=startGY;gy<=endGY;gy++){
+      const wx=MapConfig_gridToWorldX(gx),wy=MapConfig_gridToWorldY(gy);
+      const sx=wx-camera.x,sy=wy-camera.y;
+      ctx.fillStyle=getCachedTerrain(gx,gy);
+      ctx.fillRect(sx-TILE/2,sy-TILE/2,TILE,TILE);
+      ctx.strokeStyle='rgba(0,0,0,.06)';ctx.lineWidth=.5;
+      ctx.strokeRect(sx-TILE/2,sy-TILE/2,TILE,TILE);
+    }
+  }
+}
+
+function drawZones(){
+  for(const z of ZONES){
+    const centerWX=MapConfig_gridToWorldX(z.gx+z.w/2-.5);
+    const centerWY=MapConfig_gridToWorldY(z.gy+z.h/2-.5);
+    const sx=centerWX-camera.x,sy=centerWY-camera.y;
+    const hw=(z.w*TILE)/2,hh=(z.h*TILE)/2;
+
+    // 不在屏幕上跳过
+    if(sx+hw<0||sx-hw>CANVAS_W||sy+hh<0||sy-hh>CANVAS_H)continue;
+
+    ctx.fillStyle=z.color+'80';
+    ctx.fillRect(sx-hw,sy-hh,z.w*TILE,z.h*TILE);
+    ctx.strokeStyle='rgba(255,255,255,.6)';ctx.lineWidth=2;
+    ctx.strokeRect(sx-hw,sy-hh,z.w*TILE,z.h*TILE);
+    ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(z.label,sx,sy-6);
+    ctx.font='11px sans-serif';ctx.fillStyle='rgba(255,255,255,.9)';
+    ctx.fillText(z.name,sx,sy+16);
+  }
+}
+
+function drawPlayer(){
+  const sx=player.x-camera.x,sy=player.y-camera.y;
+  const sz=16;
+
+  // 阴影
+  ctx.fillStyle='rgba(0,0,0,.2)';
+  ctx.beginPath();ctx.ellipse(sx,sy+sz*.4,sz*.45,sz*.12,0,0,Math.PI*2);ctx.fill();
+
+  // 身体
+  ctx.fillStyle='#ffc864';ctx.beginPath();ctx.arc(sx,sy-sz*.05,sz*.45,0,Math.PI*2);ctx.fill();
+  // 帽子
+  ctx.fillStyle='#dc503c';ctx.beginPath();ctx.moveTo(sx-sz*.4,sy-sz*.25);ctx.lineTo(sx,sy-sz*.85);ctx.lineTo(sx+sz*.4,sy-sz*.25);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.3)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(sx,sy-sz*.05,sz*.45,0,Math.PI*2);ctx.stroke();
+
+  // 目标光标
+  if(player.moving&&player.tx!==null){
+    const ttx=player.tx-camera.x,tty=player.ty-camera.y;
+    ctx.fillStyle='rgba(255,255,255,.4)';ctx.beginPath();ctx.arc(ttx,tty,5,0,Math.PI*2);ctx.fill();
+  }
+}
+
+function drawMinimap(){
+  const mw=120,mh=120;
+  mmCtx.fillStyle='rgba(0,0,0,.7)';mmCtx.fillRect(0,0,mw,mh);
+
+  const scale=mw/WORLD_SIZE;
+  // 地形
+  for(let gx=0;gx<GRID_COUNT;gx+=2){
+    for(let gy=0;gy<GRID_COUNT;gy+=2){
+      mmCtx.fillStyle=getCachedTerrain(gx,gy);
+      mmCtx.fillRect(gx*TILE*scale,gy*TILE*scale,2*TILE*scale,2*TILE*scale);
+    }
+  }
+  // 区域
+  for(const z of ZONES){
+    mmCtx.fillStyle=z.color;
+    mmCtx.fillRect(z.gx*TILE*scale,z.gy*TILE*scale,z.w*TILE*scale,z.h*TILE*scale);
+  }
+  // 视口框
+  mmCtx.strokeStyle='#fff';mmCtx.lineWidth=1;
+  mmCtx.strokeRect(camera.x*scale,camera.y*scale,CANVAS_W*scale,CANVAS_H*scale);
+  // 玩家位置
+  mmCtx.fillStyle='#ff4444';mmCtx.beginPath();mmCtx.arc(player.x*scale,player.y*scale,2,0,Math.PI*2);mmCtx.fill();
+}
+
+// ========== 游戏循环 ==========
+let lastTime=performance.now();
+function loop(now){
+  let dt=(now-lastTime)/1000;lastTime=now;if(dt>.1)dt=.016;
+
+  // 玩家移动
+  if(player.moving&&player.tx!==null){
+    const dx=player.tx-player.x,dy=player.ty-player.y,dist=Math.hypot(dx,dy);
+    if(dist<=THRESHOLD){player.x=player.tx;player.y=player.ty;player.moving=false;document.getElementById('info').textContent='点击草地移动 | 拖拽移动视野'}
+    else{const step=SPEED*dt;player.x+=(dx/dist)*step;player.y+=(dy/dist)*step}
+  }
+
+  // 摄像机平滑跟随
+  if(!dragging){
+    const targetCX=player.x-CANVAS_W/2,targetCY=player.y-CANVAS_H/2;
+    camera.x+=(targetCX-camera.x)*Math.min(1,dt*SMOOTH);
+    camera.y+=(targetCY-camera.y)*Math.min(1,dt*SMOOTH);
+    clampCamera();
+  }
+
+  // 渲染
+  ctx.fillStyle='#1a2a10';ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+  drawTerrain();drawZones();drawPlayer();drawMinimap();
+
+  // HUD
+  const gx=MapConfig_worldToGridX(player.x),gy=MapConfig_worldToGridY(player.y);
+  document.getElementById('hud-grid').textContent=`Grid(${gx},${gy})`;
+  document.getElementById('hud-world').textContent=`World(${player.x.toFixed(0)},${player.y.toFixed(0)})`;
+
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

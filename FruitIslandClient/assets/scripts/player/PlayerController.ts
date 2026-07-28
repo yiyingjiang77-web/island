@@ -1,5 +1,5 @@
 import { _decorator, Component, Vec3 } from 'cc';
-import { PlayerConfig } from '../../configs/PlayerConfig';
+import { ScaleConfig } from '../../configs/ScaleConfig';
 
 const { ccclass } = _decorator;
 
@@ -38,13 +38,13 @@ export class PlayerController extends Component {
     const current = this.node.position;
     const dist = Vec3.distance(current, this._targetPos);
 
-    if (dist <= PlayerConfig.ARRIVE_THRESHOLD) {
+    if (dist <= ScaleConfig.PLAYER.ARRIVE_THRESHOLD) {
       this.node.setPosition(this._targetPos.x, this._targetPos.y, current.z);
       this._targetPos = null;
       return;
     }
 
-    const step = PlayerConfig.MOVE_SPEED * dt;
+    const step = ScaleConfig.PLAYER.WALK_SPEED * dt;
     if (step >= dist) {
       this.node.setPosition(this._targetPos.x, this._targetPos.y, current.z);
       this._targetPos = null;

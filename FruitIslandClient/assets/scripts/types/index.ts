@@ -98,20 +98,37 @@ export interface IslandArea {
 /** 土地状态 */
 export enum LandState {
   LOCKED = 'LOCKED',
+  UNPURCHASED = 'UNPURCHASED',
   EMPTY = 'EMPTY',
   PLANTED = 'PLANTED',
   READY = 'READY',
 }
 
-/** 土地，对应 land 表 */
-export interface Land {
+/** 土地配置（全局静态） */
+export interface LandConfig {
   id: number;
-  areaId: number;
-  positionX: number;
-  positionY: number;
-  state: LandState;
+  areaType: string;   // FARM | FLOWER
+  blockId: string;    // Farm-A, Flower-B 等
+  gridX: number;      // Block 内 X (0-3)
+  gridY: number;      // Block 内 Y (0-3)
   unlockLevel: number;
-  createTime: string;
+  buyPrice: number;
+}
+
+/** 土地视图 — 合并配置 + 玩家状态 */
+export interface LandVO {
+  landConfigId: number;
+  areaType: string;
+  blockId: string;
+  gridX: number;
+  gridY: number;
+  status: string;       // 动态: LOCKED / UNPURCHASED / EMPTY / PLANTED / READY
+  unlockLevel: number;
+  buyPrice: number;
+  playerLandId?: number; // 已购买才有
+  cropId?: string;
+  plantTime?: string;
+  finishTime?: string;
 }
 
 /** 作物种植记录，对应 crop_plant 表 */
@@ -210,9 +227,7 @@ export interface LoginRes {
 export interface GameInitData {
   player: GamePlayer;
   island: Island;
-  areas: IslandArea[];
-  lands: Land[];
-  buildings: Building[];
+  lands: LandVO[];
   inventory: InventoryItem[];
 }
 
@@ -227,4 +242,8 @@ export enum ErrorCode {
   COIN_NOT_ENOUGH = 20001,
   // 地图/土地 30xxx
   LAND_LOCKED = 30001,
+  LAND_NOT_UNLOCKED = 30002,
+  LAND_ALREADY_PURCHASED = 30003,
+  LAND_NOT_EMPTY = 30004,
+  GOLD_NOT_ENOUGH = 30005,
 }

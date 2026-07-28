@@ -28,5 +28,13 @@ public class ErrorCode {
     // ==================== Map / Land 30xxx ====================
     /** 土地未解锁 */
     public static final int LAND_LOCKED = 30001;
+    /** 土地未达到解锁等级 */
+    public static final int LAND_NOT_UNLOCKED = 30002;
+    /** 土地已购买 */
+    public static final int LAND_ALREADY_PURCHASED = 30003;
+    /** 土地不是空地 */
+    public static final int LAND_NOT_EMPTY = 30004;
+    /** 金币不足 */
+    public static final int GOLD_NOT_ENOUGH = 30005;
 
 }

@@ -8,4 +8,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class CropPlantServiceImpl extends BaseServiceImplX<CropPlantMapper, CropPlant> implements CropPlantService {
+
+    @Override
+    public CropPlant findLatestByPlayerLand(Long playerLandId) {
+        return baseMapper.selectLatestByPlayerLand(playerLandId);
+    }
 }

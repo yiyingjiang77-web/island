@@ -1,4 +1,4 @@
-import { GamePlayer, Island, GameInitData, IslandArea, Land, Building, InventoryItem } from '../types';
+import { GamePlayer, Island, GameInitData, LandVO, InventoryItem } from '../types';
 import { http } from '../network/HttpClient';
 import { Api } from '../network/Api';
 
@@ -18,9 +18,7 @@ export class DataManager {
 
   private _player: GamePlayer | null = null;
   private _island: Island | null = null;
-  private _areas: IslandArea[] = [];
-  private _lands: Land[] = [];
-  private _buildings: Building[] = [];
+  private _lands: LandVO[] = [];
   private _inventory: InventoryItem[] = [];
 
   private _loaded: boolean = false;
@@ -57,9 +55,7 @@ export class DataManager {
     const data = result.data;
     this._player = data.player;
     this._island = data.island;
-    this._areas = data.areas || [];
     this._lands = data.lands || [];
-    this._buildings = data.buildings || [];
     this._inventory = data.inventory || [];
 
     this._loaded = true;
@@ -68,6 +64,7 @@ export class DataManager {
     console.log(`  岛主: ${this._player.nickname}  Lv.${this._player.level}`);
     console.log(`  金币: ${this._player.gold}  钻石: ${this._player.diamond}`);
     console.log(`  岛屿: ${this._island.islandName}  Lv.${this._island.level}`);
+    console.log(`  土地: ${this._lands.length} 块  背包: ${this._inventory.length} 种物品`);
 
     return true;
   }
@@ -84,16 +81,8 @@ export class DataManager {
     return this._island;
   }
 
-  get areas(): IslandArea[] {
-    return this._areas;
-  }
-
-  get lands(): Land[] {
+  get lands(): LandVO[] {
     return this._lands;
-  }
-
-  get buildings(): Building[] {
-    return this._buildings;
   }
 
   get inventory(): InventoryItem[] {

@@ -1,11 +1,12 @@
 import { sys } from 'cc';
 import { ServerResult } from '../types';
+import { GameConfig } from '../../configs/GameConfig';
 
 /**
  * 统一 HTTP 请求客户端
  *
  * 功能：
- * - 自动拼接 baseUrl
+ * - 根据接口路径自动选择用户中心或游戏服务
  * - 自动携带 Authorization Token
  * - 统一错误处理
  * - 支持 GET / POST
@@ -13,8 +14,11 @@ import { ServerResult } from '../types';
 export class HttpClient {
   private static instance: HttpClient;
 
-  /** 服务器基础地址 */
-  private baseUrl: string = 'http://localhost:8080';
+  /** 用户中心地址（/auth/**） */
+  private authBaseUrl: string = GameConfig.AUTH_SERVER_URL;
+
+  /** 游戏服务地址（/game/**、/farm/**） */
+  private gameBaseUrl: string = GameConfig.GAME_SERVER_URL;
 
   /** 登录后保存的 Token */
   private token: string = '';
@@ -29,9 +33,24 @@ export class HttpClient {
     return HttpClient.instance;
   }
 
-  /** 设置服务器地址 */
+  /**
+   * 设置统一网关地址。
+   *
+   * 生产环境若使用 API Gateway，可通过该方法让所有接口走同一个地址。
+   */
   setBaseUrl(url: string): void {
-    this.baseUrl = url;
+    this.authBaseUrl = url;
+    this.gameBaseUrl = url;
+  }
+
+  /** 单独设置用户中心地址 */
+  setAuthBaseUrl(url: string): void {
+    this.authBaseUrl = url;
+  }
+
+  /** 单独设置游戏服务地址 */
+  setGameBaseUrl(url: string): void {
+    this.gameBaseUrl = url;
   }
 
   /** 保存登录 Token */
@@ -64,7 +83,7 @@ export class HttpClient {
    * GET 请求
    */
   async get<T = any>(url: string, params?: Record<string, any>): Promise<ServerResult<T>> {
-    let fullUrl = `${this.baseUrl}${url}`;
+    let fullUrl = `${this.resolveBaseUrl(url)}${url}`;
     if (params) {
       const query = Object.entries(params)
         .map(([k, v]: [string, any]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
@@ -78,8 +97,16 @@ export class HttpClient {
    * POST 请求
    */
   async post<T = any>(url: string, data?: any): Promise<ServerResult<T>> {
-    const fullUrl = `${this.baseUrl}${url}`;
+    const fullUrl = `${this.resolveBaseUrl(url)}${url}`;
     return this.request<T>('POST', fullUrl, data);
+  }
+
+  /** 根据接口前缀选择对应微服务 */
+  private resolveBaseUrl(url: string): string {
+    if (url.startsWith('/auth/')) {
+      return this.authBaseUrl;
+    }
+    return this.gameBaseUrl;
   }
 
   /**

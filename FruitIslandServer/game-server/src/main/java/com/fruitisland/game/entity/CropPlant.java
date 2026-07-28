@@ -13,7 +13,7 @@ public class CropPlant {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long landId;
+    private Long playerLandId;
     private String cropId;
     private LocalDateTime plantTime;
     private LocalDateTime finishTime;

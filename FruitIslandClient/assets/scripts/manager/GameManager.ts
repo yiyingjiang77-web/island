@@ -1,36 +1,42 @@
-import { _decorator, Component, Node, Vec3, find } from 'cc';
+import { _decorator, Component, Node, Vec3, find, Camera } from 'cc';
 import { http } from '../network/HttpClient';
 import { Api } from '../network/Api';
 import { DataManager } from '../data/DataManager';
 import { MapManager } from '../map/MapManager';
 import { PlayerManager } from '../player/PlayerManager';
 import { PlayerController } from '../player/PlayerController';
-import { CameraFollow } from '../camera/CameraFollow';
+import { CameraManager } from '../camera/CameraManager';
 import { InputManager } from '../input/InputManager';
 import { UIManager } from '../ui/UIManager';
 import { GameConfig } from '../../configs/GameConfig';
 import { MapConfig } from '../../configs/MapConfig';
-import { PlayerConfig } from '../../configs/PlayerConfig';
 
 const { ccclass } = _decorator;
 
 /**
- * 游戏入口管理器 - Demo1 数据驱动版
+ * 游戏入口管理器 — Demo1.6 世界地图版
  *
- * 流程：
- * 启动 → 登录 → /game/init → DataManager → 创建场景内容 → 进入游戏
+ * 场景结构：
+ *   Canvas
+ *   ├── WorldRoot          ← 跟随摄像机移动
+ *   │   ├── TerrainLayer
+ *   │   ├── LandLayer
+ *   │   ├── BuildingLayer  (预留)
+ *   │   ├── NPCLayer       (预留)
+ *   │   └── PlayerLayer
+ *   ├── MainCamera
+ *   └── UIRoot             ← 屏幕固定
  *
- * 职责：
- * - 登录流程（开发模式自动登录）
- * - 从服务器加载数据
- * - 协调各 Manager 初始化
- * - 运行时中枢：InputManager → handleMapClick → PlayerController
+ * 启动流程：
+ *   登录 → /game/init → 创建 WorldRoot+图层 → 地形 → 占位岛 → 玩家 → 摄像机 → 输入 → UI
  */
 @ccclass('GameManager')
 export class GameManager extends Component {
+  private _worldRoot: Node | null = null;
   private _mapManager: MapManager | null = null;
   private _playerManager: PlayerManager | null = null;
   private _playerController: PlayerController | null = null;
+  private _cameraManager: CameraManager | null = null;
   private _inputManager: InputManager | null = null;
 
   onLoad(): void {
@@ -40,9 +46,9 @@ export class GameManager extends Component {
   // ==================== 启动流程 ====================
 
   private async startGame(): Promise<void> {
-    console.log('[GameManager] Demo1 启动 🏝️');
+    console.log('[GameManager] Demo1.6 世界地图启动 🏝️');
 
-    // 1. 尝试用已保存的 Token 加载数据
+    // 1. 尝试自动登录
     const savedToken = http.getToken();
     if (savedToken) {
       console.log('[GameManager] 检测到已保存 Token，尝试自动登录...');
@@ -73,17 +79,9 @@ export class GameManager extends Component {
     this.initGameWorld();
   }
 
-  /**
-   * 登录
-   *
-   * Demo1: 开发模式自动登录（mock code）
-   * 微信小游戏: wx.login → code → 服务端
-   */
   private async login(): Promise<boolean> {
     let code: string;
-
     if (typeof wx !== 'undefined') {
-      // 微信小游戏
       code = await new Promise<string>((resolve, reject) => {
         (wx as any).login({
           success: (res: { code: string }) => resolve(res.code),
@@ -91,144 +89,169 @@ export class GameManager extends Component {
         });
       });
     } else {
-      // 浏览器开发模式
       code = 'dev_mock_code_' + Date.now();
-      console.log('[GameManager] 开发模式，使用 mock code:', code);
     }
 
     const result = await http.post(Api.WECHAT_LOGIN, { code });
-
     if (result.code === 0) {
       http.setToken(result.data.token);
-      console.log('[GameManager] 登录成功:', result.data.nickname);
+      console.log('[GameManager] 登录成功');
       return true;
     }
-
-    // 服务器不可用时，离线模式（纯Demo0体验）
     if (result.code === -1) {
       console.warn('[GameManager] 服务器不可用，使用离线模式');
-      return false;
     }
-
     return false;
   }
 
   // ==================== 世界初始化 ====================
 
-  /**
-   * 初始化游戏世界
-   *
-   * 顺序：MapRoot/PlayerRoot → Map → Player → Camera → Input → UI
-   */
   private initGameWorld(): void {
-    this.initRoots();
-    this.initMap();
+    this.initSceneStructure();
+    this.initTerrain();
+    this.initPlaceholderIsland();
     this.initPlayer();
     this.initCamera();
     this.initInput();
     this.initUI();
 
-    console.log('[GameManager] Demo1 初始化完成！🏝️');
-    console.log('  数据驱动：玩家、岛屿信息来自服务器');
-    console.log('  点击草地移动，点击水/沙滩不移动');
+    console.log('[GameManager] Demo1.6 世界地图初始化完成！🏝️');
+    console.log(`  世界: ${MapConfig.WORLD_SIZE}×${MapConfig.WORLD_SIZE}px`);
+    console.log(`  网格: ${MapConfig.GRID_COUNT}×${MapConfig.GRID_COUNT}  (${MapConfig.TILE_SIZE}px/tile)`);
+    console.log(`  可行走区域: grid(${MapConfig.GRASS_START}~${MapConfig.GRASS_END})`);
+    console.log('  操作: 点击移动 | 拖拽屏幕');
   }
 
-  private initRoots(): void {
+  /** 创建 WorldRoot + UIRoot + 各 Layer */
+  private initSceneStructure(): void {
     const canvas = find('Canvas') || this.node;
-    for (const name of ['MapRoot', 'PlayerRoot']) {
-      if (!find(name)) {
+
+    // WorldRoot — 跟随摄像机
+    if (!find('WorldRoot')) {
+      this._worldRoot = new Node('WorldRoot');
+      canvas.addChild(this._worldRoot);
+    } else {
+      this._worldRoot = find('WorldRoot');
+    }
+
+    // 子图层
+    const layers = ['TerrainLayer', 'LandLayer', 'BuildingLayer', 'NPCLayer', 'PlayerLayer'];
+    for (const name of layers) {
+      if (!find(`WorldRoot/${name}`)) {
         const node = new Node(name);
-        canvas.addChild(node);
+        this._worldRoot!.addChild(node);
       }
     }
+
+    // UIRoot — 屏幕固定
+    if (!find('UIRoot')) {
+      const uiRoot = new Node('UIRoot');
+      canvas.addChild(uiRoot);
+    }
+
+    // 摄像机
+    if (!find('MainCamera')) {
+      const camNode = new Node('MainCamera');
+      camNode.addComponent(Camera);
+      canvas.addChild(camNode);
+      camNode.setPosition(MapConfig.WORLD_CENTER, MapConfig.WORLD_CENTER, 1000);
+    }
   }
 
-  private initMap(): void {
-    let mapNode = find('MapRoot/Map');
-    if (!mapNode) {
-      mapNode = new Node('Map');
-      find('MapRoot')!.addChild(mapNode);
+  private initTerrain(): void {
+    const terrainLayer = find('WorldRoot/TerrainLayer')!;
+    this._mapManager = terrainLayer.getComponent(MapManager) || terrainLayer.addComponent(MapManager);
+    this._mapManager.generateTerrain();
+  }
+
+  private initPlaceholderIsland(): void {
+    const landLayer = find('WorldRoot/LandLayer');
+    if (this._mapManager) {
+      this._mapManager.createPlaceholderIsland(landLayer);
     }
-    this._mapManager = mapNode.getComponent(MapManager) || mapNode.addComponent(MapManager);
   }
 
   private initPlayer(): void {
-    let playerManagerNode = find('PlayerRoot/PlayerManager');
-    if (!playerManagerNode) {
-      playerManagerNode = new Node('PlayerManager');
-      find('PlayerRoot')!.addChild(playerManagerNode);
+    const playerLayer = find('WorldRoot/PlayerLayer')!;
+    let pmNode = find('WorldRoot/PlayerLayer/PlayerManager');
+    if (!pmNode) {
+      pmNode = new Node('PlayerManager');
+      playerLayer.addChild(pmNode);
     }
-    this._playerManager = playerManagerNode.getComponent(PlayerManager)
-      || playerManagerNode.addComponent(PlayerManager);
+    this._playerManager = pmNode.getComponent(PlayerManager) || pmNode.addComponent(PlayerManager);
 
     const playerNode = this._playerManager.createPlayer();
     this._playerController = playerNode.getComponent(PlayerController);
   }
 
   private initCamera(): void {
-    const camNode = find('MainCamera') || find('Camera');
-    if (!camNode) {
-      console.warn('[GameManager] 未找到摄像机节点');
-      return;
-    }
+    const camNode = find('MainCamera')!;
+    this._cameraManager = camNode.getComponent(CameraManager) || camNode.addComponent(CameraManager);
 
-    const follow = camNode.getComponent(CameraFollow) || camNode.addComponent(CameraFollow);
-    const playerNode = find('PlayerRoot/Player');
-    if (playerNode) {
-      follow.setTarget(playerNode);
+    // 摄像机跟随 WorldRoot
+    if (this._worldRoot) {
+      this._cameraManager.setTarget(this._worldRoot);
     }
   }
 
-  /**
-   * 初始化输入 —— 核心路由
-   *
-   * InputManager → GameManager.handleMapClick → 边界检查 → PlayerController.moveTo
-   */
   private initInput(): void {
     this._inputManager = this.node.getComponent(InputManager)
       || this.node.addComponent(InputManager);
 
+    // 设置摄像机引用（供 InputManager 坐标转换）
+    if (this._cameraManager?.camera) {
+      this._inputManager.setCamera(this._cameraManager.camera);
+    }
+
+    // 点击移动
     this._inputManager.onClickMap((worldPos: Vec3) => {
       this.handleMapClick(worldPos);
+    });
+
+    // 拖动摄像机
+    this._inputManager.onDragCamera((delta) => {
+      if (this._cameraManager) {
+        this._cameraManager.onDragMove(delta);
+      }
     });
   }
 
   private initUI(): void {
-    // UIManager 在场景中的 UIRoot 上（在编辑器中手动创建）
-    // 如果没有，运行时创建基本 HUD
     const uiRoot = find('UIRoot');
     if (!uiRoot) {
-      console.log('[GameManager] 未找到 UIRoot 节点（可在编辑器中创建）');
+      console.log('[GameManager] 未找到 UIRoot 节点');
+      return;
     }
+
+    // TopHUD
+    let hudNode = find('UIRoot/TopHUD');
+    if (!hudNode) {
+      hudNode = new Node('TopHUD');
+      uiRoot.addChild(hudNode);
+    }
+    hudNode.getComponent(UIManager) || hudNode.addComponent(UIManager);
   }
 
-  // ==================== 运行时中枢 ====================
+  // ==================== 运行时 ====================
 
-  /**
-   * 处理地图点击
-   *
-   * 未来扩展：点击建筑→打开UI、点击土地→种植 等，都在这里分发
-   */
   private handleMapClick(worldPos: Vec3): void {
     if (!this._mapManager || !this._playerController) return;
 
-    if (!this._mapManager.isInBounds(worldPos)) {
-      this.log(`超出地图边界，忽略`);
+    if (!this._mapManager.isInBounds(worldPos.x, worldPos.y)) {
+      this.log('超出地图边界');
       return;
     }
 
-    if (!this._mapManager.isWalkable(worldPos)) {
-      this.log(`目标不可走（水/沙滩），忽略`);
+    if (!this._mapManager.isWalkable(worldPos.x, worldPos.y)) {
+      this.log('不可行走（水域/沙滩）');
       return;
     }
 
-    const clamped = this._mapManager.clampToWalkable(worldPos);
-    this._playerController.moveTo(clamped);
+    const clamped = this._mapManager.clampToWalkable(worldPos.x, worldPos.y);
+    this._playerController.moveTo(new Vec3(clamped.x, clamped.y, 0));
   }
 
   private log(msg: string): void {
-    if (GameConfig.DEBUG) {
-      console.log(`[GameManager] ${msg}`);
-    }
+    if (GameConfig.DEBUG) console.log(`[GameManager] ${msg}`);
   }
 }

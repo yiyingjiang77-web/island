@@ -2,14 +2,17 @@ package com.fruitisland.game.controller;
 
 import com.fruitisland.common.result.Result;
 import com.fruitisland.game.dto.GameInitVO;
+import com.fruitisland.game.dto.LandVO;
 import com.fruitisland.game.entity.GamePlayer;
+import com.fruitisland.game.entity.Inventory;
 import com.fruitisland.game.entity.Island;
-import com.fruitisland.game.service.GamePlayerService;
-import com.fruitisland.game.service.IslandService;
+import com.fruitisland.game.service.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 游戏主 Controller
@@ -24,6 +27,8 @@ public class GameController {
 
     private final GamePlayerService gamePlayerService;
     private final IslandService islandService;
+    private final PlayerLandService playerLandService;
+    private final InventoryService inventoryService;
 
     /**
      * 游戏初始化
@@ -31,7 +36,7 @@ public class GameController {
      * 客户端进入 MainScene 前调用，获取玩家所有游戏数据
      *
      * 请求头: Authorization: Bearer <token>
-     * 响应: {"code": 0, "data": {"player": {...}, "island": {...}}}
+     * 响应: {"code": 0, "data": {"player": {...}, "island": {...}, "lands": [...], "inventory": [...]}}
      */
     @GetMapping("/init")
     public Result<GameInitVO> gameInit(HttpServletRequest request) {
@@ -40,9 +45,11 @@ public class GameController {
         log.info("游戏初始化请求: userId={}", userId);
 
         // 1. 查找或创建游戏角色
+        boolean isNewPlayer = false;
         GamePlayer player = gamePlayerService.findByUserId(userId);
         if (player == null) {
             player = gamePlayerService.createPlayer(userId);
+            isNewPlayer = true;
             log.info("新角色创建: playerId={}", player.getId());
         }
 
@@ -53,7 +60,31 @@ public class GameController {
             log.info("新岛屿创建: islandId={}", island.getId());
         }
 
-        GameInitVO vo = GameInitVO.of(player, island);
+        // 3. 新玩家：赠送第一块地 + 草莓种子
+        if (isNewPlayer) {
+            initNewPlayerLands(player.getId());
+            log.info("新玩家初始土地初始化完成: playerId={}", player.getId());
+        }
+
+        // 4. 加载土地数据
+        List<LandVO> lands = playerLandService.listByPlayer(player.getId(), player.getLevel());
+
+        // 5. 加载背包
+        List<Inventory> inventory = inventoryService.lambdaQuery()
+                .eq(Inventory::getPlayerId, player.getId())
+                .list();
+
+        GameInitVO vo = GameInitVO.of(player, island, lands, inventory);
         return Result.ok(vo);
+    }
+
+    /**
+     * 新玩家初始化：赠送第一块农田 + 草莓种子
+     */
+    private void initNewPlayerLands(Long playerId) {
+        // 第一块免费地 (land_config_id=1)
+        playerLandService.buy(playerId, 1L, 1);
+        // 背包：草莓种子 ×1
+        inventoryService.addItem(playerId, "strawberry_seed", 1);
     }
 }

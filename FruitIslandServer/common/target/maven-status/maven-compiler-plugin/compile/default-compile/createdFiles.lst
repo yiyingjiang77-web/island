@@ -1,6 +1,8 @@
+com/fruitisland/common/config/WebConfig.class
 com/fruitisland/common/config/MyBatisPlusConfig$1.class
 com/fruitisland/common/base/BaseServiceX.class
 com/fruitisland/common/config/RedisConfig.class
+com/fruitisland/common/interceptor/JwtInterceptor.class
 com/fruitisland/common/base/BaseMapperX.class
 com/fruitisland/common/constant/ErrorCode.class
 com/fruitisland/common/result/Result.class

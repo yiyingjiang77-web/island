@@ -25,7 +25,7 @@ public class GamePlayerServiceImpl extends BaseServiceImplX<GamePlayerMapper, Ga
         player.setNickname("岛主");
         player.setLevel(1);
         player.setExp(0);
-        player.setGold(1000L);
+        player.setGold(500L);
         player.setDiamond(20);
         player.setAvatarId("default");
         save(player);
