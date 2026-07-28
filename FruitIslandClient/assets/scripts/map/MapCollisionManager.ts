@@ -20,6 +20,8 @@ export class MapCollisionManager extends Component {
   private _waterEdge: number = 1;
   /** 沙滩宽度 */
   private _beachWidth: number = 2;
+  /** 玩家中心与建筑边缘的最小距离 */
+  private readonly _actorPadding: number = 24;
 
   init(gridManager: GridManager, buildingManager: BuildingManager): void {
     this._gridManager = gridManager;
@@ -58,7 +60,8 @@ export class MapCollisionManager extends Component {
     }
 
     // 3. 建筑碰撞检查
-    if (this._buildingManager && this._buildingManager.isBlocked(worldX, worldY)) {
+    if (this._buildingManager &&
+        this._buildingManager.isBlocked(worldX, worldY, this._actorPadding)) {
       return false;
     }
 
@@ -80,11 +83,18 @@ export class MapCollisionManager extends Component {
     let cy = Math.max(grassStart, Math.min(grassEnd, worldY));
 
     // 简单推开建筑：如果被阻挡，尝试往四个方向偏移
-    if (this._buildingManager && this._buildingManager.isBlocked(cx, cy)) {
+    if (this._buildingManager &&
+        this._buildingManager.isBlocked(cx, cy, this._actorPadding)) {
       const offsets = [gs, -gs, gs * 2, -gs * 2, gs * 3, -gs * 3];
       for (const off of offsets) {
-        if (!this._buildingManager.isBlocked(cx + off, cy)) { cx += off; break; }
-        if (!this._buildingManager.isBlocked(cx, cy + off)) { cy += off; break; }
+        if (!this._buildingManager.isBlocked(cx + off, cy, this._actorPadding)) {
+          cx += off;
+          break;
+        }
+        if (!this._buildingManager.isBlocked(cx, cy + off, this._actorPadding)) {
+          cy += off;
+          break;
+        }
       }
     }
 

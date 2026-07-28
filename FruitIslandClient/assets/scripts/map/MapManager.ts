@@ -22,20 +22,22 @@ const { ccclass } = _decorator;
 export class MapManager extends Component {
   private _gridManager: GridManager = new GridManager();
   private _loader: MapLoader = new MapLoader();
+  private _worldRoot: Node | null = null;
   private _buildingManager: BuildingManager | null = null;
   private _collisionManager: MapCollisionManager | null = null;
+  private _initialized: boolean = false;
 
   /** 农场方块节点（供外部查询） */
   private _farmNodes: Map<string, Node> = new Map();
 
   // ==================== 初始化 ====================
 
-  onLoad(): void {
-    console.log('[MapManager] Demo2.1 初始化开始');
-    this.init();
-  }
+  init(worldRoot: Node = this.node): void {
+    if (this._initialized) return;
+    this._initialized = true;
+    this._worldRoot = worldRoot;
+    console.log('[MapManager] Demo2.4 初始化开始');
 
-  init(): void {
     // 1. 加载配置
     const { mapConfig, farmConfig } = this._loader.loadConfigs();
 
@@ -54,29 +56,22 @@ export class MapManager extends Component {
     // 6. 初始化碰撞系统
     this.initCollision();
 
-    console.log('[MapManager] Demo2.1 初始化完成 ✅');
+    console.log('[MapManager] Demo2.4 初始化完成 ✅');
   }
 
   // ==================== 地形 ====================
 
   private createTerrain(): void {
-    const terrainLayer = this.node.getChildByName('TerrainLayer');
-    if (!terrainLayer) {
-      console.warn('[MapManager] TerrainLayer 不存在，跳过地形');
-      return;
-    }
+    const terrainLayer = this.getOrCreateLayer('TerrainLayer');
 
     const gm = this._gridManager.config;
-    const waterEdge = 1, beachWidth = 2;
+    const waterEdge = MapConfig.WATER_EDGE;
+    const beachWidth = MapConfig.BEACH_WIDTH;
+    const g = terrainLayer.getComponent(Graphics) || terrainLayer.addComponent(Graphics);
+    g.clear();
 
     for (let gx = 0; gx < gm.width; gx++) {
       for (let gy = 0; gy < gm.height; gy++) {
-        const tileNode = new Node(`Tile_${gx}_${gy}`);
-        const pos = this._gridManager.gridToWorldCenter(gx, gy);
-        tileNode.setPosition(pos);
-
-        const g = tileNode.addComponent(Graphics);
-
         // 根据位置判断地形
         const isWater =
           gx < waterEdge || gx >= gm.width - waterEdge ||
@@ -91,48 +86,41 @@ export class MapManager extends Component {
         } else if (isBeach) {
           g.fillColor = new Color(240, 220, 180);
         } else {
-          const shade = Math.floor(Math.random() * 30) - 15;
+          const shade = ((gx * 17 + gy * 31) % 25) - 12;
           g.fillColor = new Color(110 + shade, 160 + shade, 70 + Math.floor(shade / 2));
         }
 
-        g.rect(-gm.gridSize / 2, -gm.gridSize / 2, gm.gridSize, gm.gridSize);
+        const x = gx * gm.gridSize;
+        const y = gy * gm.gridSize;
+        g.rect(x, y, gm.gridSize, gm.gridSize);
         g.fill();
 
         g.strokeColor = new Color(0, 0, 0, 15);
         g.lineWidth = 0.5;
-        g.rect(-gm.gridSize / 2, -gm.gridSize / 2, gm.gridSize, gm.gridSize);
+        g.rect(x, y, gm.gridSize, gm.gridSize);
         g.stroke();
-
-        terrainLayer.addChild(tileNode);
       }
     }
 
-    console.log(`[MapManager] 地形: ${gm.width * gm.height} 块 (${gm.width}×${gm.height})`);
+    console.log(`[MapManager] 地形: ${gm.width}×${gm.height}，使用单 Graphics 节点绘制`);
   }
 
   // ==================== 建筑 ====================
 
   private createBuildings(buildings: BuildingConfig[]): void {
-    let buildingLayer = this.node.getChildByName('BuildingLayer');
-    if (!buildingLayer) {
-      buildingLayer = new Node('BuildingLayer');
-      this.node.addChild(buildingLayer);
-    }
+    const buildingLayer = this.getOrCreateLayer('BuildingLayer');
 
     this._buildingManager = buildingLayer.getComponent(BuildingManager)
       || buildingLayer.addComponent(BuildingManager);
-    this._buildingManager.init(this._gridManager);
-    this._buildingManager.createBuildings(buildings);
+    const manager = this._buildingManager;
+    manager.init(this._gridManager);
+    manager.createBuildings(buildings);
   }
 
   // ==================== 农田 ====================
 
   private createFarms(farms: FarmBlockConfig[]): void {
-    let landLayer = this.node.getChildByName('LandLayer');
-    if (!landLayer) {
-      landLayer = new Node('LandLayer');
-      this.node.addChild(landLayer);
-    }
+    const landLayer = this.getOrCreateLayer('LandLayer');
 
     for (const farm of farms) {
       const farmNode = new Node(`Farm_${farm.id}`);
@@ -168,15 +156,28 @@ export class MapManager extends Component {
   // ==================== 碰撞 ====================
 
   private initCollision(): void {
-    const colNode = this.node.getChildByName('CollisionManager')
-      || (() => { const n = new Node('CollisionManager'); this.node.addChild(n); return n; })();
+    const root = this._worldRoot || this.node;
+    const colNode = root.getChildByName('CollisionManager')
+      || (() => { const n = new Node('CollisionManager'); root.addChild(n); return n; })();
 
-    this._collisionManager = colNode.getComponent(MapCollisionManager)
+    const collisionManager = colNode.getComponent(MapCollisionManager)
       || colNode.addComponent(MapCollisionManager);
+    this._collisionManager = collisionManager;
 
     if (this._buildingManager) {
-      this._collisionManager.init(this._gridManager, this._buildingManager);
+      collisionManager.init(this._gridManager, this._buildingManager);
+      collisionManager.setTerrain(MapConfig.WATER_EDGE, MapConfig.BEACH_WIDTH);
     }
+  }
+
+  private getOrCreateLayer(name: string): Node {
+    const root = this._worldRoot || this.node;
+    let layer = root.getChildByName(name);
+    if (!layer) {
+      layer = new Node(name);
+      root.addChild(layer);
+    }
+    return layer;
   }
 
   // ==================== 公共接口 ====================

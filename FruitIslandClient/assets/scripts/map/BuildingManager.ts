@@ -100,10 +100,10 @@ export class BuildingManager extends Component {
   }
 
   /** 判断某个世界坐标是否被建筑阻挡 */
-  isBlocked(worldX: number, worldY: number): boolean {
+  isBlocked(worldX: number, worldY: number, padding: number = 0): boolean {
     for (const rect of this._collisionRects) {
-      if (worldX >= rect.left && worldX < rect.right &&
-          worldY >= rect.bottom && worldY < rect.top) {
+      if (worldX >= rect.left - padding && worldX < rect.right + padding &&
+          worldY >= rect.bottom - padding && worldY < rect.top + padding) {
         return true;
       }
     }

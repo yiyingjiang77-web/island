@@ -19,6 +19,8 @@ export class InputManager extends Component {
 
   /** 拖动回调 */
   private _onDragCamera: ((delta: Vec2) => void) | null = null;
+  private _onDragStart: (() => void) | null = null;
+  private _onDragEnd: (() => void) | null = null;
 
   /** 触摸追踪 */
   private _touchStartTime: number = 0;
@@ -58,6 +60,14 @@ export class InputManager extends Component {
     this._onDragCamera = callback;
   }
 
+  onDragStart(callback: () => void): void {
+    this._onDragStart = callback;
+  }
+
+  onDragEnd(callback: () => void): void {
+    this._onDragEnd = callback;
+  }
+
   // ==================== 触摸处理 ====================
 
   private onTouchStart(event: EventTouch): void {
@@ -72,8 +82,9 @@ export class InputManager extends Component {
     const totalDist = Vec2.distance(this._touchStartPos, pos);
 
     // 超过拖动阈值 → 进入拖动模式
-    if (totalDist > this.DRAG_THRESHOLD) {
+    if (totalDist > this.DRAG_THRESHOLD && !this._isDragging) {
       this._isDragging = true;
+      this._onDragStart?.();
     }
 
     if (this._isDragging && this._onDragCamera) {
@@ -88,7 +99,11 @@ export class InputManager extends Component {
   }
 
   private onTouchEnd(event: EventTouch): void {
-    if (this._isDragging) return; // 拖动结束，不触发点击
+    if (this._isDragging) {
+      this._isDragging = false;
+      this._onDragEnd?.();
+      return;
+    }
 
     const duration = Date.now() - this._touchStartTime;
     if (duration > this.TAP_MAX_DURATION) return; // 长按，不算点击

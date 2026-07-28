@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Vec3, Vec2, Camera, find } from 'cc';
+import { _decorator, Component, Node, Vec3, Vec2, Camera, find, view } from 'cc';
 import { MapConfig } from '../../configs/MapConfig';
 
 const { ccclass } = _decorator;
@@ -7,13 +7,13 @@ const { ccclass } = _decorator;
  * 摄像机管理器 — Demo1.6
  *
  * 功能：
- * - 平滑跟随 WorldRoot（基于玩家位置）
+ * - 平滑跟随玩家
  * - 手指拖动屏幕移动摄像机
  * - 边界限制：不可看到地图外
  */
 @ccclass('CameraManager')
 export class CameraManager extends Component {
-  /** 跟随目标节点（WorldRoot） */
+  /** 跟随目标节点（Player） */
   private _target: Node | null = null;
 
   /** 跟随平滑系数 (0=不跟, 1=瞬移) */
@@ -33,6 +33,10 @@ export class CameraManager extends Component {
   private _camera: Camera | null = null;
 
   onLoad(): void {
+    const size = view.getVisibleSize();
+    this._screenW = size.width;
+    this._screenH = size.height;
+
     const camNode = find('MainCamera') || find('Camera');
     if (camNode) {
       this._camera = camNode.getComponent(Camera);
@@ -42,6 +46,7 @@ export class CameraManager extends Component {
   /** 设置跟随目标 */
   setTarget(target: Node): void {
     this._target = target;
+    this.focusTarget(true);
   }
 
   /** 获取摄像机组件的引用 */
@@ -74,21 +79,29 @@ export class CameraManager extends Component {
     return this._dragging;
   }
 
+  /** 清除手动拖动偏移，重新聚焦玩家 */
+  focusTarget(immediate: boolean = false): void {
+    this._dragOffset.x = 0;
+    this._dragOffset.y = 0;
+    this._dragOffset.z = 0;
+    if (immediate && this._target) {
+      this.setClampedPosition(this._target.position.x, this._target.position.y);
+    }
+  }
+
   // ==================== 每帧更新 ====================
 
   update(dt: number): void {
-    if (this._dragging) return; // 拖动时暂停跟随
-
     if (!this._target) return;
 
     const worldSize = MapConfig.WORLD_SIZE;
     const halfW = this._screenW / 2;
     const halfH = this._screenH / 2;
 
-    // 目标位置：让玩家在屏幕中心
+    // Cocos 摄像机节点坐标表示视野中心
     const playerPos = this._target.position;
-    const targetCamX = playerPos.x - halfW;
-    const targetCamY = playerPos.y - halfH;
+    const targetCamX = playerPos.x;
+    const targetCamY = playerPos.y;
 
     // 加上拖动偏移
     const desiredX = targetCamX + this._dragOffset.x;
@@ -99,10 +112,18 @@ export class CameraManager extends Component {
     const lerpX = current.x + (desiredX - current.x) * Math.min(1, dt * this._smooth);
     const lerpY = current.y + (desiredY - current.y) * Math.min(1, dt * this._smooth);
 
-    // 边界裁剪：摄像机左上角不能 < 0，右下角不能 > WORLD_SIZE
-    const clampedX = Math.max(0, Math.min(worldSize - this._screenW, lerpX));
-    const clampedY = Math.max(0, Math.min(worldSize - this._screenH, lerpY));
+    // 边界裁剪：摄像机视野不能超出世界
+    const clampedX = Math.max(halfW, Math.min(worldSize - halfW, lerpX));
+    const clampedY = Math.max(halfH, Math.min(worldSize - halfH, lerpY));
 
+    this.node.setPosition(clampedX, clampedY, this.node.position.z);
+  }
+
+  private setClampedPosition(x: number, y: number): void {
+    const halfW = this._screenW / 2;
+    const halfH = this._screenH / 2;
+    const clampedX = Math.max(halfW, Math.min(MapConfig.WORLD_SIZE - halfW, x));
+    const clampedY = Math.max(halfH, Math.min(MapConfig.WORLD_SIZE - halfH, y));
     this.node.setPosition(clampedX, clampedY, this.node.position.z);
   }
 

@@ -5,11 +5,13 @@
   "description": "果香小岛 - 微信小游戏客户端",
   "assets": {
     "scripts": {
-      "core": ["GameManager.ts"],
-      "network": ["HttpClient.ts", "Api.ts"],
-      "player": ["PlayerController.ts"],
-      "ui": ["LoginUI.ts"],
-      "types": ["index.ts"]
+      "game": ["scripts/game/GameManager.ts"],
+      "network": ["scripts/network/HttpClient.ts", "scripts/network/Api.ts"],
+      "map": ["scripts/map/MapManager.ts", "scripts/map/MapLoader.ts"],
+      "player": ["scripts/player/PlayerController.ts", "scripts/player/PlayerManager.ts"],
+      "camera": ["scripts/camera/CameraManager.ts"],
+      "ui": ["scripts/ui/UIManager.ts"],
+      "types": ["scripts/types/index.ts"]
     }
   }
 }

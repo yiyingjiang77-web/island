@@ -138,7 +138,7 @@ export interface CropPlant {
   cropId: string;
   plantTime: string;
   finishTime: string;
-  status: string; // GROWING | READY | HARVESTED
+  status: string; // WAITING_WATER | GROWING | READY | HARVESTED
   createTime: string;
 }
 

@@ -29,8 +29,10 @@ declare module 'cc' {
     scale: Vec3;
     constructor(name?: string);
     setPosition(x: number, y: number, z: number): void;
+    setPosition(position: Vec3): void;
     addChild(child: Node): void;
     removeFromParent(): void;
+    getChildByName(name: string): Node | null;
     getComponent<T extends Component>(type: { new(...args: any[]): T }): T | null;
     addComponent<T extends Component>(type: { new(...args: any[]): T }): T;
   }
@@ -49,6 +51,8 @@ declare module 'cc' {
   export class Vec2 {
     x: number; y: number;
     constructor(x?: number, y?: number);
+    static distance(a: Vec2, b: Vec2): number;
+    clone(): Vec2;
   }
 
   export class Color {

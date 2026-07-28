@@ -14,6 +14,7 @@ const { ccclass } = _decorator;
 @ccclass('PlayerController')
 export class PlayerController extends Component {
   private _targetPos: Vec3 | null = null;
+  private _isWalkable: ((x: number, y: number) => boolean) | null = null;
 
   get isMoving(): boolean {
     return this._targetPos !== null;
@@ -25,6 +26,11 @@ export class PlayerController extends Component {
    */
   moveTo(target: Vec3): void {
     this._targetPos = target.clone();
+  }
+
+  /** 注入地图碰撞检查，避免移动过程穿过建筑 */
+  setWalkableChecker(checker: (x: number, y: number) => boolean): void {
+    this._isWalkable = checker;
   }
 
   /** 停止移动 */
@@ -52,6 +58,24 @@ export class PlayerController extends Component {
     }
 
     const dir = this._targetPos.clone().subtract(current).normalize();
-    this.node.setPosition(current.x + dir.x * step, current.y + dir.y * step, current.z);
+    const nextX = current.x + dir.x * step;
+    const nextY = current.y + dir.y * step;
+
+    if (!this._isWalkable || this._isWalkable(nextX, nextY)) {
+      this.node.setPosition(nextX, nextY, current.z);
+      return;
+    }
+
+    // 允许沿障碍边缘滑动；两个方向都不可走时停止。
+    if (this._isWalkable(nextX, current.y)) {
+      this.node.setPosition(nextX, current.y, current.z);
+      return;
+    }
+    if (this._isWalkable(current.x, nextY)) {
+      this.node.setPosition(current.x, nextY, current.z);
+      return;
+    }
+
+    this.stop();
   }
 }

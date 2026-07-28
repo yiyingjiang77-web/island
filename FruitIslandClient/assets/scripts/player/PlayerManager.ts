@@ -1,5 +1,4 @@
 import { _decorator, Component, Node, Graphics, Color, Vec3, find } from 'cc';
-import { DataManager } from '../data/DataManager';
 import { PlayerController } from './PlayerController';
 import { ScaleConfig } from '../../configs/ScaleConfig';
 import { MapConfig } from '../../configs/MapConfig';
@@ -9,7 +8,7 @@ const { ccclass } = _decorator;
 /**
  * 玩家管理器 — Demo1.6
  *
- * 出生点在岛屿中心（广场附近，MapConfig.SPAWN_GX, SPAWN_GY）
+ * 出生点使用 MapConfig.SPAWN_GX / SPAWN_GY。
  */
 @ccclass('PlayerManager')
 export class PlayerManager extends Component {
@@ -17,9 +16,6 @@ export class PlayerManager extends Component {
   private _controller: PlayerController | null = null;
 
   createPlayer(): Node {
-    const data = DataManager.getInstance();
-    const playerData = data.player;
-
     // 挂在 PlayerLayer 下
     let playerLayer = find('WorldRoot/PlayerLayer');
     if (!playerLayer) {
@@ -30,7 +26,7 @@ export class PlayerManager extends Component {
     this._playerNode = new Node('Player');
     playerLayer.addChild(this._playerNode);
 
-    // 出生点：岛屿中心（广场附近）
+    // 出生点：码头上方主通道
     const spawnX = MapConfig.gridToWorldX(MapConfig.SPAWN_GX);
     const spawnY = MapConfig.gridToWorldY(MapConfig.SPAWN_GY);
     this._playerNode.setPosition(spawnX, spawnY, 10);

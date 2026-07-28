@@ -14,14 +14,14 @@ import { MapConfig } from '../../configs/MapConfig';
 const { ccclass } = _decorator;
 
 /**
- * 游戏入口 — Demo2.1
+ * 游戏入口 — Demo2.4
  *
  * 启动流程：
  *   登录 → /game/init → 场景分层 → MapManager.init() → 玩家 → 摄像机 → 输入 → UI
  *
  * 场景结构：
  *   Canvas
- *   ├── WorldRoot           ← 跟摄像机移动
+ *   ├── WorldRoot           ← 固定世界坐标
  *   │   ├── TerrainLayer    ← 地形（水/沙/草）
  *   │   ├── LandLayer       ← 农田
  *   │   ├── BuildingLayer   ← 建筑
@@ -34,6 +34,7 @@ const { ccclass } = _decorator;
 export class GameManager extends Component {
   private _worldRoot: Node | null = null;
   private _mapManager: MapManager | null = null;
+  private _playerNode: Node | null = null;
   private _playerController: PlayerController | null = null;
   private _cameraManager: CameraManager | null = null;
   private _inputManager: InputManager | null = null;
@@ -45,23 +46,29 @@ export class GameManager extends Component {
   // ==================== 启动 ====================
 
   private async startGame(): Promise<void> {
-    console.log('[GameManager] Demo2.1 启动 🏝️');
+    console.log('[GameManager] Demo2.4 启动 🏝️');
 
-    // 登录
+    let dataLoaded = false;
     const savedToken = http.getToken();
-    if (!savedToken) {
+    if (savedToken) {
+      dataLoaded = await DataManager.getInstance().loadGameData();
+      if (!dataLoaded) {
+        http.clearToken();
+        console.warn('[GameManager] 已保存 Token 无效，尝试重新登录');
+      }
+    }
+
+    if (!dataLoaded) {
       const ok = await this.login();
-      if (!ok) { console.error('[GameManager] 登录失败'); return; }
+      if (ok) {
+        dataLoaded = await DataManager.getInstance().loadGameData();
+      }
     }
 
-    // 加载数据
-    const loaded = await DataManager.getInstance().loadGameData();
-    if (!loaded) {
-      // 离线模式也继续，让玩家看到地图
-      console.warn('[GameManager] 服务器不可用，仅展示地图');
+    if (!dataLoaded) {
+      console.warn('[GameManager] 服务器不可用，进入离线地图预览模式');
     }
 
-    // 初始化世界
     this.initGameWorld();
   }
 
@@ -86,7 +93,7 @@ export class GameManager extends Component {
     this.initInput();
     this.initUI();
 
-    console.log('[GameManager] Demo2.1 世界就绪 ✅');
+    console.log('[GameManager] Demo2.4 世界就绪 ✅');
   }
 
   private createSceneStructure(): void {
@@ -127,7 +134,7 @@ export class GameManager extends Component {
       this._worldRoot!.addChild(mapNode);
     }
     this._mapManager = mapNode.getComponent(MapManager) || mapNode.addComponent(MapManager);
-    // init() 在 onLoad 中自动调用
+    this._mapManager.init(this._worldRoot!);
   }
 
   private initPlayer(): void {
@@ -139,13 +146,16 @@ export class GameManager extends Component {
     }
     const pm = pmNode.getComponent(PlayerManager) || pmNode.addComponent(PlayerManager);
     const playerNode = pm.createPlayer();
+    this._playerNode = playerNode;
     this._playerController = playerNode.getComponent(PlayerController);
+    this._playerController?.setWalkableChecker((x, y) =>
+      this._mapManager?.isWalkable(x, y) ?? true);
   }
 
   private initCamera(): void {
     const camNode = find('MainCamera')!;
     this._cameraManager = camNode.getComponent(CameraManager) || camNode.addComponent(CameraManager);
-    if (this._worldRoot) this._cameraManager.setTarget(this._worldRoot);
+    if (this._playerNode) this._cameraManager.setTarget(this._playerNode);
   }
 
   private initInput(): void {
@@ -164,6 +174,12 @@ export class GameManager extends Component {
     // 拖动 → 摄像机
     this._inputManager.onDragCamera((delta) => {
       this._cameraManager?.onDragMove(delta);
+    });
+    this._inputManager.onDragStart(() => {
+      this._cameraManager?.onDragStart();
+    });
+    this._inputManager.onDragEnd(() => {
+      this._cameraManager?.onDragEnd();
     });
   }
 
@@ -186,6 +202,7 @@ export class GameManager extends Component {
     }
 
     const clamped = this._mapManager.clampToWalkable(worldPos.x, worldPos.y);
+    this._cameraManager?.focusTarget();
     this._playerController.moveTo(clamped);
   }
 }

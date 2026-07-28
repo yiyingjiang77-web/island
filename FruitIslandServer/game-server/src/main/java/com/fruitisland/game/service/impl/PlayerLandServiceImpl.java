@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -25,10 +24,10 @@ import java.util.stream.Collectors;
  *   PLANTED       — 已种植，未成熟（含水分系统）
  *   READY         — 已成熟可收获
  *
- * 水分系统：
- *   初始 100，每 4 小时 -10
- *   水分 = 0 → 作物暂停生长，不会成熟
- *   浇水 → 恢复到 100
+ * 浇水规则：
+ *   种植后 water_level=0、finish_time=null，等待玩家浇水
+ *   首次浇水后 water_level=100，并从此刻开始成熟倒计时
+ *   每轮作物只浇水一次，不做持续水分衰减
  */
 @Slf4j
 @Service
@@ -42,9 +41,6 @@ public class PlayerLandServiceImpl
     private final InventoryService inventoryService;
     private final CropPlantService cropPlantService;
 
-    /** 水分衰减：每 240 分钟减 10 点 */
-    private static final int WATER_DECAY_MINUTES = 240;
-    private static final int WATER_DECAY_AMOUNT = 10;
     private static final int WATER_MAX = 100;
 
     /** 作物默认生长时间（秒），用于开发测试 */
@@ -58,15 +54,9 @@ public class PlayerLandServiceImpl
             "corn", 600
     );
 
-    /**
-     * 动态计算当前水分
-     */
+    /** 当前版本只区分未浇水(0)和已浇水(100)。 */
     private int calcCurrentWater(PlayerLand land) {
-        if (land.getWaterLevel() == null) return WATER_MAX;
-        if (land.getLastWateredAt() == null) return land.getWaterLevel();
-        long elapsedMin = ChronoUnit.MINUTES.between(land.getLastWateredAt(), LocalDateTime.now());
-        double drop = (elapsedMin / (double) WATER_DECAY_MINUTES) * WATER_DECAY_AMOUNT;
-        return Math.max(0, (int) (land.getWaterLevel() - drop));
+        return land.getWaterLevel() == null ? 0 : land.getWaterLevel();
     }
 
     @Override
@@ -98,14 +88,11 @@ public class PlayerLandServiceImpl
             } else {
                 int currentWater = calcCurrentWater(pl);
 
-                // 检查是否成熟（水分 > 0 才能真正成熟）
+                // 浇水并到达 finishTime 后才成熟。
                 if ("PLANTED".equals(pl.getStatus()) && pl.getFinishTime() != null
                         && !pl.getFinishTime().isAfter(now)) {
-                    if (currentWater > 0) {
-                        pl.setStatus("READY");
-                        updateById(pl);
-                    }
-                    // 水分 = 0 → 干旱，不会自动成熟
+                    pl.setStatus("READY");
+                    updateById(pl);
                 }
 
                 builder.status(pl.getStatus())
@@ -170,26 +157,25 @@ public class PlayerLandServiceImpl
         seedItem.setCount(seedItem.getCount() - 1);
         inventoryService.updateById(seedItem);
 
-        int growSec = CROP_GROW_SECONDS.getOrDefault(cropId, 60);
         LocalDateTime now = LocalDateTime.now();
 
         land.setStatus("PLANTED");
         land.setCropId(cropId);
         land.setPlantTime(now);
-        land.setFinishTime(now.plusSeconds(growSec));
-        land.setWaterLevel(WATER_MAX);
-        land.setLastWateredAt(now);
+        land.setFinishTime(null);
+        land.setWaterLevel(0);
+        land.setLastWateredAt(null);
         updateById(land);
 
         CropPlant record = new CropPlant();
         record.setPlayerLandId(playerLandId);
         record.setCropId(cropId);
         record.setPlantTime(now);
-        record.setFinishTime(land.getFinishTime());
-        record.setStatus("GROWING");
+        record.setFinishTime(null);
+        record.setStatus("WAITING_WATER");
         cropPlantService.save(record);
 
-        log.info("玩家 {} 种植 {} 于土地 {}, {}秒成熟, 水分={}", playerId, cropId, playerLandId, growSec, WATER_MAX);
+        log.info("玩家 {} 种植 {} 于土地 {}，等待浇水", playerId, cropId, playerLandId);
         return land;
     }
 
@@ -199,16 +185,26 @@ public class PlayerLandServiceImpl
         PlayerLand land = getById(playerLandId);
         if (land == null) throw new RuntimeException("土地不存在");
         if (!land.getPlayerId().equals(playerId)) throw new RuntimeException("这不是你的土地");
-        if (!"PLANTED".equals(land.getStatus()) && !"READY".equals(land.getStatus()))
+        if (!"PLANTED".equals(land.getStatus()))
             throw new RuntimeException("只有种植中的作物需要浇水");
+        if (land.getLastWateredAt() != null)
+            throw new RuntimeException("这轮作物已经浇过水了");
 
-        int beforeWater = calcCurrentWater(land);
         LocalDateTime now = LocalDateTime.now();
+        int growSec = CROP_GROW_SECONDS.getOrDefault(land.getCropId(), 60);
         land.setWaterLevel(WATER_MAX);
         land.setLastWateredAt(now);
+        land.setFinishTime(now.plusSeconds(growSec));
         updateById(land);
 
-        log.info("玩家 {} 浇水土地 {}, 水分 {} → {}", playerId, playerLandId, beforeWater, WATER_MAX);
+        CropPlant latestRecord = cropPlantService.findLatestByPlayerLand(playerLandId);
+        if (latestRecord != null && "WAITING_WATER".equals(latestRecord.getStatus())) {
+            latestRecord.setFinishTime(land.getFinishTime());
+            latestRecord.setStatus("GROWING");
+            cropPlantService.updateById(latestRecord);
+        }
+
+        log.info("玩家 {} 浇水土地 {}，{}秒后成熟", playerId, playerLandId, growSec);
         return land;
     }
 
@@ -222,11 +218,10 @@ public class PlayerLandServiceImpl
         if ("EMPTY".equals(land.getStatus()))
             throw new RuntimeException("土地是空的，没东西可收");
         if ("PLANTED".equals(land.getStatus())) {
+            if (land.getFinishTime() == null)
+                throw new RuntimeException("作物还没有浇水 💧");
             if (land.getFinishTime() != null && land.getFinishTime().isAfter(LocalDateTime.now()))
                 throw new RuntimeException("作物还没成熟");
-            int w = calcCurrentWater(land);
-            if (w <= 0)
-                throw new RuntimeException("作物干枯了！请先浇水 💧");
         }
 
         String cropId = land.getCropId();

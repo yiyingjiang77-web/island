@@ -1,7 +1,5 @@
-import { _decorator, Component } from 'cc';
 import { GridManager, MapGridConfig } from './GridManager';
-
-const { ccclass } = _decorator;
+import { MapConfig } from '../../configs/MapConfig';
 
 /**
  * 建筑配置（对应 MapConfig.json 中的 buildings[]）
@@ -51,21 +49,17 @@ export interface FarmRawConfig {
  * - 加载 MapConfig.json / FarmConfig.json
  * - 将原始 JSON 数据注入 GridManager 和 MapManager
  *
- * 注意：Cocos Creator 中 resources.load 加载 JSON 需要文件在 resources/ 目录
- * Demo2.1 阶段直接用内嵌数据（后续改为异步加载）
+ * 运行时坐标统一来自 MapConfig.ts，避免 MapManager 再维护一份坐标。
+ * MapConfig.json / FarmConfig.json 保留给策划配置和校验工具使用。
  */
-@ccclass('MapLoader')
-export class MapLoader extends Component {
+export class MapLoader {
   private _mapConfig: MapRawConfig | null = null;
   private _farmConfig: FarmRawConfig | null = null;
 
   /**
    * 加载地图配置
    *
-   * Cocos 版：
-   *   resources.load('configs/MapConfig', JsonAsset, (err, asset) => { ... })
-   *
-   * Demo2.1 版：直接使用内嵌数据（与 MapConfig.json 内容一致）
+   * 当前使用同步 TypeScript 配置，保证场景初始化不依赖异步资源加载。
    */
   loadConfigs(): { mapConfig: MapRawConfig; farmConfig: FarmRawConfig } {
     this._mapConfig = this.getMapConfigData();
@@ -91,31 +85,72 @@ export class MapLoader extends Component {
     return this.farmConfig.farms;
   }
 
-  // ==================== 内嵌配置（与 JSON 文件内容同步） ====================
+  // ==================== 配置转换 ====================
 
   private getMapConfigData(): MapRawConfig {
+    const buildingMeta: Record<string, {
+      type: string;
+      prefab: string;
+      unlockLevel: number;
+    }> = {
+      chicken_coop: { type: 'animal', prefab: 'ChickenCoop', unlockLevel: 1 },
+      cow_barn: { type: 'animal', prefab: 'CowBarn', unlockLevel: 1 },
+      drink_shop: { type: 'shop', prefab: 'DrinkShop', unlockLevel: 4 },
+      cake_shop: { type: 'shop', prefab: 'CakeShop', unlockLevel: 3 },
+      exchange_shop: { type: 'shop', prefab: 'ExchangeShop', unlockLevel: 6 },
+      dock: { type: 'dock', prefab: 'Dock', unlockLevel: 1 },
+      bee_house: { type: 'decoration', prefab: 'BeeHouse', unlockLevel: 5 },
+    };
+
+    const buildings = MapConfig.ZONES
+      .filter(zone => buildingMeta[zone.id] !== undefined)
+      .map(zone => {
+        const meta = buildingMeta[zone.id];
+        return {
+          id: zone.id,
+          name: zone.name,
+          type: meta.type,
+          gx: zone.gx,
+          gy: zone.gy,
+          width: zone.w,
+          height: zone.h,
+          prefab: meta.prefab,
+          unlockLevel: meta.unlockLevel,
+        };
+      });
+
     return {
-      map: { width: 48, height: 48, gridSize: 120, worldSize: 5760 },
-      buildings: [
-        { id: 'chicken_coop', name: '鸡舍', type: 'animal', gx: 35, gy: 15, width: 6, height: 5, prefab: 'ChickenCoop', unlockLevel: 1 },
-        { id: 'cow_barn', name: '牛棚', type: 'animal', gx: 25, gy: 7, width: 8, height: 6, prefab: 'CowBarn', unlockLevel: 1 },
-        { id: 'drink_shop', name: '饮品店', type: 'shop', gx: 18, gy: 31, width: 6, height: 5, prefab: 'DrinkShop', unlockLevel: 4 },
-        { id: 'cake_shop', name: '蛋糕店', type: 'shop', gx: 15, gy: 22, width: 6, height: 5, prefab: 'CakeShop', unlockLevel: 3 },
-        { id: 'exchange_shop', name: '交易所', type: 'shop', gx: 15, gy: 14, width: 6, height: 4, prefab: 'ExchangeShop', unlockLevel: 6 },
-        { id: 'dock', name: '码头', type: 'dock', gx: 25, gy: 42, width: 5, height: 4, prefab: 'Dock', unlockLevel: 1 },
-        { id: 'bee_house', name: '蜂箱', type: 'decoration', gx: 26, gy: 20, width: 2, height: 2, prefab: 'BeeHouse', unlockLevel: 5 },
-      ],
+      map: {
+        width: MapConfig.GRID_COUNT,
+        height: MapConfig.GRID_COUNT,
+        gridSize: MapConfig.TILE_SIZE,
+        worldSize: MapConfig.WORLD_SIZE,
+      },
+      buildings,
     };
   }
 
   private getFarmConfigData(): FarmRawConfig {
+    const unlockLevels: Record<string, number> = {
+      farm_a: 1,
+      farm_b: 3,
+      farm_c: 5,
+      farm_d: 8,
+    };
+
+    const farms = MapConfig.ZONES
+      .filter(zone => zone.id.startsWith('farm_'))
+      .map(zone => ({
+        id: zone.id,
+        gx: zone.gx,
+        gy: zone.gy,
+        width: zone.w,
+        height: zone.h,
+        unlockLevel: unlockLevels[zone.id] ?? 1,
+      }));
+
     return {
-      farms: [
-        { id: 'farm_a', gx: 31, gy: 30, width: 4, height: 4, unlockLevel: 1 },
-        { id: 'farm_b', gx: 36, gy: 30, width: 4, height: 4, unlockLevel: 3 },
-        { id: 'farm_c', gx: 31, gy: 35, width: 4, height: 4, unlockLevel: 5 },
-        { id: 'farm_d', gx: 36, gy: 35, width: 4, height: 4, unlockLevel: 8 },
-      ],
+      farms,
       blockSize: 4,
       defaultCropGrowSeconds: 60,
     };

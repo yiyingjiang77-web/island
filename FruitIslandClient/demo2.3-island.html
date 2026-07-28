@@ -5,9 +5,10 @@
 <title>果香小岛 Demo2.3 — 紧凑布局 V3</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;height:100vh;font-family:'PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden}
+body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;width:100vw;height:100vh;height:100dvh;font-family:'PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden}
 .game{position:relative;border:3px solid #4a9eff;border-radius:12px;overflow:hidden;box-shadow:0 0 40px rgba(74,158,255,.3)}
 canvas{display:block}
+#game{width:100%;height:100%;touch-action:none}
 .hud{position:absolute;top:10px;left:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
 .hud-i{background:rgba(0,0,0,.65);color:#fff;padding:4px 10px;border-radius:14px;font-size:12px}
 .hud-i.ok{background:rgba(34,139,34,.75)}.hud-i.warn{background:rgba(200,140,0,.75)}.hud-i.err{background:rgba(180,50,50,.75)}
@@ -15,11 +16,14 @@ canvas{display:block}
 .minimap{position:absolute;bottom:48px;right:10px;background:rgba(0,0,0,.7);border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.2)}
 .minimap canvas{display:block}
 .legend{position:absolute;top:48px;right:10px;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;font-size:10px;pointer-events:none;line-height:1.6;color:#ccc}
+.camera-tools{position:absolute;left:10px;bottom:48px;display:flex;gap:5px;z-index:20}
+.camera-tools button{border:0;border-radius:13px;background:rgba(0,0,0,.68);color:#fff;padding:5px 9px;font-size:11px;cursor:pointer}
+.camera-tools button:active{transform:scale(.95)}
 
 /* 弹窗 */
 .land-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);z-index:100;justify-content:center;align-items:center}
 .land-modal.show{display:flex}
-.land-panel{background:#2a3040;border-radius:14px;padding:18px;min-width:440px;max-height:85vh;overflow-y:auto}
+.land-panel{background:#2a3040;border-radius:14px;padding:18px;width:min(440px,calc(100vw - 24px));max-height:85vh;overflow-y:auto}
 .land-panel h3{font-size:16px;color:#fff;text-align:center;margin-bottom:4px}
 .land-panel .sub{font-size:11px;color:#888;text-align:center;margin-bottom:12px}
 .land-grid{display:grid;grid-template-columns:repeat(4,80px);grid-template-rows:repeat(4,80px);gap:4px;justify-content:center;margin-bottom:12px}
@@ -46,6 +50,20 @@ canvas{display:block}
 .crop-opt{padding:4px 10px;border-radius:6px;cursor:pointer;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:11px;color:#ddd}
 .crop-opt:hover,.crop-opt.sel{background:rgba(74,194,74,.3);border-color:#4ac44a}
 .msg{text-align:center;font-size:12px;color:#aaa;margin-top:6px;min-height:18px}
+@media(max-width:600px){
+  .game{border-radius:0}
+  .hud{top:7px;left:7px;right:7px;gap:4px}
+  .hud-i{padding:3px 7px;font-size:10px}
+  .legend{display:none}
+  .minimap{right:7px;bottom:43px}
+  .minimap canvas{width:82px;height:82px}
+  .camera-tools{left:7px;bottom:43px;max-width:calc(100% - 104px);flex-wrap:wrap}
+  .camera-tools button{padding:4px 7px;font-size:10px}
+  .info{left:7px;right:7px;bottom:7px;font-size:10px}
+  .land-panel{padding:12px}
+  .land-grid{width:100%;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:none}
+  .land-cell{width:100%;height:auto;aspect-ratio:1}
+}
 </style>
 </head>
 <body>
@@ -58,6 +76,12 @@ canvas{display:block}
     <span class="hud-i">📊 Lv.<span id="hud-level">-</span></span>
     <span class="hud-i" id="hud-api"></span>
     <span class="hud-i" id="hud-pos">📍-</span>
+  </div>
+  <div class="camera-tools">
+    <button onclick="focusCore()">🎯 核心区</button>
+    <button onclick="focusPlayer()">👤 找角色</button>
+    <button onclick="changeZoom(.82)">−</button>
+    <button onclick="changeZoom(1.22)">＋</button>
   </div>
   <div class="legend" id="legend"></div>
   <div class="minimap"><canvas id="minimap" width="100" height="100"></canvas></div>
@@ -84,7 +108,8 @@ canvas{display:block}
 // ================================================================
 const TILE=120, N=48, WORLD=N*TILE;
 const WE=1, BW=1, GS=WE+BW, GE=N-WE-BW-1; // grass: grid 2~45
-const CW=960, CH=700;
+let CW=960, CH=700, DPR=1;
+let zoom=.5, viewWorldW=CW/zoom, viewWorldH=CH/zoom;
 
 // ==================== 建筑 = MapConfig.ZONES ====================
 const BUILDINGS=[
@@ -123,13 +148,13 @@ const EXPLORE_ZONES=[
 
 // Canvas + Camera
 const canvas=document.getElementById('game'), ctx=canvas.getContext('2d');
-canvas.width=CW; canvas.height=CH;
+const wrapper=document.getElementById('game-wrapper');
 
 // Grid→世界中心坐标
 const g2w = c => c*TILE + TILE/2;
 
 // 初始视野跟随码头主通道 spawn (27,40)
-const cam = {x:g2w(27)-CW/2, y:g2w(40)-CH/2};
+const cam = {x:0, y:0, mode:'core'};
 const w2gx = wx => Math.floor(wx/TILE);
 const w2gy = wy => Math.floor(wy/TILE);
 
@@ -164,31 +189,93 @@ const SPAWN_X = g2w(27), SPAWN_Y = g2w(40);
 const player = {x:SPAWN_X, y:SPAWN_Y, tx:null, ty:null, moving:false};
 const P_SPEED = 120, TH = 8; // WALK_SPEED=120, ARRIVE_THRESHOLD=8
 
-// ==================== 拖动/点击 ====================
-let dragging=false, lmx=0, lmy=0, dx=0, dy=0;
-canvas.addEventListener('mousedown', e=>{
+// ==================== 自适应画布 / 镜头 ====================
+function resizeCanvas(){
+  const oldCenterX=cam.x+viewWorldW/2, oldCenterY=cam.y+viewWorldH/2;
+  CW=Math.max(300,Math.min(960,window.innerWidth)-6);
+  CH=Math.max(480,Math.min(900,window.innerHeight)-6);
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  wrapper.style.width=`${CW}px`; wrapper.style.height=`${CH}px`;
+  canvas.style.width=`${CW}px`; canvas.style.height=`${CH}px`;
+  canvas.width=Math.round(CW*DPR); canvas.height=Math.round(CH*DPR);
+
+  const portrait=CW<CH;
+  const targetCols=portrait?11:17;
+  const targetRows=portrait?22:12;
+  zoom=Math.max(.22,Math.min(.8,Math.min(CW/(targetCols*TILE),CH/(targetRows*TILE))));
+  viewWorldW=CW/zoom; viewWorldH=CH/zoom;
+
+  if(cam.mode==='core') focusCore();
+  else if(cam.mode==='player') focusPlayer();
+  else{
+    cam.x=oldCenterX-viewWorldW/2;
+    cam.y=oldCenterY-viewWorldH/2;
+    clampCam();
+  }
+}
+
+function setCameraCenter(wx,wy,mode){
+  cam.mode=mode;
+  cam.x=wx-viewWorldW/2;
+  cam.y=wy-viewWorldH/2;
+  clampCam();
+}
+function focusCore(){
+  // 手机首屏优先覆盖玩家、码头、Farm A/C 和花园
+  setCameraCenter(g2w(30.5),g2w(34),'core');
+  document.getElementById('info').textContent='🎯 已回到核心经营区';
+}
+function focusPlayer(){
+  setCameraCenter(player.x,player.y,'player');
+  document.getElementById('info').textContent='👤 镜头跟随角色';
+}
+function changeZoom(factor){
+  const cx=cam.x+viewWorldW/2, cy=cam.y+viewWorldH/2;
+  zoom=Math.max(.18,Math.min(1,zoom*factor));
+  viewWorldW=CW/zoom; viewWorldH=CH/zoom;
+  cam.mode='free';
+  cam.x=cx-viewWorldW/2; cam.y=cy-viewWorldH/2;
+  clampCam();
+}
+
+// ==================== 拖动/点击（Pointer 同时支持鼠标和触屏） ====================
+let dragging=false, lmx=0, lmy=0, dx=0, dy=0, activePointer=null;
+canvas.addEventListener('pointerdown',e=>{
+  activePointer=e.pointerId;
+  canvas.setPointerCapture?.(e.pointerId);
   dragging=true; lmx=e.clientX; lmy=e.clientY; dx=e.clientX; dy=e.clientY;
 });
-canvas.addEventListener('mousemove', e=>{
-  if(!dragging) return;
-  cam.x -= e.clientX - lmx; cam.y -= e.clientY - lmy;
+canvas.addEventListener('pointermove',e=>{
+  if(!dragging||e.pointerId!==activePointer) return;
+  const mx=e.clientX-lmx, my=e.clientY-lmy;
+  if(Math.hypot(e.clientX-dx,e.clientY-dy)>4) cam.mode='free';
+  cam.x-=mx/zoom; cam.y-=my/zoom;
   clampCam(); lmx=e.clientX; lmy=e.clientY;
 });
-canvas.addEventListener('mouseup', e=>{
-  if(Math.hypot(e.clientX-dx, e.clientY-dy) < 4){
-    const wx=cam.x+e.offsetX, wy=cam.y+e.offsetY;
+canvas.addEventListener('pointerup',e=>{
+  if(e.pointerId!==activePointer) return;
+  if(Math.hypot(e.clientX-dx, e.clientY-dy) < 8){
+    const rect=canvas.getBoundingClientRect();
+    const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
+    const wx=cam.x+sx/zoom, wy=cam.y+sy/zoom;
     const zone = getClickedZone(wx, wy);
     if(zone && (zone.blockId || zone.type)){
       if(zone.blockId) openFarmModal(zone);
       else openZoneModal(zone);
       return;
     }
-    if(isWalkable(wx,wy)){ player.tx=wx; player.ty=wy; player.moving=true;
+    if(isWalkable(wx,wy)){ player.tx=wx; player.ty=wy; player.moving=true; cam.mode='player';
       document.getElementById('info').textContent='🏃 走过去...'; }
   }
   dragging=false;
+  activePointer=null;
 });
-function clampCam(){ cam.x=Math.max(0,Math.min(WORLD-CW,cam.x)); cam.y=Math.max(0,Math.min(WORLD-CH,cam.y)); }
+canvas.addEventListener('pointercancel',()=>{dragging=false;activePointer=null});
+function clampCam(){
+  cam.x=Math.max(0,Math.min(Math.max(0,WORLD-viewWorldW),cam.x));
+  cam.y=Math.max(0,Math.min(Math.max(0,WORLD-viewWorldH),cam.y));
+}
+window.addEventListener('resize',resizeCanvas);
 
 // ==================== 地形 = MapConfig.getTerrainAt ====================
 const tc = new Map();
@@ -207,47 +294,50 @@ function tileColor(gx, gy){
 
 // ==================== 渲染 ====================
 function renderMap(){
-  const sg=Math.max(0,Math.floor(cam.x/TILE)-1), eg=Math.min(N-1,Math.ceil((cam.x+CW)/TILE)+1);
-  const sh=Math.max(0,Math.floor(cam.y/TILE)-1), eh=Math.min(N-1,Math.ceil((cam.y+CH)/TILE)+1);
+  const sg=Math.max(0,Math.floor(cam.x/TILE)-1), eg=Math.min(N-1,Math.ceil((cam.x+viewWorldW)/TILE)+1);
+  const sh=Math.max(0,Math.floor(cam.y/TILE)-1), eh=Math.min(N-1,Math.ceil((cam.y+viewWorldH)/TILE)+1);
+  const font=(size,weight='')=>`${weight}${Math.round(size/zoom)}px sans-serif`;
+  const line=size=>size/zoom;
+  const gap=size=>size/zoom;
 
   // 地形
   for(let gx=sg; gx<=eg; gx++) for(let gy=sh; gy<=eh; gy++){
     const sx=g2w(gx)-cam.x, sy=g2w(gy)-cam.y, hs=TILE/2;
     ctx.fillStyle=tileColor(gx,gy); ctx.fillRect(sx-hs,sy-hs,TILE,TILE);
-    ctx.strokeStyle='rgba(0,0,0,.06)'; ctx.lineWidth=.5; ctx.strokeRect(sx-hs,sy-hs,TILE,TILE);
+    ctx.strokeStyle='rgba(0,0,0,.06)'; ctx.lineWidth=line(.5); ctx.strokeRect(sx-hs,sy-hs,TILE,TILE);
   }
 
   // 探索区域
   for(const z of EXPLORE_ZONES){
     const cx=(z.gx+z.w/2)*TILE, cy=(z.gy+z.h/2)*TILE, sx=cx-cam.x, sy=cy-cam.y;
     const hw=z.w*TILE/2, hh=z.h*TILE/2;
-    if(sx+hw<0||sx-hw>CW||sy+hh<0||sy-hh>CH) continue;
+    if(sx+hw<0||sx-hw>viewWorldW||sy+hh<0||sy-hh>viewWorldH) continue;
     ctx.fillStyle=z.color+'44'; ctx.fillRect(sx-hw,sy-hh,z.w*TILE,z.h*TILE);
-    ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=1.5; ctx.setLineDash([6,4]);
+    ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=line(1.5); ctx.setLineDash([gap(6),gap(4)]);
     ctx.strokeRect(sx-hw,sy-hh,z.w*TILE,z.h*TILE); ctx.setLineDash([]);
-    ctx.font='bold 14px sans-serif'; ctx.fillStyle='#ccc'; ctx.textAlign='center';
-    ctx.fillText(`${z.icon} ${z.name}`, sx, sy-hh-8);
-    ctx.font='10px sans-serif'; ctx.fillStyle='#888'; ctx.fillText(`Lv.${z.unlockLevel}解锁`, sx, sy+hh+14);
+    ctx.font=font(13,'bold '); ctx.fillStyle='#fff'; ctx.textAlign='center';
+    ctx.fillText(`${z.icon} ${z.name}`, sx, sy-hh-gap(8));
+    ctx.font=font(10); ctx.fillStyle='#ddd'; ctx.fillText(`Lv.${z.unlockLevel}解锁`, sx, sy+hh+gap(14));
   }
 
   // 花园
   for(const z of GARDEN_ZONES){
     const cx=(z.gx+z.w/2)*TILE, cy=(z.gy+z.h/2)*TILE, sx=cx-cam.x, sy=cy-cam.y;
     const hw=z.w*TILE/2, hh=z.h*TILE/2;
-    if(sx+hw<0||sx-hw>CW||sy+hh<0||sy-hh>CH) continue;
+    if(sx+hw<0||sx-hw>viewWorldW||sy+hh<0||sy-hh>viewWorldH) continue;
     ctx.fillStyle='#FFB7C544'; ctx.fillRect(sx-hw,sy-hh,z.w*TILE,z.h*TILE);
-    ctx.strokeStyle='rgba(255,183,197,.5)'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]);
+    ctx.strokeStyle='rgba(255,183,197,.5)'; ctx.lineWidth=line(1.5); ctx.setLineDash([gap(4),gap(4)]);
     ctx.strokeRect(sx-hw,sy-hh,z.w*TILE,z.h*TILE); ctx.setLineDash([]);
-    ctx.font='bold 12px sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center';
-    ctx.fillText(`🌸 ${z.name}`, sx, sy-hh-6);
-    ctx.font='9px sans-serif'; ctx.fillStyle='#aaa'; ctx.fillText(`Lv.${z.unlockLevel}解锁`, sx, sy+hh+12);
+    ctx.font=font(12,'bold '); ctx.fillStyle='#fff'; ctx.textAlign='center';
+    ctx.fillText(`🌸 ${z.name}`, sx, sy-hh-gap(6));
+    ctx.font=font(9); ctx.fillStyle='#eee'; ctx.fillText(`Lv.${z.unlockLevel}解锁`, sx, sy+hh+gap(12));
   }
 
   // 农田
   for(const f of FARM_ZONES){
     const cx=(f.gx+2)*TILE, cy=(f.gy+2)*TILE, sx=cx-cam.x, sy=cy-cam.y;
     const hw=2*TILE, hh=2*TILE;
-    if(sx+hw<0||sx-hw>CW||sy+hh<0||sy-hh>CH) continue;
+    if(sx+hw<0||sx-hw>viewWorldW||sy+hh<0||sy-hh>viewWorldH) continue;
     const blockLands = allLands.filter(l=>l.blockId===f.blockId);
     let alpha=.45, clr='#7EC85088', border='rgba(180,220,140,.5)';
     if(blockLands.length>0){
@@ -255,17 +345,20 @@ function renderMap(){
       else if(blockLands.some(l=>l.status==='PLANTED')){alpha=.65;clr='#4a8a3a88';border='rgba(100,180,80,.6)'}
     }
     ctx.globalAlpha=alpha; ctx.fillStyle=clr; ctx.fillRect(sx-hw,sy-hh,hh*2,hh*2); ctx.globalAlpha=1;
-    ctx.strokeStyle=border; ctx.lineWidth=2.5; ctx.setLineDash([8,4]);
+    ctx.strokeStyle=border; ctx.lineWidth=line(2.5); ctx.setLineDash([gap(8),gap(4)]);
     ctx.strokeRect(sx-hw,sy-hh,hh*2,hh*2); ctx.setLineDash([]);
-    ctx.font='bold 14px sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center';
-    ctx.fillText(`${f.name}`, sx, sy-hh-6);
-    ctx.font='9px sans-serif'; ctx.fillStyle='#b4dc8c';
+    ctx.font=font(13,'bold '); ctx.fillStyle='#fff'; ctx.textAlign='center';
+    ctx.fillText(`${f.name}`, sx, sy-hh-gap(6));
+    ctx.font=font(9); ctx.fillStyle='#e5ffd0';
     const unlocked = playerLevel >= f.unlockLevel;
-    ctx.fillText(unlocked ? `Lv.${f.unlockLevel}` : `🔒 Lv.${f.unlockLevel}解锁`, sx, sy+hh+12);
+    ctx.font=font(24);
+    ctx.fillText(unlocked?'🌱':'🔒',sx,sy);
+    ctx.font=font(9); ctx.fillStyle='#e5ffd0';
+    ctx.fillText(unlocked ? `Lv.${f.unlockLevel}` : `🔒 Lv.${f.unlockLevel}解锁`, sx, sy+hh+gap(12));
     if(blockLands.length>0 && unlocked){
       const n=blockLands.filter(l=>l.status==='PLANTED'||l.status==='READY').length;
-      ctx.font='10px sans-serif'; ctx.fillStyle='#b4dc8c';
-      ctx.fillText(`${n}/${blockLands.length} 种植`, sx, sy+hh+26);
+      ctx.font=font(10); ctx.fillStyle='#e5ffd0';
+      ctx.fillText(`${n}/${blockLands.length} 种植`, sx, sy+hh+gap(26));
     }
   }
 
@@ -273,21 +366,21 @@ function renderMap(){
   for(const b of BUILDINGS){
     const cx=(b.gx+b.w/2)*TILE, cy=(b.gy+b.h/2)*TILE, sx=cx-cam.x, sy=cy-cam.y;
     const hw=b.w*TILE/2, hh=b.h*TILE/2;
-    if(sx+hw<0||sx-hw>CW||sy+hh<0||sy-hh>CH) continue;
+    if(sx+hw<0||sx-hw>viewWorldW||sy+hh<0||sy-hh>viewWorldH) continue;
     ctx.fillStyle=b.color+'88'; ctx.fillRect(sx-hw,sy-hh,b.w*TILE,b.h*TILE);
-    ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=2;
+    ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=line(2);
     ctx.strokeRect(sx-hw,sy-hh,b.w*TILE,b.h*TILE);
-    ctx.font='24px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(b.icon, sx, sy-10);
-    ctx.font='bold 11px sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(b.name, sx, sy+20);
+    ctx.font=font(24); ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(b.icon, sx, sy-gap(10));
+    ctx.font=font(12,'bold '); ctx.fillStyle='#fff'; ctx.fillText(b.name, sx, sy+gap(20));
     if(b.unlock>1){
-      ctx.font='8px sans-serif'; ctx.fillStyle='#aaa';
-      ctx.fillText(`Lv.${b.unlock}`, sx, sy+34);
+      ctx.font=font(9); ctx.fillStyle='#eee';
+      ctx.fillText(`Lv.${b.unlock}`, sx, sy+gap(34));
     }
   }
 
-  // 玩家 120×210
-  const psx=player.x-cam.x, psy=player.y-cam.y, pw=60, ph=105;
+  // 玩家世界尺寸 120×210；由镜头缩放到手机合适大小
+  const psx=player.x-cam.x, psy=player.y-cam.y, pw=120, ph=210;
   ctx.fillStyle='rgba(0,0,0,.2)'; ctx.beginPath();
   ctx.ellipse(psx, psy+ph*.12, pw*.65, ph*.05, 0, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle='#4a3728'; ctx.fillRect(psx-pw*.22,psy+ph*.08,pw*.13,ph*.22);
@@ -296,11 +389,11 @@ function renderMap(){
   ctx.fillStyle='#ffc864'; ctx.beginPath(); ctx.arc(psx,psy-ph*.38,pw*.33,0,Math.PI*2); ctx.fill();
   ctx.fillStyle='#dc503c'; ctx.beginPath(); ctx.moveTo(psx-pw*.38,psy-ph*.48);
   ctx.lineTo(psx,psy-ph*.82); ctx.lineTo(psx+pw*.38,psy-ph*.48); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.15)'; ctx.lineWidth=2.5;
+  ctx.strokeStyle='rgba(0,0,0,.15)'; ctx.lineWidth=line(2.5);
   ctx.beginPath(); ctx.arc(psx,psy-ph*.38,pw*.33,0,Math.PI*2); ctx.stroke();
   if(player.moving&&player.tx!==null){
     const t=player.tx-cam.x, tt=player.ty-cam.y;
-    ctx.fillStyle='rgba(255,255,255,.4)'; ctx.beginPath(); ctx.arc(t,tt,10,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.4)'; ctx.beginPath(); ctx.arc(t,tt,gap(10),0,Math.PI*2); ctx.fill();
   }
 }
 
@@ -314,7 +407,7 @@ function drawMinimap(){
   for(const b of BUILDINGS){mm.fillStyle=b.color; mm.fillRect(b.gx*TILE*s,b.gy*TILE*s,b.w*TILE*s,b.h*TILE*s)}
   for(const f of FARM_ZONES){mm.fillStyle='rgba(126,200,80,.6)'; mm.fillRect(f.gx*TILE*s,f.gy*TILE*s,4*TILE*s,4*TILE*s)}
   for(const g of GARDEN_ZONES){mm.fillStyle='rgba(255,183,197,.5)'; mm.fillRect(g.gx*TILE*s,g.gy*TILE*s,g.w*TILE*s,g.h*TILE*s)}
-  mm.strokeStyle='#fff'; mm.lineWidth=1; mm.strokeRect(cam.x*s,cam.y*s,CW*s,CH*s);
+  mm.strokeStyle='#fff'; mm.lineWidth=1; mm.strokeRect(cam.x*s,cam.y*s,viewWorldW*s,viewWorldH*s);
   mm.fillStyle='#ff4444'; mm.beginPath(); mm.arc(player.x*s,player.y*s,2,0,Math.PI*2); mm.fill();
 }
 
@@ -490,18 +583,21 @@ function loop(now){
       document.getElementById('info').textContent='点击农田 🟩 管理土地 | 点击草地移动 | 拖拽视野';}
     else{const st=P_SPEED*dt; player.x+=(ddx/dist)*st; player.y+=(ddy/dist)*st;}
   }
-  if(!dragging){
-    cam.x+=(player.x-CW/2-cam.x)*Math.min(1,dt*8);
-    cam.y+=(player.y-CH/2-cam.y)*Math.min(1,dt*8);
+  if(!dragging&&cam.mode==='player'){
+    cam.x+=(player.x-viewWorldW/2-cam.x)*Math.min(1,dt*8);
+    cam.y+=(player.y-viewWorldH/2-cam.y)*Math.min(1,dt*8);
     clampCam();
   }
+  ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.fillStyle='#1a2a10'; ctx.fillRect(0,0,CW,CH);
-  renderMap(); drawMinimap(); updateHUD();
+  ctx.save(); ctx.scale(zoom,zoom); renderMap(); ctx.restore();
+  drawMinimap(); updateHUD();
   requestAnimationFrame(loop);
 }
 
 // ==================== 启动 ====================
 (async()=>{
+  resizeCanvas();
   const ok=await apiLogin();
   if(ok){await refresh();}
   else{

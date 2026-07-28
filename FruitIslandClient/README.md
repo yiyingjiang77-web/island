@@ -16,15 +16,17 @@ assets/
 │   ├── Launch.scene # 启动/登录场景
 │   └── Main.scene   # 主游戏场景
 ├── scripts/
-│   ├── core/
-│   │   └── GameManager.ts    # 游戏入口管理器
+│   ├── game/
+│   │   └── GameManager.ts    # 唯一游戏入口
+│   ├── map/                  # 地图、网格、建筑和碰撞
+│   ├── camera/               # 玩家跟随和拖动视野
 │   ├── network/
 │   │   ├── HttpClient.ts     # 统一 HTTP 请求
 │   │   └── Api.ts            # 接口地址集中管理
 │   ├── player/
 │   │   └── PlayerController.ts # 玩家点击移动控制
 │   ├── ui/
-│   │   └── LoginUI.ts        # 登录页面
+│   │   └── UIManager.ts      # HUD
 │   └── types/
 │       └── index.ts          # 类型定义
 ├── prefabs/         # 预制体
@@ -78,15 +80,19 @@ Main
 
 ## 开发阶段
 
-### V1.0 - 已完成
+### Demo2.4 - 当前阶段
 - [x] 项目结构搭建
 - [x] GameManager 单例管理器
 - [x] HttpClient 网络模块
 - [x] Api 接口定义
-- [x] LoginUI 登录页面
 - [x] PlayerController 点击移动
+- [x] 48×48 地图配置
+- [x] 摄像机跟随与拖动代码
+- [x] 建筑碰撞
+- [ ] 在 Cocos Creator 中创建并保存 Main.scene
+- [ ] 土地交互接入 Cocos 客户端
 
-### V1.1 - 待开发
+### 后续开发
 - [ ] 农场种植系统
 - [ ] 背包系统
 - [ ] 建筑系统
@@ -95,11 +101,20 @@ Main
 
 ## 对接后端
 
-本地开发：修改 `HttpClient.ts` 中的 `baseUrl`
+本地开发地址统一维护在 `assets/configs/GameConfig.ts`：
 
 ```typescript
-private baseUrl: string = 'http://localhost:8080';
+AUTH_SERVER_URL = 'http://localhost:8081'
+GAME_SERVER_URL = 'http://localhost:8082'
 ```
+
+## Cocos Creator 首次运行
+
+1. 使用 Cocos Creator 3.8 打开 `FruitIslandClient`。
+2. 新建并保存 `assets/scenes/Main.scene`。
+3. 场景中创建 `Canvas`，在 Canvas 或其子节点挂载
+   `assets/scripts/game/GameManager.ts`。
+4. 点击预览。其他世界节点会由 GameManager 自动创建。
 
 ## 微信小游戏配置
 
