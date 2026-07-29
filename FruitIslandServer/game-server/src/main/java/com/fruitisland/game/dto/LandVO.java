@@ -47,6 +47,15 @@ public class LandVO implements Serializable {
     /** 当前种植的作物 ID */
     private String cropId;
 
+    /** 本轮种植时的作物等级快照。 */
+    private Integer cropLevel;
+
+    /** 本轮成熟时可收获的数量快照。 */
+    private Integer yieldCount;
+
+    /** 本轮使用的权限：PERMANENT / TEMPORARY。 */
+    private String accessType;
+
     /** 种植时间 */
     private LocalDateTime plantTime;
 

@@ -30,6 +30,9 @@
         <mysql.version>8.0.33</mysql.version>
         <jjwt.version>0.12.3</jjwt.version>
         <hutool.version>5.8.24</hutool.version>
+        <lombok.version>1.18.38</lombok.version>
+        <!-- JDK 23+ 不再默认扫描注解处理器；显式开启以生成 Lombok 代码。 -->
+        <maven.compiler.proc>full</maven.compiler.proc>
     </properties>
 
     <dependencyManagement>
@@ -85,7 +88,7 @@
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
-                <version>1.18.30</version>
+                <version>${lombok.version}</version>
             </dependency>
         </dependencies>
 
@@ -99,6 +102,26 @@
             </dependency>
         </dependencies>
     </dependencyManagement> -->
-    
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.11.0</version>
+                    <configuration>
+                        <proc>full</proc>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 
 </project>

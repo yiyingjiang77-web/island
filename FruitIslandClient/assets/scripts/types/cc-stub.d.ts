@@ -21,6 +21,9 @@ declare module 'cc' {
   }
 
   export class Node {
+    static EventType: {
+      TOUCH_END: string;
+    };
     name: string;
     parent: Node | null;
     children: Node[];
@@ -32,9 +35,12 @@ declare module 'cc' {
     setPosition(position: Vec3): void;
     addChild(child: Node): void;
     removeFromParent(): void;
+    destroy(): void;
     getChildByName(name: string): Node | null;
     getComponent<T extends Component>(type: { new(...args: any[]): T }): T | null;
     addComponent<T extends Component>(type: { new(...args: any[]): T }): T;
+    on(eventType: string, callback: Function, target?: any): void;
+    off(eventType: string, callback: Function, target?: any): void;
   }
 
   export class Vec3 {
@@ -106,7 +112,12 @@ declare module 'cc' {
   }
 
   // ---- UI ----
-  export class Label extends Component { string: string; }
+  export class Label extends Component {
+    string: string;
+    fontSize: number;
+    lineHeight: number;
+    color: Color;
+  }
   export class Sprite extends Component {
     color: Color;
     spriteFrame: any;

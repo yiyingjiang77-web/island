@@ -29,6 +29,11 @@ public class GameController {
     private final IslandService islandService;
     private final PlayerLandService playerLandService;
     private final InventoryService inventoryService;
+    private final CropConfigService cropConfigService;
+    private final CropLevelConfigService cropLevelConfigService;
+    private final CropUnlockSourceService cropUnlockSourceService;
+    private final PlayerCropService playerCropService;
+    private final PlayerCropGrantService playerCropGrantService;
 
     /**
      * 游戏初始化
@@ -60,10 +65,19 @@ public class GameController {
             log.info("新岛屿创建: islandId={}", island.getId());
         }
 
-        // 3. 新玩家：赠送第一块地 + 草莓种子
+        // 3. 新玩家：赠送第一块地 + 草莓永久种植权
         if (isNewPlayer) {
             initNewPlayerLands(player.getId());
             log.info("新玩家初始土地初始化完成: playerId={}", player.getId());
+        }
+
+        /*
+         * 兼容作物权限模型上线前创建的旧账号。
+         * 老账号可能已经有角色和土地，却没有 player_crop 记录；此时补发教程作物草莓，
+         * 保证点击空地时至少能看到并选择一个品种。该方法有唯一索引保护，不会重复发放。
+         */
+        if (playerCropService.findByPlayerAndCrop(player.getId(), "strawberry") == null) {
+            playerCropService.grantPermanent(player.getId(), "strawberry", "MIGRATION_DEFAULT");
         }
 
         // 4. 加载土地数据
@@ -74,17 +88,39 @@ public class GameController {
                 .eq(Inventory::getPlayerId, player.getId())
                 .list();
 
-        GameInitVO vo = GameInitVO.of(player, island, lands, inventory);
+        // 6. 作物配置及玩家权限由数据库返回，客户端不写死成长数值。
+        var cropConfigs = cropConfigService.list();
+        var cropLevelConfigs = cropLevelConfigService.list();
+        var cropUnlockSources = cropUnlockSourceService.lambdaQuery()
+                .eq(com.fruitisland.game.entity.CropUnlockSource::getEnabled, 1)
+                .orderByAsc(com.fruitisland.game.entity.CropUnlockSource::getRequiredPlayerLevel)
+                .list();
+        var playerCrops = playerCropService.listByPlayer(player.getId());
+        var cropGrants = playerCropGrantService.listActiveByPlayer(
+                player.getId(), java.time.LocalDateTime.now());
+
+        GameInitVO vo = GameInitVO.of(
+                player,
+                island,
+                lands,
+                inventory,
+                cropConfigs,
+                cropLevelConfigs,
+                cropUnlockSources,
+                playerCrops,
+                cropGrants
+        );
         return Result.ok(vo);
     }
 
     /**
-     * 新玩家初始化：赠送第一块农田 + 草莓种子
+     * 新玩家初始化：赠送第一块农田 + 草莓永久种植权。
+     *
+     * <p>获得永久种植权后可以无限次种植，不再向背包发放或消耗“种子数量”。</p>
      */
     private void initNewPlayerLands(Long playerId) {
         // 第一块免费地 (land_config_id=1)
         playerLandService.buy(playerId, 1L, 1);
-        // 背包：草莓种子 ×1
-        inventoryService.addItem(playerId, "strawberry_seed", 1);
+        playerCropService.grantPermanent(playerId, "strawberry", "INITIAL");
     }
 }

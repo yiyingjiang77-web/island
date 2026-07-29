@@ -2,11 +2,12 @@
 -- Fruit Island Game Database Schema
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS fruit_island_db
+-- 与 application-common.yml 的 JDBC 地址保持一致，避免外键或查询跨到错误数据库。
+CREATE DATABASE IF NOT EXISTS fruit_island
 DEFAULT CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
-USE fruit_island_db;
+USE fruit_island;
 
 -- ============================================================
 -- 1. Game Player
@@ -86,6 +87,11 @@ CREATE TABLE player_land
     land_config_id BIGINT       NOT NULL COMMENT 'land_config.id',
     status         VARCHAR(16)  DEFAULT 'EMPTY' COMMENT 'EMPTY / PLANTED / READY',
     crop_id        VARCHAR(64)  COMMENT '当前种植作物ID',
+    crop_level     INT          COMMENT '种植时作物等级快照',
+    grow_seconds_snapshot INT   COMMENT '本轮成熟秒数快照',
+    yield_count_snapshot INT    COMMENT '本轮收获数量快照',
+    access_type    VARCHAR(16)  COMMENT '种植权限来源：PERMANENT / TEMPORARY',
+    access_grant_id BIGINT      COMMENT '限时权限ID，永久种植时为空',
     plant_time     DATETIME     COMMENT '种植时间',
     finish_time    DATETIME     COMMENT '成熟时间',
     water_level    INT          DEFAULT 100 COMMENT '水分值 0-100',
@@ -104,6 +110,11 @@ CREATE TABLE crop_plant
     id             BIGINT PRIMARY KEY AUTO_INCREMENT,
     player_land_id BIGINT NOT NULL COMMENT 'player_land.id',
     crop_id        VARCHAR(64) COMMENT '作物ID',
+    crop_level     INT COMMENT '种植时作物等级快照',
+    grow_seconds_snapshot INT COMMENT '种植时成熟秒数快照',
+    yield_count_snapshot INT COMMENT '种植时收获数量快照',
+    access_type    VARCHAR(16) COMMENT 'PERMANENT / TEMPORARY',
+    access_grant_id BIGINT COMMENT '限时种植权限ID',
     plant_time     DATETIME COMMENT '种植时间',
     finish_time    DATETIME COMMENT '成熟时间',
     status         VARCHAR(32) COMMENT '状态',
@@ -125,7 +136,105 @@ CREATE TABLE item_config
 ) COMMENT = '物品配置表';
 
 -- ============================================================
--- 8. Inventory
+-- 8. Crop Config
+-- ============================================================
+CREATE TABLE crop_config
+(
+    crop_id                  VARCHAR(64) PRIMARY KEY COMMENT '作物唯一编码，也是收获物品ID',
+    name                     VARCHAR(64) NOT NULL COMMENT '作物显示名称',
+    rarity                   VARCHAR(16) NOT NULL DEFAULT 'COMMON' COMMENT 'COMMON/RARE/EPIC/LEGENDARY',
+    reward_eligible          TINYINT NOT NULL DEFAULT 0 COMMENT '是否可进入随机奖励池：0否1是',
+    permanent_unlock_enabled TINYINT NOT NULL DEFAULT 1 COMMENT '是否允许永久获得：0否1是',
+    upgrade_enabled          TINYINT NOT NULL DEFAULT 1 COMMENT '永久拥有后是否可金币升级：0否1是',
+    player_unlock_level      INT NOT NULL DEFAULT 1 COMMENT '玩家达到多少级后可以种植',
+    max_crop_level           INT NOT NULL DEFAULT 1 COMMENT '作物最高等级',
+    enabled                  TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用：0否1是',
+    create_time              DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time              DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_player_unlock_level (player_unlock_level),
+    INDEX idx_reward (reward_eligible, rarity),
+    CHECK (reward_eligible = 0 OR rarity <> 'COMMON')
+) COMMENT = '作物基础配置表';
+
+CREATE TABLE crop_level_config
+(
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '配置ID',
+    crop_id         VARCHAR(64) NOT NULL COMMENT '作物编码',
+    crop_level      INT NOT NULL COMMENT '作物等级，从1开始',
+    grow_seconds    INT NOT NULL COMMENT '浇水后成熟秒数',
+    yield_count     INT NOT NULL COMMENT '单次收获数量',
+    upgrade_gold    BIGINT NOT NULL DEFAULT 0 COMMENT '从上一等级升到本等级所需金币；1级为0',
+    create_time     DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time     DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_crop_level (crop_id, crop_level),
+    CHECK (crop_level >= 1 AND grow_seconds > 0 AND yield_count > 0 AND upgrade_gold >= 0)
+) COMMENT = '作物等级数值配置表';
+
+CREATE TABLE crop_unlock_source
+(
+    id                    BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '渠道配置ID',
+    crop_id               VARCHAR(64) NOT NULL COMMENT '作物编码',
+    source_type           VARCHAR(32) NOT NULL COMMENT 'INITIAL/GOLD_SHOP/DIAMOND_SHOP/LEVEL_REWARD',
+    currency_type         VARCHAR(16) NOT NULL DEFAULT 'NONE' COMMENT 'NONE/GOLD/DIAMOND',
+    price                 BIGINT NOT NULL DEFAULT 0 COMMENT '获得永久种植权所需价格',
+    required_player_level INT NOT NULL DEFAULT 1 COMMENT '使用渠道所需玩家等级',
+    source_ref_id         VARCHAR(128) COMMENT '商店商品或等级奖励等外部配置编号',
+    enabled               TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用：0否1是',
+    create_time           DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time           DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_crop_source (crop_id, source_type, source_ref_id),
+    INDEX idx_unlock_source (source_type, enabled),
+    CHECK (price >= 0 AND required_player_level >= 1)
+) COMMENT = '作物永久种植权获得渠道配置';
+
+CREATE TABLE player_crop
+(
+    id            BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '记录ID',
+    player_id     BIGINT NOT NULL COMMENT '玩家角色ID',
+    crop_id       VARCHAR(64) NOT NULL COMMENT '永久拥有的作物编码',
+    crop_level    INT NOT NULL DEFAULT 1 COMMENT '当前作物等级',
+    unlock_source VARCHAR(32) NOT NULL COMMENT 'INITIAL/GOLD_SHOP/DIAMOND_SHOP/LEVEL_REWARD等',
+    unlock_time   DATETIME NOT NULL COMMENT '永久种植权获得时间',
+    create_time   DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_player_crop (player_id, crop_id),
+    INDEX idx_player_crop_player (player_id)
+) COMMENT = '玩家永久作物权限表；记录存在即可无限次种植';
+
+CREATE TABLE player_crop_grant
+(
+    id               BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '限时权限ID',
+    player_id        BIGINT NOT NULL COMMENT '玩家角色ID',
+    crop_id          VARCHAR(64) NOT NULL COMMENT '限时可种植的稀有作物',
+    grant_crop_level INT NOT NULL DEFAULT 1 COMMENT '奖励指定的固定作物等级',
+    grant_source     VARCHAR(64) NOT NULL COMMENT 'QUEST/EVENT/GIFT/REWARD_POOL等',
+    source_ref_id    VARCHAR(128) COMMENT '任务、活动或奖励流水编号',
+    valid_from       DATETIME NOT NULL COMMENT '生效时间',
+    valid_until      DATETIME NOT NULL COMMENT '失效时间',
+    status           VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE/EXPIRED/REVOKED',
+    create_time      DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_grant_active (player_id, crop_id, status, valid_until),
+    CHECK (valid_until > valid_from)
+) COMMENT = '玩家限时稀有作物权限；有效期内无限种植但不可升级';
+
+CREATE TABLE crop_reward_pool_item
+(
+    id                BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '奖励项ID',
+    pool_code         VARCHAR(64) NOT NULL COMMENT '奖励池编码',
+    crop_id           VARCHAR(64) NOT NULL COMMENT '可奖励的稀有作物编码',
+    grant_crop_level  INT NOT NULL DEFAULT 1 COMMENT '发放的固定作物等级',
+    weight            INT NOT NULL DEFAULT 1 COMMENT '随机权重',
+    duration_seconds  BIGINT NOT NULL COMMENT '限时种植权有效秒数',
+    enabled           TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用：0否1是',
+    create_time       DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time       DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_reward_pool (pool_code, enabled),
+    CHECK (weight > 0 AND duration_seconds > 0)
+) COMMENT = '稀有作物随机奖励池明细';
+
+-- ============================================================
+-- 9. Inventory
 -- ============================================================
 CREATE TABLE inventory
 (
@@ -437,12 +546,46 @@ INSERT INTO item_config (id, name, type, icon, sell_price) VALUES
 ('tomato', '番茄', 'CROP', 'tomato', 6),
 ('potato', '土豆', 'CROP', 'potato', 5),
 ('chili', '辣椒', 'CROP', 'chili', 20),
-('corn', '玉米', 'CROP', 'corn', 40);
-INSERT INTO item_config (id, name, type, icon, sell_price) VALUES
-('strawberry_seed', '草莓种子', 'SEED', 'strawberry_seed', 1),
-('cabbage_seed', '小白菜种子', 'SEED', 'cabbage_seed', 2),
-('carrot_seed', '胡萝卜种子', 'SEED', 'carrot_seed', 5),
-('tomato_seed', '番茄种子', 'SEED', 'tomato_seed', 4),
-('potato_seed', '土豆种子', 'SEED', 'potato_seed', 3),
-('chili_seed', '辣椒种子', 'SEED', 'chili_seed', 10),
-('corn_seed', '玉米种子', 'SEED', 'corn_seed', 25);
+('corn', '玉米', 'CROP', 'corn', 40),
+('moonberry', '月光莓', 'CROP', 'moonberry', 120);
+-- ============================================================
+-- Crop Config Seed Data
+-- 基础属性与等级数值分离；种植时从两张配置表共同读取。
+-- ============================================================
+INSERT INTO crop_config
+(crop_id, name, rarity, reward_eligible, permanent_unlock_enabled, upgrade_enabled,
+ player_unlock_level, max_crop_level, enabled) VALUES
+('strawberry', '草莓', 'COMMON', 0, 1, 1, 1, 3, 1),
+('cabbage', '白菜', 'COMMON', 0, 1, 1, 2, 3, 1),
+('carrot', '胡萝卜', 'COMMON', 0, 1, 1, 3, 3, 1),
+('tomato', '番茄', 'COMMON', 0, 1, 1, 4, 3, 1),
+('potato', '土豆', 'COMMON', 0, 1, 1, 5, 3, 1),
+('chili', '辣椒', 'COMMON', 0, 1, 1, 8, 3, 1),
+('corn', '玉米', 'COMMON', 0, 1, 1, 10, 3, 1),
+('moonberry', '月光莓', 'RARE', 1, 0, 0, 1, 1, 1);
+
+INSERT INTO crop_level_config
+(crop_id, crop_level, grow_seconds, yield_count, upgrade_gold) VALUES
+('strawberry', 1, 60, 2, 0), ('strawberry', 2, 50, 3, 200), ('strawberry', 3, 40, 4, 500),
+('cabbage', 1, 120, 2, 0), ('cabbage', 2, 105, 3, 300), ('cabbage', 3, 90, 4, 700),
+('carrot', 1, 180, 3, 0), ('carrot', 2, 155, 4, 400), ('carrot', 3, 130, 5, 900),
+('tomato', 1, 240, 3, 0), ('tomato', 2, 210, 4, 500), ('tomato', 3, 180, 5, 1100),
+('potato', 1, 300, 4, 0), ('potato', 2, 270, 5, 600), ('potato', 3, 240, 6, 1300),
+('chili', 1, 480, 3, 0), ('chili', 2, 420, 4, 900), ('chili', 3, 360, 5, 1800),
+('corn', 1, 600, 5, 0), ('corn', 2, 520, 6, 1200), ('corn', 3, 450, 8, 2500),
+('moonberry', 1, 300, 5, 0);
+
+INSERT INTO crop_unlock_source
+(crop_id, source_type, currency_type, price, required_player_level, source_ref_id, enabled) VALUES
+('strawberry', 'INITIAL', 'NONE', 0, 1, 'NEW_PLAYER', 1),
+('cabbage', 'GOLD_SHOP', 'GOLD', 200, 2, 'SHOP_CABBAGE', 1),
+('carrot', 'GOLD_SHOP', 'GOLD', 350, 3, 'SHOP_CARROT', 1),
+('tomato', 'DIAMOND_SHOP', 'DIAMOND', 10, 4, 'SHOP_TOMATO', 1),
+('potato', 'LEVEL_REWARD', 'NONE', 0, 5, 'LEVEL_5', 1),
+('chili', 'GOLD_SHOP', 'GOLD', 1000, 8, 'SHOP_CHILI', 1),
+('corn', 'LEVEL_REWARD', 'NONE', 0, 10, 'LEVEL_10', 1);
+
+-- 月光莓只能通过奖励获得，发放后 24 小时内可无限次种植但不可升级。
+INSERT INTO crop_reward_pool_item
+(pool_code, crop_id, grant_crop_level, weight, duration_seconds, enabled) VALUES
+('DAILY_RARE_CROP', 'moonberry', 1, 100, 86400, 1);

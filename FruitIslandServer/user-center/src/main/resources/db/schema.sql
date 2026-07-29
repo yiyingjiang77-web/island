@@ -1,12 +1,13 @@
 -- ============================================================
--- User Center Database Schema (user_db)
+-- User Center Database Schema
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS user_db
+-- Demo 阶段与 game-server 共用 fruit_island，和 application-common.yml 保持一致。
+CREATE DATABASE IF NOT EXISTS fruit_island
 DEFAULT CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
-USE user_db;
+USE fruit_island;
 
 -- ============================================================
 -- 1. User

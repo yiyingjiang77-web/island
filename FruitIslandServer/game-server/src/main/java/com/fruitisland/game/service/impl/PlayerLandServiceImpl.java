@@ -40,19 +40,12 @@ public class PlayerLandServiceImpl
     private final GamePlayerService gamePlayerService;
     private final InventoryService inventoryService;
     private final CropPlantService cropPlantService;
+    private final CropConfigService cropConfigService;
+    private final CropLevelConfigService cropLevelConfigService;
+    private final PlayerCropService playerCropService;
+    private final PlayerCropGrantService playerCropGrantService;
 
     private static final int WATER_MAX = 100;
-
-    /** 作物默认生长时间（秒），用于开发测试 */
-    private static final Map<String, Integer> CROP_GROW_SECONDS = Map.of(
-            "strawberry", 60,
-            "cabbage", 120,
-            "carrot", 180,
-            "tomato", 240,
-            "potato", 300,
-            "chili", 480,
-            "corn", 600
-    );
 
     /** 当前版本只区分未浇水(0)和已浇水(100)。 */
     private int calcCurrentWater(PlayerLand land) {
@@ -98,6 +91,9 @@ public class PlayerLandServiceImpl
                 builder.status(pl.getStatus())
                         .playerLandId(pl.getId())
                         .cropId(pl.getCropId())
+                        .cropLevel(pl.getCropLevel())
+                        .yieldCount(pl.getYieldCountSnapshot())
+                        .accessType(pl.getAccessType())
                         .plantTime(pl.getPlantTime())
                         .finishTime(pl.getFinishTime())
                         .waterLevel(currentWater);
@@ -149,18 +145,46 @@ public class PlayerLandServiceImpl
         if (!"EMPTY".equals(land.getStatus()))
             throw new RuntimeException("土地不是空地，当前状态: " + land.getStatus());
 
-        String seedId = cropId + "_seed";
-        Inventory seedItem = inventoryService.findByPlayerAndItem(playerId, seedId);
-        if (seedItem == null || seedItem.getCount() <= 0)
-            throw new RuntimeException("没有 " + seedId + " 种子");
+        CropConfig cropConfig = requireCropConfig(cropId);
+        GamePlayer player = gamePlayerService.getById(playerId);
+        if (player == null) throw new RuntimeException("玩家不存在");
+        if (player.getLevel() < cropConfig.getPlayerUnlockLevel())
+            throw new RuntimeException("玩家等级不足，需要 Lv." + cropConfig.getPlayerUnlockLevel());
 
-        seedItem.setCount(seedItem.getCount() - 1);
-        inventoryService.updateById(seedItem);
+        /*
+         * 种植资格优先使用永久权限；没有永久权限时，再检查限时稀有奖励。
+         * 两种权限都只代表“可以种”，因此这里不会读取或扣减背包种子数量。
+         */
+        PlayerCrop permanent = playerCropService.findByPlayerAndCrop(playerId, cropId);
+        PlayerCropGrant temporary = null;
+        int cropLevel;
+        String accessType;
+        Long accessGrantId = null;
+        if (permanent != null) {
+            cropLevel = permanent.getCropLevel();
+            accessType = "PERMANENT";
+        } else {
+            temporary = playerCropGrantService.findActiveGrant(
+                    playerId, cropId, LocalDateTime.now());
+            if (temporary == null) {
+                throw new RuntimeException("尚未获得该作物的种植权限");
+            }
+            cropLevel = temporary.getGrantCropLevel();
+            accessType = "TEMPORARY";
+            accessGrantId = temporary.getId();
+        }
+
+        CropLevelConfig levelConfig = requireLevelConfig(cropId, cropLevel);
 
         LocalDateTime now = LocalDateTime.now();
 
         land.setStatus("PLANTED");
         land.setCropId(cropId);
+        land.setCropLevel(cropLevel);
+        land.setGrowSecondsSnapshot(levelConfig.getGrowSeconds());
+        land.setYieldCountSnapshot(levelConfig.getYieldCount());
+        land.setAccessType(accessType);
+        land.setAccessGrantId(accessGrantId);
         land.setPlantTime(now);
         land.setFinishTime(null);
         land.setWaterLevel(0);
@@ -170,6 +194,11 @@ public class PlayerLandServiceImpl
         CropPlant record = new CropPlant();
         record.setPlayerLandId(playerLandId);
         record.setCropId(cropId);
+        record.setCropLevel(cropLevel);
+        record.setGrowSecondsSnapshot(levelConfig.getGrowSeconds());
+        record.setYieldCountSnapshot(levelConfig.getYieldCount());
+        record.setAccessType(accessType);
+        record.setAccessGrantId(accessGrantId);
         record.setPlantTime(now);
         record.setFinishTime(null);
         record.setStatus("WAITING_WATER");
@@ -191,7 +220,13 @@ public class PlayerLandServiceImpl
             throw new RuntimeException("这轮作物已经浇过水了");
 
         LocalDateTime now = LocalDateTime.now();
-        int growSec = CROP_GROW_SECONDS.getOrDefault(land.getCropId(), 60);
+        /*
+         * 使用种植时快照，而不是重新读当前等级配置。
+         * 因此生长过程中升级作物或后台调整配置，不会改变这一轮成熟时间。
+         */
+        Integer growSec = land.getGrowSecondsSnapshot();
+        if (growSec == null || growSec <= 0)
+            throw new RuntimeException("本轮作物缺少成熟时间快照");
         land.setWaterLevel(WATER_MAX);
         land.setLastWateredAt(now);
         land.setFinishTime(now.plusSeconds(growSec));
@@ -225,7 +260,13 @@ public class PlayerLandServiceImpl
         }
 
         String cropId = land.getCropId();
-        inventoryService.addItem(playerId, cropId, 1);
+        /*
+         * 使用种植时的产量快照。限时权限即使已经到期，已种下的作物仍可正常收获。
+         */
+        Integer yieldCount = land.getYieldCountSnapshot();
+        if (yieldCount == null || yieldCount <= 0)
+            throw new RuntimeException("本轮作物缺少产量快照");
+        inventoryService.addItem(playerId, cropId, yieldCount);
 
         CropPlant latestRecord = cropPlantService.findLatestByPlayerLand(playerLandId);
         if (latestRecord != null && "GROWING".equals(latestRecord.getStatus())) {
@@ -235,13 +276,41 @@ public class PlayerLandServiceImpl
 
         land.setStatus("EMPTY");
         land.setCropId(null);
+        land.setCropLevel(null);
+        land.setGrowSecondsSnapshot(null);
+        land.setYieldCountSnapshot(null);
+        land.setAccessType(null);
+        land.setAccessGrantId(null);
         land.setPlantTime(null);
         land.setFinishTime(null);
         land.setWaterLevel(null);
         land.setLastWateredAt(null);
         updateById(land);
 
-        log.info("玩家 {} 收获土地 {} 的 {}", playerId, playerLandId, cropId);
+        log.info("玩家 {} 收获土地 {} 的 {} ×{}", playerId, playerLandId, cropId, yieldCount);
         return land;
+    }
+
+    private CropConfig requireCropConfig(String cropId) {
+        CropConfig config = cropConfigService.findByCropId(cropId);
+        if (config == null) {
+            throw new RuntimeException("作物配置不存在: " + cropId);
+        }
+        if (!Integer.valueOf(1).equals(config.getEnabled()))
+            throw new RuntimeException("作物已停用: " + cropId);
+        return config;
+    }
+
+    /** 校验并返回当前种植等级的数值配置。 */
+    private CropLevelConfig requireLevelConfig(String cropId, Integer cropLevel) {
+        CropLevelConfig config =
+                cropLevelConfigService.findByCropAndLevel(cropId, cropLevel);
+        if (config == null)
+            throw new RuntimeException("作物等级配置不存在: " + cropId + " Lv." + cropLevel);
+        if (config.getGrowSeconds() == null || config.getGrowSeconds() <= 0)
+            throw new RuntimeException("作物成熟时间配置无效: " + cropId);
+        if (config.getYieldCount() == null || config.getYieldCount() <= 0)
+            throw new RuntimeException("作物产量配置无效: " + cropId);
+        return config;
     }
 }

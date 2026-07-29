@@ -15,6 +15,16 @@ public class CropPlant {
     private Long id;
     private Long playerLandId;
     private String cropId;
+    /** 种植时作物等级快照。 */
+    private Integer cropLevel;
+    /** 种植时成熟秒数快照。 */
+    private Integer growSecondsSnapshot;
+    /** 种植时收获数量快照。 */
+    private Integer yieldCountSnapshot;
+    /** PERMANENT / TEMPORARY。 */
+    private String accessType;
+    /** 临时种植权限 ID，永久权限为空。 */
+    private Long accessGrantId;
     private LocalDateTime plantTime;
     private LocalDateTime finishTime;
     private String status;

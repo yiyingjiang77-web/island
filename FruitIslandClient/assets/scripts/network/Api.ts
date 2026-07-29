@@ -45,6 +45,9 @@ export const Api = {
   /** 收获 */
   HARVEST: '/farm/harvest',
 
+  /** 使用金币升级永久拥有的作物 */
+  CROP_UPGRADE: '/crop/upgrade',
+
   // ==================== 建筑 ====================
 
   /** 获取建筑列表 */

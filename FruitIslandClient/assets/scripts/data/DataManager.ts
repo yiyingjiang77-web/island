@@ -1,4 +1,15 @@
-import { GamePlayer, Island, GameInitData, LandVO, InventoryItem } from '../types';
+import {
+  CropConfig,
+  CropLevelConfig,
+  CropUnlockSource,
+  GamePlayer,
+  Island,
+  GameInitData,
+  LandVO,
+  InventoryItem,
+  PlayerCrop,
+  PlayerCropGrant,
+} from '../types';
 import { http } from '../network/HttpClient';
 import { Api } from '../network/Api';
 
@@ -20,6 +31,11 @@ export class DataManager {
   private _island: Island | null = null;
   private _lands: LandVO[] = [];
   private _inventory: InventoryItem[] = [];
+  private _cropConfigs: CropConfig[] = [];
+  private _cropLevelConfigs: CropLevelConfig[] = [];
+  private _cropUnlockSources: CropUnlockSource[] = [];
+  private _playerCrops: PlayerCrop[] = [];
+  private _cropGrants: PlayerCropGrant[] = [];
 
   private _loaded: boolean = false;
 
@@ -57,6 +73,11 @@ export class DataManager {
     this._island = data.island;
     this._lands = data.lands || [];
     this._inventory = data.inventory || [];
+    this._cropConfigs = data.cropConfigs || [];
+    this._cropLevelConfigs = data.cropLevelConfigs || [];
+    this._cropUnlockSources = data.cropUnlockSources || [];
+    this._playerCrops = data.playerCrops || [];
+    this._cropGrants = data.cropGrants || [];
 
     this._loaded = true;
 
@@ -65,6 +86,7 @@ export class DataManager {
     console.log(`  金币: ${this._player.gold}  钻石: ${this._player.diamond}`);
     console.log(`  岛屿: ${this._island.islandName}  Lv.${this._island.level}`);
     console.log(`  土地: ${this._lands.length} 块  背包: ${this._inventory.length} 种物品`);
+    console.log(`  作物配置: ${this._cropConfigs.length} 种，永久权限: ${this._playerCrops.length} 种，限时权限: ${this._cropGrants.length} 种`);
 
     return true;
   }
@@ -87,6 +109,26 @@ export class DataManager {
 
   get inventory(): InventoryItem[] {
     return this._inventory;
+  }
+
+  get cropConfigs(): CropConfig[] {
+    return this._cropConfigs;
+  }
+
+  get cropLevelConfigs(): CropLevelConfig[] {
+    return this._cropLevelConfigs;
+  }
+
+  get cropUnlockSources(): CropUnlockSource[] {
+    return this._cropUnlockSources;
+  }
+
+  get playerCrops(): PlayerCrop[] {
+    return this._playerCrops;
+  }
+
+  get cropGrants(): PlayerCropGrant[] {
+    return this._cropGrants;
   }
 
   /** 本地更新金币（服务器同步后也更新这里） */

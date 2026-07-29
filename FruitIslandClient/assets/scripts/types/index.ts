@@ -127,8 +127,15 @@ export interface LandVO {
   buyPrice: number;
   playerLandId?: number; // 已购买才有
   cropId?: string;
+  /** 本轮种植时的等级快照。 */
+  cropLevel?: number;
+  /** 本轮成熟后可收获的数量快照。 */
+  yieldCount?: number;
+  /** PERMANENT / TEMPORARY。 */
+  accessType?: string;
   plantTime?: string;
   finishTime?: string;
+  waterLevel?: number;
 }
 
 /** 作物种植记录，对应 crop_plant 表 */
@@ -136,6 +143,11 @@ export interface CropPlant {
   id: number;
   landId: number;
   cropId: string;
+  cropLevel: number;
+  growSecondsSnapshot: number;
+  yieldCountSnapshot: number;
+  accessType: 'PERMANENT' | 'TEMPORARY';
+  accessGrantId?: number;
   plantTime: string;
   finishTime: string;
   status: string; // WAITING_WATER | GROWING | READY | HARVESTED
@@ -150,6 +162,69 @@ export interface ItemConfig {
   icon: string;
   sellPrice: number;
   createTime: string;
+}
+
+/** 作物基础配置，对应 crop_config 表 */
+export interface CropConfig {
+  cropId: string;
+  name: string;
+  rarity: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
+  rewardEligible: number;
+  permanentUnlockEnabled: number;
+  upgradeEnabled: number;
+  playerUnlockLevel: number;
+  maxCropLevel: number;
+  enabled: number;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** 作物某一等级的数值配置，对应 crop_level_config 表 */
+export interface CropLevelConfig {
+  id: number;
+  cropId: string;
+  cropLevel: number;
+  growSeconds: number;
+  yieldCount: number;
+  /** 从上一等级升级到本等级需要的金币；1 级为 0。 */
+  upgradeGold: number;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** 作物永久种植权获得渠道，对应 crop_unlock_source 表。 */
+export interface CropUnlockSource {
+  id: number;
+  cropId: string;
+  sourceType: 'INITIAL' | 'GOLD_SHOP' | 'DIAMOND_SHOP' | 'LEVEL_REWARD';
+  currencyType: 'NONE' | 'GOLD' | 'DIAMOND';
+  price: number;
+  requiredPlayerLevel: number;
+  sourceRefId?: string;
+  enabled: number;
+}
+
+/** 玩家永久拥有的作物；存在记录即可以无限次种植。 */
+export interface PlayerCrop {
+  id: number;
+  playerId: number;
+  cropId: string;
+  cropLevel: number;
+  unlockSource: string;
+  unlockTime: string;
+}
+
+/** 玩家当前有效的限时稀有作物权限；不可升级。 */
+export interface PlayerCropGrant {
+  id: number;
+  playerId: number;
+  cropId: string;
+  grantCropLevel: number;
+  grantSource: string;
+  sourceRefId?: string;
+  validFrom: string;
+  validUntil: string;
+  status: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
 }
 
 /** 背包物品，对应 inventory 表 */
@@ -229,6 +304,11 @@ export interface GameInitData {
   island: Island;
   lands: LandVO[];
   inventory: InventoryItem[];
+  cropConfigs: CropConfig[];
+  cropLevelConfigs: CropLevelConfig[];
+  cropUnlockSources: CropUnlockSource[];
+  playerCrops: PlayerCrop[];
+  cropGrants: PlayerCropGrant[];
 }
 
 // ==================== 错误码（与服务端 ErrorCode 对应） ====================

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>果香小岛 Demo2.3 — 紧凑布局 V3</title>
+<title>果香小岛 Demo2.3 — 地图直种版 V4</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;width:100vw;height:100vh;height:100dvh;font-family:'PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden}
@@ -20,34 +20,19 @@ canvas{display:block}
 .camera-tools button{border:0;border-radius:13px;background:rgba(0,0,0,.68);color:#fff;padding:5px 9px;font-size:11px;cursor:pointer}
 .camera-tools button:active{transform:scale(.95)}
 
-/* 弹窗 */
-.land-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);z-index:100;justify-content:center;align-items:center}
+/* 点击土地坐标后出现的轻量操作浮层，不包含 4×4 土地列表。 */
+.land-modal{display:none;position:absolute;z-index:100;pointer-events:none}
 .land-modal.show{display:flex}
-.land-panel{background:#2a3040;border-radius:14px;padding:18px;width:min(440px,calc(100vw - 24px));max-height:85vh;overflow-y:auto}
-.land-panel h3{font-size:16px;color:#fff;text-align:center;margin-bottom:4px}
-.land-panel .sub{font-size:11px;color:#888;text-align:center;margin-bottom:12px}
-.land-grid{display:grid;grid-template-columns:repeat(4,80px);grid-template-rows:repeat(4,80px);gap:4px;justify-content:center;margin-bottom:12px}
-.land-cell{width:80px;height:80px;border-radius:8px;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid transparent;transition:.12s;background:#2a2a3a}
-.land-cell:hover{transform:scale(1.08);z-index:5}
-.land-cell.LOCKED{background:#2a2a3a;border-color:#333;cursor:not-allowed}
-.land-cell.UNPURCHASED{background:#4a3a1a;border-color:#8a7a3a}
-.land-cell.EMPTY{background:#4a2a18;border-color:#7a5a3a}
-.land-cell.PLANTED{background:#2a4a22;border-color:#4a8a3a;animation:pulse 1.5s infinite}
-.land-cell.READY{background:#5a4a0a;border-color:#ca9a2a;animation:glow .8s infinite}
-.land-cell .emo{font-size:26px;line-height:1}
-.land-cell .lbl{font-size:9px;color:#bbb;margin-top:2px}
-.land-cell .prc{font-size:10px;color:#f4d35e}
-.land-cell .wbar{position:absolute;bottom:3px;left:6px;right:6px;height:3px;background:rgba(0,0,0,.4);border-radius:2px;overflow:hidden}
-.land-cell .wfil{height:100%;border-radius:2px}
-.wf-h{background:#4dc9f6}.wf-m{background:#f4a460}.wf-l{background:#e74c3c}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
-@keyframes glow{0%,100%{box-shadow:0 0 4px #f4d35e}50%{box-shadow:0 0 14px #f4d35e}}
+.land-panel{pointer-events:auto;background:rgba(42,48,64,.96);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:9px 10px;width:min(360px,calc(100vw - 20px));max-height:34vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.land-panel h3{font-size:14px;color:#fff;text-align:center;margin-bottom:2px}
+.land-panel .sub{font-size:11px;color:#aaa;text-align:center;margin-bottom:4px}
 .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
 .btn{color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px}
 .btn:hover{opacity:.85}
+.btn:disabled{opacity:.42;cursor:not-allowed}
 .btn.close{background:#555}.btn.buy{background:#f0a030}.btn.plant{background:#4ac44a}.btn.water{background:#4dc9f6}.btn.harvest{background:#f0a030}
 .crop-list{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin:6px 0}
-.crop-opt{padding:4px 10px;border-radius:6px;cursor:pointer;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:11px;color:#ddd}
+.crop-opt{padding:7px 11px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-size:11px;color:#ddd}
 .crop-opt:hover,.crop-opt.sel{background:rgba(74,194,74,.3);border-color:#4ac44a}
 .msg{text-align:center;font-size:12px;color:#aaa;margin-top:6px;min-height:18px}
 @media(max-width:600px){
@@ -61,8 +46,6 @@ canvas{display:block}
   .camera-tools button{padding:4px 7px;font-size:10px}
   .info{left:7px;right:7px;bottom:7px;font-size:10px}
   .land-panel{padding:12px}
-  .land-grid{width:100%;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:none}
-  .land-cell{width:100%;height:auto;aspect-ratio:1}
 }
 </style>
 </head>
@@ -80,6 +63,7 @@ canvas{display:block}
   <div class="camera-tools">
     <button onclick="focusCore()">🎯 核心区</button>
     <button onclick="focusPlayer()">👤 找角色</button>
+    <button onclick="reconnectApi()">🔄 重连</button>
     <button onclick="changeZoom(.82)">−</button>
     <button onclick="changeZoom(1.22)">＋</button>
   </div>
@@ -90,8 +74,7 @@ canvas{display:block}
 
 <div class="land-modal" id="land-modal">
   <div class="land-panel">
-    <h3 id="modal-title">🌱 农田</h3><div class="sub" id="modal-sub"></div>
-    <div class="land-grid" id="land-grid"></div>
+    <h3 id="modal-title">🎒 种子背包</h3><div class="sub" id="modal-sub"></div>
     <div class="crop-list" id="crop-list" style="display:none"></div>
     <div class="msg" id="msg"></div>
     <div class="acts" id="acts"><button class="btn close" onclick="closeLandModal()">关闭</button></div>
@@ -100,7 +83,7 @@ canvas{display:block}
 
 <script>
 // ================================================================
-// Demo2.3 — 紧凑布局 V3 (同步 MapConfig.ts + MapConfig.json + FarmConfig.json)
+// Demo2.3 — 地图直种版 V4 (同步 MapConfig.ts + MapConfig.json + FarmConfig.json)
 //
 // Grid: 48×48, 120px/tile, 5760×5760
 // WATER_EDGE=1, BEACH_WIDTH=1, GRASS=2~45
@@ -129,9 +112,9 @@ const BUILDINGS=[
 // ==================== 农田 = FarmConfig.json ====================
 const FARM_ZONES=[
   {id:'farm_a',blockId:'Farm-A',name:'农田A',gx:31,gy:30,color:'#7EC850',unlockLevel:1},
-  {id:'farm_b',blockId:'Farm-B',name:'农田B',gx:36,gy:30,color:'#6DB840',unlockLevel:3},
-  {id:'farm_c',blockId:'Farm-C',name:'农田C',gx:31,gy:35,color:'#6DB840',unlockLevel:5},
-  {id:'farm_d',blockId:'Farm-D',name:'农田D',gx:36,gy:35,color:'#7EC850',unlockLevel:8},
+  {id:'farm_b',blockId:'Farm-B',name:'农田B',gx:35.5,gy:30,color:'#6DB840',unlockLevel:3},
+  {id:'farm_c',blockId:'Farm-C',name:'农田C',gx:31,gy:34.5,color:'#6DB840',unlockLevel:5},
+  {id:'farm_d',blockId:'Farm-D',name:'农田D',gx:36,gy:34.5,color:'#7EC850',unlockLevel:8},
 ];
 
 // ==================== 花园 = MapConfig.ZONES ====================
@@ -181,6 +164,21 @@ function isWalkable(wx, wy){
 
 function getClickedZone(wx, wy){
   for(const z of zoneRects) if(wx>=z.left&&wx<z.right&&wy>=z.bottom&&wy<z.top) return z;
+  return null;
+}
+
+// 地图上的每个农田 Block 都由 4×4 个可直接点击的土地格组成。
+function getClickedFarmCell(wx, wy){
+  for(const farm of FARM_ZONES){
+    // 支持策划配置中的半格坐标（例如 35.5），点击仍映射到 Block 内 0~3。
+    const localX=wx/TILE-farm.gx, localY=wy/TILE-farm.gy;
+    if(localX<0||localX>=4||localY<0||localY>=4) continue;
+    const gridX=Math.floor(localX), gridY=Math.floor(localY);
+    const land=allLands.find(item=>
+      item.blockId===farm.blockId&&item.gridX===gridX&&item.gridY===gridY
+    );
+    return {farm,land,gridX,gridY};
+  }
   return null;
 }
 
@@ -254,21 +252,29 @@ canvas.addEventListener('pointermove',e=>{
 });
 canvas.addEventListener('pointerup',e=>{
   if(e.pointerId!==activePointer) return;
-  if(Math.hypot(e.clientX-dx, e.clientY-dy) < 8){
+  const isClick=Math.hypot(e.clientX-dx,e.clientY-dy)<8;
+  // 无论点击到土地、建筑还是道路，都先结束本次 Pointer 状态，避免提前 return 后拖动状态残留。
+  dragging=false;
+  activePointer=null;
+  if(isClick){
     const rect=canvas.getBoundingClientRect();
     const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
     const wx=cam.x+sx/zoom, wy=cam.y+sy/zoom;
+    const farmCell=getClickedFarmCell(wx,wy);
+    if(farmCell){
+      openMapLandActions({...farmCell,screenX:sx,screenY:sy});
+      return;
+    }
+    // 点到农田外时收起操作条，地图拖动和角色移动始终保持可用。
+    if(pendingCell) closeLandModal();
     const zone = getClickedZone(wx, wy);
     if(zone && (zone.blockId || zone.type)){
-      if(zone.blockId) openFarmModal(zone);
-      else openZoneModal(zone);
+      openZoneModal(zone);
       return;
     }
     if(isWalkable(wx,wy)){ player.tx=wx; player.ty=wy; player.moving=true; cam.mode='player';
       document.getElementById('info').textContent='🏃 走过去...'; }
   }
-  dragging=false;
-  activePointer=null;
 });
 canvas.addEventListener('pointercancel',()=>{dragging=false;activePointer=null});
 function clampCam(){
@@ -344,17 +350,58 @@ function renderMap(){
       if(blockLands.some(l=>l.status==='READY')){alpha=.75;clr='#f4d35e66';border='rgba(244,211,94,.7)'}
       else if(blockLands.some(l=>l.status==='PLANTED')){alpha=.65;clr='#4a8a3a88';border='rgba(100,180,80,.6)'}
     }
-    ctx.globalAlpha=alpha; ctx.fillStyle=clr; ctx.fillRect(sx-hw,sy-hh,hh*2,hh*2); ctx.globalAlpha=1;
+    // 一个 FARM_ZONES 项是 4×4 的区域，不是一块大土地。
+    // 直接在地图上画出 16 个子格，并在联网时映射各自的服务端状态。
+    for(let row=0;row<4;row++) for(let col=0;col<4;col++){
+      const cell=blockLands.find(l=>l.gridX===col&&l.gridY===row);
+      const left=sx-hw+col*TILE, top=sy-hh+row*TILE, inset=gap(5);
+      const displayState=cell?getDisplayLandState(cell):'';
+      let cellColor=clr;
+      if(displayState==='LOCKED') cellColor='#4b5055cc';
+      else if(displayState==='UNPURCHASED') cellColor='#916941cc';
+      else if(displayState==='EMPTY') cellColor='#7d552dcc';
+      else if(displayState==='PLANTED') cellColor=(cell.waterLevel||0)>0?'#5faf50dd':'#647896dd';
+      else if(displayState==='READY') cellColor='#f59a42ee';
+      ctx.globalAlpha=alpha;
+      ctx.fillStyle=cellColor;
+      ctx.fillRect(left+inset,top+inset,TILE-inset*2,TILE-inset*2);
+      ctx.globalAlpha=1;
+      ctx.strokeStyle='rgba(235,255,220,.55)';
+      ctx.lineWidth=line(1);
+      ctx.strokeRect(left+inset,top+inset,TILE-inset*2,TILE-inset*2);
+      if(cell){
+        let icon='';
+        if(displayState==='LOCKED') icon='🔒';
+        else if(displayState==='UNPURCHASED') icon='💰';
+        // 刚播种显示待浇水；浇一次后显示发芽；成熟后才显示具体作物。
+        else if(displayState==='PLANTED') icon=(cell.waterLevel||0)>0?'🌱':'💧';
+        else if(displayState==='READY') icon=C_EMOJI[cell.cropId]||'✨';
+        if(icon){
+          ctx.font=font(displayState==='PLANTED'||displayState==='READY'?18:14);
+          ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillStyle='#fff';
+          ctx.fillText(icon,left+TILE/2,top+TILE/2);
+        }
+        if(displayState==='PLANTED'&&(cell.waterLevel||0)>0){
+          ctx.font=font(8,'bold ');
+          ctx.fillStyle='#efffe8';
+          ctx.fillText(`${getRemainingSeconds(cell)}s`,left+TILE/2,top+TILE*.73);
+        }
+        if(pendingCell?.landConfigId===cell.landConfigId){
+          ctx.strokeStyle='#fff36b';
+          ctx.lineWidth=line(3);
+          ctx.strokeRect(left+inset,top+inset,TILE-inset*2,TILE-inset*2);
+        }
+      }
+    }
     ctx.strokeStyle=border; ctx.lineWidth=line(2.5); ctx.setLineDash([gap(8),gap(4)]);
     ctx.strokeRect(sx-hw,sy-hh,hh*2,hh*2); ctx.setLineDash([]);
     ctx.font=font(13,'bold '); ctx.fillStyle='#fff'; ctx.textAlign='center';
     ctx.fillText(`${f.name}`, sx, sy-hh-gap(6));
     ctx.font=font(9); ctx.fillStyle='#e5ffd0';
     const unlocked = playerLevel >= f.unlockLevel;
-    ctx.font=font(24);
-    ctx.fillText(unlocked?'🌱':'🔒',sx,sy);
     ctx.font=font(9); ctx.fillStyle='#e5ffd0';
-    ctx.fillText(unlocked ? `Lv.${f.unlockLevel}` : `🔒 Lv.${f.unlockLevel}解锁`, sx, sy+hh+gap(12));
+    ctx.fillText(unlocked ? `4×4 · 16块 · Lv.${f.unlockLevel}` : `🔒 Lv.${f.unlockLevel}解锁`, sx, sy+hh+gap(12));
     if(blockLands.length>0 && unlocked){
       const n=blockLands.filter(l=>l.status==='PLANTED'||l.status==='READY').length;
       ctx.font=font(10); ctx.fillStyle='#e5ffd0';
@@ -415,11 +462,14 @@ function drawMinimap(){
 // 后端 API (连接 localhost:8081 登录, localhost:8082 游戏)
 // ================================================================
 const AUTH_URL='http://localhost:8081', GAME_URL='http://localhost:8082';
+// 使用固定开发登录码，刷新或重连时继续使用同一测试账号，避免每次创建新玩家。
+const DEV_LOGIN_CODE='dev_demo23_browser';
 let token='', apiOnline=false;
+let reconnecting=false;
 let playerGold=500, playerDiamond=20, playerLevel=1, allLands=[];
 let currentFarm=null, pendingCell=null, pendingCrop='strawberry';
-const CROPS=['strawberry','cabbage','carrot','tomato','potato','chili','corn'];
-const C_EMOJI={strawberry:'🍓',cabbage:'🥬',carrot:'🥕',tomato:'🍅',potato:'🥔',chili:'🌶️',corn:'🌽'};
+let cropConfigs=[], playerCrops=[], cropGrants=[];
+const C_EMOJI={strawberry:'🍓',cabbage:'🥬',carrot:'🥕',tomato:'🍅',potato:'🥔',chili:'🌶️',corn:'🌽',moonberry:'🫐'};
 const S_NAMES={LOCKED:'🔒未解锁',UNPURCHASED:'💰待购买',EMPTY:'🟫空地',PLANTED:'🌱生长中',READY:'✨可收获'};
 
 const apiEl = document.getElementById('hud-api');
@@ -433,7 +483,7 @@ async function apiLogin(){
   try{
     const r=await fetch(`${AUTH_URL}/auth/wechat/login`,{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({code:'demo23_'+Date.now()})
+      body:JSON.stringify({code:DEV_LOGIN_CODE})
     }).then(r=>r.json());
     if(r.code===0&&r.data?.token){ token=r.data.token; setApiStatus(true,'在线'); return true; }
     setApiStatus(false,'登录失败'); return false;
@@ -458,43 +508,107 @@ async function refresh(){
     playerGold=init.data.player.gold;
     playerDiamond=init.data.player.diamond;
     playerLevel=init.data.player.level;
+    cropConfigs=init.data.cropConfigs||[];
+    playerCrops=init.data.playerCrops||[];
+    cropGrants=init.data.cropGrants||[];
   }
   updateHUD();
+  return Boolean(lands?.data && init?.data);
+}
+
+async function reconnectApi(){
+  if(reconnecting) return false;
+  reconnecting=true;
+  setApiStatus(false,'连接中…');
+  const loggedIn=await apiLogin();
+  const ready=loggedIn && await refresh();
+  if(ready){
+    setApiStatus(true,'在线');
+    document.getElementById('info').textContent='✅ 已连接服务器，点击农田选择土地和种子';
+  }else{
+    token='';
+    setApiStatus(false,loggedIn?'游戏服离线':'离线');
+  }
+  reconnecting=false;
+  return ready;
 }
 
 async function doBuy(){
   if(!pendingCell) return;
   const r=await apiCall('POST','/farm/buy',{landConfigId:pendingCell.landConfigId});
-  if(r?.code===0){ await refresh(); renderFarmGrid(); document.getElementById('msg').textContent='✅ 购买成功！'; }
+  if(r?.code===0){ await refresh(); closeLandModal(); document.getElementById('info').textContent='✅ 土地购买成功，可直接再次点击该格种植'; }
   else{ document.getElementById('msg').textContent='❌ '+(r?.message||'购买失败'); }
 }
 async function doPlant(){
   if(!pendingCell) return;
+  if(!pendingCrop){
+    document.getElementById('msg').textContent='请先选择一种种子';
+    return;
+  }
   const r=await apiCall('POST','/farm/plant',{playerLandId:pendingCell.playerLandId, cropId:pendingCrop});
-  if(r?.code===0){ await refresh(); renderFarmGrid(); document.getElementById('msg').textContent='✅ 种植成功！'; }
+  if(r?.code===0){ await refresh(); closeLandModal(); document.getElementById('info').textContent=`✅ ${C_EMOJI[pendingCrop]||'🌱'} 种植成功，作物已显示在地图土地格中`; }
   else{ document.getElementById('msg').textContent='❌ '+(r?.message||'种植失败'); }
 }
 async function doWater(){
   if(!pendingCell) return;
   const r=await apiCall('POST','/farm/water',{playerLandId:pendingCell.playerLandId});
-  if(r?.code===0){ await refresh(); renderFarmGrid(); document.getElementById('msg').textContent='💧 浇水成功！'; }
+  if(r?.code===0){ await refresh(); closeLandModal(); document.getElementById('info').textContent='💧 浇水成功，种子开始发芽生长'; }
   else{ document.getElementById('msg').textContent='❌ '+(r?.message||'浇水失败'); }
 }
 async function doHarvest(){
   if(!pendingCell) return;
   const r=await apiCall('POST','/farm/harvest',{playerLandId:pendingCell.playerLandId});
-  if(r?.code===0){ await refresh(); renderFarmGrid(); document.getElementById('msg').textContent='✅ 收获成功！'; }
+  if(r?.code===0){ await refresh(); closeLandModal(); document.getElementById('info').textContent='🥕 收获成功，土地已恢复为空地'; }
   else{ document.getElementById('msg').textContent='❌ '+(r?.message||'收获失败'); }
 }
 
-// ==================== 农田弹窗 ====================
+// ==================== 地图土地直接操作 ====================
+function positionLandActions(screenX,screenY){
+  const toolbar=document.getElementById('land-modal');
+  const panelWidth=Math.min(360,CW-20);
+  const estimatedHeight=150;
+  toolbar.style.left=`${Math.max(10,Math.min(CW-panelWidth-10,screenX-panelWidth/2))}px`;
+  toolbar.style.top=`${screenY>CH/2
+    ?Math.max(56,screenY-estimatedHeight-14)
+    :Math.min(CH-estimatedHeight-48,screenY+14)}px`;
+}
+
+function openMapLandActions({farm,land,gridX,gridY,screenX,screenY}){
+  if(!apiOnline){
+    document.getElementById('info').textContent='⚠️ 离线模式：请等待自动重连或点击“🔄 重连”';
+    return;
+  }
+  if(playerLevel<farm.unlockLevel){
+    document.getElementById('info').textContent=`🔒 ${farm.name}需要 Lv.${farm.unlockLevel} 解锁`;
+    return;
+  }
+  if(!land){
+    document.getElementById('info').textContent='⚠️ 土地数据尚未加载，请点击“🔄 重连”';
+    return;
+  }
+  currentFarm=farm;
+  document.getElementById('modal-title').textContent=`🎒 ${farm.name} · 土地 ${gridY+1}-${gridX+1}`;
+  document.getElementById('modal-sub').textContent='当前选中的地图坐标';
+  positionLandActions(screenX,screenY);
+  document.getElementById('land-modal').classList.add('show');
+  handleLandClick(land.status,land.landConfigId,land.playerLandId,land.cropId,land);
+}
+
+// 保留兼容入口，但不再展示整块农田的 4×4 模态窗口。
 function openFarmModal(zone){
+  /*
+   * 离线模式没有服务端土地和种植权限数据，不打开全屏管理弹窗。
+   * 旧逻辑仍会打开透明遮罩，导致后续地图点击全部被遮罩拦截，看起来像失去控制。
+   */
+  if(!apiOnline){
+    document.getElementById('info').textContent='⚠️ 离线模式：请先启动 8081/8082 服务并检查数据库连接';
+    return;
+  }
   if(playerLevel < zone.unlockLevel){
     document.getElementById('info').textContent=`🔒 ${zone.name}需要 Lv.${zone.unlockLevel} 解锁`;
     return;
   }
-  currentFarm=zone; renderFarmGrid();
-  document.getElementById('land-modal').classList.add('show');
+  document.getElementById('info').textContent=`🌱 请直接点击${zone.name}中的具体土地格`;
 }
 function openZoneModal(zone){
   document.getElementById('info').textContent=`${zone.icon||''} ${zone.name} — Lv.${zone.unlockLevel}解锁`;
@@ -504,67 +618,89 @@ function closeLandModal(){
   document.getElementById('land-modal').classList.remove('show');
 }
 
-function renderFarmGrid(){
-  if(!currentFarm) return;
-  const blockLands=allLands.filter(l=>l.blockId===currentFarm.blockId);
-  document.getElementById('modal-title').textContent=`🌱 ${currentFarm.name}`;
-  document.getElementById('modal-sub').textContent=`${currentFarm.blockId} | Lv.${currentFarm.unlockLevel}解锁 | ${blockLands.length} 块`;
+// Esc 可以随时关闭土地操作条。
+window.addEventListener('keydown',event=>{
+  if(event.key==='Escape') closeLandModal();
+});
 
-  const grid=Array.from({length:4},()=>Array(4).fill(null));
-  for(const l of blockLands) if(l.gridY<4&&l.gridX<4) grid[l.gridY][l.gridX]=l;
-  let html='';
-  for(let y=0;y<4;y++) for(let x=0;x<4;x++){
-    const l=grid[y][x];
-    if(!l){html+='<div class="land-cell"></div>';continue}
-    const s=l.status; let emo='',lbl='',prc='',wbar='';
-    if(s==='LOCKED'){emo='🔒';lbl=`Lv.${l.unlockLevel}`}
-    else if(s==='UNPURCHASED'){emo='💰';prc=l.buyPrice+'⭐'}
-    else if(s==='EMPTY'){emo='🟫';lbl='空地'}
-    else if(s==='PLANTED'){
-      emo=l.waterLevel>=50?'🌱':'💧'; lbl=C_EMOJI[l.cropId]||l.cropId;
-      const w=l.waterLevel||0, wc=w>=60?'wf-h':w>=30?'wf-m':'wf-l';
-      wbar=`<div class="wbar"><div class="wfil ${wc}" style="width:${w}%"></div></div>`;
-    }
-    else if(s==='READY'){emo='✨';lbl=C_EMOJI[l.cropId]||l.cropId}
-    html+=`<div class="land-cell ${s}" data-config="${l.landConfigId}" data-pland="${l.playerLandId||''}" data-status="${s}" data-crop="${l.cropId||''}" data-water="${l.waterLevel||0}" data-price="${l.buyPrice}" title="${S_NAMES[s]||s}"><span class="emo">${emo}</span>${prc?`<span class="prc">${prc}</span>`:''}${lbl?`<span class="lbl">${lbl}</span>`:''}${wbar}</div>`;
-  }
-  document.getElementById('land-grid').innerHTML=html;
-  document.querySelectorAll('.land-cell').forEach(el=>{el.addEventListener('click',()=>{
-    const s=el.dataset.status, cfg=parseInt(el.dataset.config);
-    const pl=el.dataset.pland?parseInt(el.dataset.pland):null;
-    handleLandClick(s,cfg,pl,el.dataset.crop);
-  })});
-  document.getElementById('crop-list').style.display='none';
-  document.getElementById('msg').textContent=apiOnline?'点击格子操作':'⚠️ 离线模式 — 仅展示地图';
-  document.getElementById('acts').innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button>';
+function getRemainingSeconds(land){
+  if(!land?.finishTime) return 0;
+  return Math.max(0,Math.ceil((new Date(land.finishTime).getTime()-Date.now())/1000));
 }
 
-function handleLandClick(status, landConfigId, playerLandId, cropId){
-  pendingCell={landConfigId, playerLandId, cropId};
+function getDisplayLandState(land){
+  if(land?.status==='PLANTED'&&land.finishTime&&getRemainingSeconds(land)<=0) return 'READY';
+  return land?.status||'';
+}
+
+function handleLandClick(status, landConfigId, playerLandId, cropId, land=null){
+  const displayState=land?getDisplayLandState(land):status;
+  pendingCell={
+    landConfigId,playerLandId,cropId,
+    buyPrice:land?.buyPrice,
+    waterLevel:land?.waterLevel,
+    finishTime:land?.finishTime,
+  };
   const m=document.getElementById('msg'), cl=document.getElementById('crop-list');
   cl.style.display='none'; const acts=document.getElementById('acts');
   if(!apiOnline){ m.textContent='⚠️ 离线模式 — 无法操作'; acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button>'; return; }
 
-  if(status==='LOCKED'){m.textContent='🔒 等级不足';acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button>';return}
-  if(status==='UNPURCHASED'){
-    const price=document.querySelector(`[data-config="${landConfigId}"]`)?.dataset.price||'?';
+  if(displayState==='LOCKED'){m.textContent='🔒 等级不足';acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button>';return}
+  if(displayState==='UNPURCHASED'){
+    const price=pendingCell.buyPrice??'?';
     m.textContent=`💰 购买价格: ${price} ⭐`;
     acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button><button class="btn buy" onclick="doBuy()">💰 购买</button>';return;
   }
-  if(status==='EMPTY'){m.textContent='选作物种植:';showCropList();
-    acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button><button class="btn plant" onclick="doPlant()">🌱 种植</button>';return;}
-  if(status==='PLANTED'){m.textContent=`💧 水分 ${document.querySelector(`[data-config="${landConfigId}"]`)?.dataset.water||'?'}% — 浇水保持生长`;
+  if(displayState==='EMPTY'){
+    pendingCrop='';
+    const available=getPlantableCrops();
+    if(available.length===0){
+      m.textContent='⚠️ 当前没有永久或有效的限时种植权限';
+      acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button>';
+      return;
+    }
+    m.textContent='🎒 请先选择种子，再点击“种植”';showCropList(available);
+    acts.innerHTML='<button class="btn close" onclick="closeLandModal()">取消</button><button id="confirm-plant" class="btn plant" onclick="doPlant()" disabled>🌱 种植</button>';return;}
+  if(displayState==='PLANTED'&&(pendingCell.waterLevel??0)<=0){
+    m.textContent='💧 种子正在等待浇水';
     acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button><button class="btn water" onclick="doWater()">💧 浇水</button>';return;}
-  if(status==='READY'){m.textContent=`✨ ${cropId} 可以收获了！`;
+  if(displayState==='PLANTED'){
+    m.textContent=`🌱 生长中，还剩 ${getRemainingSeconds(pendingCell)} 秒`;
+    acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button>';return;}
+  if(displayState==='READY'){m.textContent=`✨ ${cropId} 可以收获了！`;
     acts.innerHTML='<button class="btn close" onclick="closeLandModal()">关闭</button><button class="btn harvest" onclick="doHarvest()">🥕 收获</button>';return;}
 }
 
-function showCropList(){
-  const el=document.getElementById('crop-list'); el.style.display='flex';
-  pendingCrop='strawberry';
-  el.innerHTML=CROPS.map(c=>`<div class="crop-opt${c===pendingCrop?' sel':''}" onclick="selectCrop('${c}')">${C_EMOJI[c]||''} ${c}</div>`).join('');
+function getPlantableCrops(){
+  const now=Date.now(), configById=new Map(cropConfigs.map(c=>[c.cropId,c]));
+  const result=new Map();
+  for(const owned of playerCrops){
+    const c=configById.get(owned.cropId);
+    if(!c||c.enabled!==1||c.playerUnlockLevel>playerLevel) continue;
+    result.set(c.cropId,{...c,cropLevel:owned.cropLevel,temporary:false});
+  }
+  for(const grant of cropGrants){
+    const c=configById.get(grant.cropId);
+    if(!c||result.has(c.cropId)||grant.status!=='ACTIVE') continue;
+    if(new Date(grant.validFrom).getTime()>now||new Date(grant.validUntil).getTime()<=now) continue;
+    result.set(c.cropId,{...c,cropLevel:grant.grantCropLevel,temporary:true,validUntil:grant.validUntil});
+  }
+  return [...result.values()];
 }
-function selectCrop(c){pendingCrop=c;showCropList();}
+function showCropList(available=getPlantableCrops()){
+  const el=document.getElementById('crop-list'); el.style.display='flex';
+  el.innerHTML=available.map(c=>{
+    const access=c.temporary?'限时':'永久';
+    return `<div class="crop-opt${c.cropId===pendingCrop?' sel':''}" onclick="selectCropFromBag('${c.cropId}')">${C_EMOJI[c.cropId]||'🌿'} ${c.name} Lv.${c.cropLevel} · ${access}</div>`;
+  }).join('');
+}
+function selectCropFromBag(cropId){
+  pendingCrop=cropId;
+  showCropList();
+  document.getElementById('msg').textContent=`已选择 ${C_EMOJI[cropId]||'🌿'}，点击“种植”确认`;
+  const confirm=document.getElementById('confirm-plant');
+  if(confirm) confirm.disabled=false;
+}
 
 function updateHUD(){
   document.getElementById('hud-gold').textContent=playerGold;
@@ -598,9 +734,8 @@ function loop(now){
 // ==================== 启动 ====================
 (async()=>{
   resizeCanvas();
-  const ok=await apiLogin();
-  if(ok){await refresh();}
-  else{
+  const ok=await reconnectApi();
+  if(!ok){
     // 离线模式 fallback
     playerGold=500; playerDiamond=20; playerLevel=1; allLands=[];
   }
@@ -608,12 +743,15 @@ function loop(now){
     `🍰蛋糕 Lv.3 🥤饮品 Lv.4 💱交易 Lv.6 ⚓码头<br>`+
     `🐔鸡舍 🐄牛棚 🐝蜂箱 Lv.5 🌸花园 Lv.10/13<br>`+
     `🌲森林 Lv.8 ⛰️矿山 Lv.10 🌱农田 Lv.1~8<br>`+
-    `48×48 Grid | 5760×5760 px | 紧凑V3`;
+    `48×48 Grid | 5760×5760 px | 地图直种V4`;
   updateHUD();
   requestAnimationFrame(loop);
-  if(ok) console.log('🏝️ Demo2.3 紧凑布局 V3 就绪 (API模式)');
-  else console.log('🏝️ Demo2.3 紧凑布局 V3 就绪 (离线模式)');
+  if(ok) console.log('🏝️ Demo2.3 地图直种 V4 就绪 (API模式)');
+  else console.log('🏝️ Demo2.3 地图直种 V4 就绪 (离线模式)');
 })();
+
+// 页面先于后端启动时自动恢复连接；固定登录码保证不会重复创建账号。
+setInterval(()=>{ if(!apiOnline) reconnectApi(); },5000);
 </script>
 </body>
 </html>

@@ -3,6 +3,7 @@ import { GridManager } from './GridManager';
 import { MapLoader, BuildingConfig, FarmBlockConfig } from './MapLoader';
 import { BuildingManager } from './BuildingManager';
 import { MapCollisionManager } from './MapCollisionManager';
+import { LandManager } from './LandManager';
 import { MapConfig } from '../../configs/MapConfig';
 
 const { ccclass } = _decorator;
@@ -25,6 +26,7 @@ export class MapManager extends Component {
   private _worldRoot: Node | null = null;
   private _buildingManager: BuildingManager | null = null;
   private _collisionManager: MapCollisionManager | null = null;
+  private _landManager: LandManager | null = null;
   private _initialized: boolean = false;
 
   /** 农场方块节点（供外部查询） */
@@ -52,6 +54,7 @@ export class MapManager extends Component {
 
     // 5. 创建农田
     this.createFarms(farmConfig.farms);
+    this.initLandManager(farmConfig.farms);
 
     // 6. 初始化碰撞系统
     this.initCollision();
@@ -121,6 +124,13 @@ export class MapManager extends Component {
 
   private createFarms(farms: FarmBlockConfig[]): void {
     const landLayer = this.getOrCreateLayer('LandLayer');
+    // 静态 Block 底图与动态土地状态分层，避免 LandManager 刷新时删掉底图。
+    const farmBlockLayer = landLayer.getChildByName('FarmBlockLayer')
+      || (() => {
+        const layer = new Node('FarmBlockLayer');
+        landLayer.addChild(layer);
+        return layer;
+      })();
 
     for (const farm of farms) {
       const farmNode = new Node(`Farm_${farm.id}`);
@@ -133,24 +143,60 @@ export class MapManager extends Component {
       const gs = this._gridManager.config.gridSize;
       const g = farmNode.addComponent(Graphics);
 
-      // 半透明绿色填充
-      g.fillColor = new Color(126, 200, 80, 100);
+      /*
+       * farm_a～farm_d 是 4 个“农田区域”，不是 4 块独立土地。
+       * 每个区域在地图上明确画成 4×4 子格；具体 LOCKED、EMPTY、PLANTED
+       * 等状态随后由 LandManager 按服务端 land_config 数据覆盖到对应子格。
+       */
       const hw = (farm.width * gs) / 2;
       const hh = (farm.height * gs) / 2;
-      g.rect(-hw, -hh, farm.width * gs, farm.height * gs);
-      g.fill();
+      const cellInset = gs * 0.05;
+      for (let row = 0; row < farm.height; row++) {
+        for (let col = 0; col < farm.width; col++) {
+          const x = -hw + col * gs + cellInset;
+          const y = -hh + row * gs + cellInset;
 
-      // 虚线边框
+          g.fillColor = new Color(126, 200, 80, 75);
+          g.rect(x, y, gs - cellInset * 2, gs - cellInset * 2);
+          g.fill();
+
+          g.strokeColor = new Color(205, 235, 175, 150);
+          g.lineWidth = 1.5;
+          g.rect(x, y, gs - cellInset * 2, gs - cellInset * 2);
+          g.stroke();
+        }
+      }
+
+      // 区域外框用于区分 Farm-A～Farm-D。
       g.strokeColor = new Color(180, 220, 140, 200);
-      g.lineWidth = 2;
+      g.lineWidth = 3;
       g.rect(-hw, -hh, farm.width * gs, farm.height * gs);
       g.stroke();
 
-      landLayer.addChild(farmNode);
+      farmBlockLayer.addChild(farmNode);
       this._farmNodes.set(farm.id, farmNode);
     }
 
-    console.log(`[MapManager] 农田: ${farms.length} 块`);
+    const landCellCount = farms.reduce(
+      (total, farm) => total + farm.width * farm.height,
+      0,
+    );
+    console.log(
+      `[MapManager] 农田: ${farms.length} 个区域，共 ${landCellCount} 块土地`,
+    );
+  }
+
+  private initLandManager(farms: FarmBlockConfig[]): void {
+    const landLayer = this.getOrCreateLayer('LandLayer');
+    const landCellLayer = landLayer.getChildByName('LandCellLayer')
+      || (() => {
+        const layer = new Node('LandCellLayer');
+        landLayer.addChild(layer);
+        return layer;
+      })();
+    this._landManager = landCellLayer.getComponent(LandManager)
+      || landCellLayer.addComponent(LandManager);
+    this._landManager.init(this._gridManager, farms);
   }
 
   // ==================== 碰撞 ====================
@@ -185,6 +231,7 @@ export class MapManager extends Component {
   get gridManager(): GridManager { return this._gridManager; }
   get buildingManager(): BuildingManager | null { return this._buildingManager; }
   get collisionManager(): MapCollisionManager | null { return this._collisionManager; }
+  get landManager(): LandManager | null { return this._landManager; }
 
   /** 判断是否可行走 */
   isWalkable(worldX: number, worldY: number): boolean {

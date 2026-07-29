@@ -135,6 +135,15 @@ export class GameManager extends Component {
     }
     this._mapManager = mapNode.getComponent(MapManager) || mapNode.addComponent(MapManager);
     this._mapManager.init(this._worldRoot!);
+    this._mapManager.landManager?.setMessageHandler(message => {
+      const hud = find('UIRoot/TopHUD')?.getComponent(UIManager);
+      hud?.showMessage(message);
+      hud?.refreshHUD();
+    });
+    this._mapManager.landManager?.setCropPickerHandler((options, onSelect) => {
+      const hud = find('UIRoot/TopHUD')?.getComponent(UIManager);
+      hud?.showCropPicker(options, onSelect);
+    });
   }
 
   private initPlayer(): void {
@@ -188,13 +197,18 @@ export class GameManager extends Component {
     if (!uiRoot) return;
     let hud = uiRoot.getChildByName('TopHUD');
     if (!hud) { hud = new Node('TopHUD'); uiRoot.addChild(hud); }
-    hud.getComponent(UIManager) || hud.addComponent(UIManager);
+    const ui = hud.getComponent(UIManager) || hud.addComponent(UIManager);
+    ui.showMessage('点击土地：购买 → 种植 → 浇水 → 收获');
   }
 
   // ==================== 运行时 ====================
 
   private handleClick(worldPos: Vec3): void {
     if (!this._mapManager || !this._playerController) return;
+
+    if (this._mapManager.landManager?.tryInteractAt(worldPos)) {
+      return;
+    }
 
     if (!this._mapManager.isWalkable(worldPos.x, worldPos.y)) {
       if (GameConfig.DEBUG) console.log('[GameManager] 不可通行');
