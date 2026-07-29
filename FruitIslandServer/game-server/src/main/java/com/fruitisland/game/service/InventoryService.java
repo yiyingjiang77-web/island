@@ -10,4 +10,7 @@ public interface InventoryService extends BaseServiceX<Inventory> {
 
     /** 添加物品到背包（不存在则创建） */
     void addItem(Long playerId, String itemId, int count);
+
+    /** 原子扣减；库存不足时失败。 */
+    void removeItem(Long playerId, String itemId, int count);
 }

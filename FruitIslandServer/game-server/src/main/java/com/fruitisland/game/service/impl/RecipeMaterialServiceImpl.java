@@ -8,4 +8,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class RecipeMaterialServiceImpl extends BaseServiceImplX<RecipeMaterialMapper, RecipeMaterial> implements RecipeMaterialService {
+    @Override
+    public java.util.List<RecipeMaterial> listByRecipe(String recipeId) {
+        return lambdaQuery().eq(RecipeMaterial::getRecipeId, recipeId).list();
+    }
 }

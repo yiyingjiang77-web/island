@@ -17,4 +17,9 @@ public class RecipeConfig {
     private Integer makeTime;
 
     private Integer unlockLevel;
+
+    private Integer saleGold;
+    private Integer saleExp;
+    private Integer orderWeight;
+    private Integer enabled;
 }

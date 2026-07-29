@@ -16,11 +16,23 @@ public class CustomerOrder {
 
     private String customerId;
 
+    private String recipeId;
+
     private String itemId;
 
-    private Integer rewardGold;
+    private Integer quantity;
+
+    private Integer unitGoldSnapshot;
+
+    private Integer unitExpSnapshot;
+
+    private Integer queuePosition;
 
     private String status;
 
     private LocalDateTime createTime;
+
+    private LocalDateTime closeTime;
+
+    private String closeReason;
 }

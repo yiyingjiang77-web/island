@@ -17,4 +17,9 @@ public interface GamePlayerService extends BaseServiceX<GamePlayer> {
      * 支持一次奖励连续提升多级，并自动发放升级金币。
      */
     ExpGainResult addExp(Long playerId, int amount);
+
+    /**
+     * 锁定玩家并在一个事务中结算饮品售出的金币、经验和升级奖励。
+     */
+    ExpGainResult settleDrinkSaleReward(Long playerId, int gold, int exp);
 }

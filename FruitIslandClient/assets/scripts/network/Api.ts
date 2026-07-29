@@ -92,4 +92,12 @@ export const Api = {
 
   /** 领取产物 */
   PRODUCTION_CLAIM: '/game/production/claim',
+
+  // ==================== 饮品店制作台 ====================
+
+  /** 获取制作台配方、材料库存和最大可制作数量 */
+  DRINK_SHOP: '/drink-shop',
+
+  /** 制作饮品（身份由 JWT 决定） */
+  DRINK_SHOP_CRAFT: '/drink-shop/craft',
 } as const;

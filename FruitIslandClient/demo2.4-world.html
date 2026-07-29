@@ -116,7 +116,7 @@ const FARM_ZONES=[
   {id:'farm_a',blockId:'Farm-A',name:'农田A',gx:31,gy:30,color:'#7EC850',unlockLevel:1},
   {id:'farm_b',blockId:'Farm-B',name:'农田B',gx:35.5,gy:30,color:'#6DB840',unlockLevel:3},
   {id:'farm_c',blockId:'Farm-C',name:'农田C',gx:31,gy:34.5,color:'#6DB840',unlockLevel:5},
-  {id:'farm_d',blockId:'Farm-D',name:'农田D',gx:36,gy:34.5,color:'#7EC850',unlockLevel:8},
+  {id:'farm_d',blockId:'Farm-D',name:'农田D',gx:35.5,gy:34.5,color:'#7EC850',unlockLevel:8},
 ];
 
 // ==================== 花园 = MapConfig.ZONES ====================
@@ -520,6 +520,13 @@ async function refresh(){
   updateHUD();
   return Boolean(lands?.data && init?.data);
 }
+
+// 外层制作台完成订单结算后，仅通过消息请求世界层自行刷新玩家状态。
+// 不允许父页面读取 iframe 的 Location；file:// 页面会被浏览器视为不透明来源。
+window.addEventListener('message',event=>{
+  if(event.source!==window.parent) return;
+  if(event.data?.type==='fruit-island:player-changed') refresh();
+});
 
 async function reconnectApi(){
   if(reconnecting) return false;

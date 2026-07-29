@@ -30,4 +30,13 @@ public class InventoryServiceImpl extends BaseServiceImplX<InventoryMapper, Inve
             save(inv);
         }
     }
+
+    @Override
+    @Transactional
+    public void removeItem(Long playerId, String itemId, int count) {
+        if (count <= 0) throw new IllegalArgumentException("扣减数量必须为正数");
+        if (baseMapper.decrementIfEnough(playerId, itemId, count) != 1) {
+            throw new IllegalArgumentException("材料不足");
+        }
+    }
 }

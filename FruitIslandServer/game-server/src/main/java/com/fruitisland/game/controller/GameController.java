@@ -35,6 +35,7 @@ public class GameController {
     private final PlayerCropService playerCropService;
     private final PlayerCropGrantService playerCropGrantService;
     private final PlayerLevelConfigService playerLevelConfigService;
+    private final PlayerRecipeService playerRecipeService;
 
     /**
      * 游戏初始化
@@ -80,6 +81,9 @@ public class GameController {
         if (playerCropService.findByPlayerAndCrop(player.getId(), "strawberry") == null) {
             playerCropService.grantPermanent(player.getId(), "strawberry", "MIGRATION_DEFAULT");
         }
+        // 草莓汁是所有玩家的初始永久配方；对旧账号幂等补发。
+        playerRecipeService.grantPermanent(
+                player.getId(), "strawberry_juice", isNewPlayer ? "INITIAL" : "MIGRATION_DEFAULT");
 
         // 4. 加载土地数据
         List<LandVO> lands = playerLandService.listByPlayer(player.getId(), player.getLevel());

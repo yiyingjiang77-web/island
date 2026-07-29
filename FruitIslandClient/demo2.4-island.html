@@ -37,6 +37,16 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#151a27;fon
 .loading{padding:36px 12px;text-align:center;color:#b8c6b6;font-size:13px}
 .error{color:#ff9d91}
 .inventory-note{margin:12px 2px 0;color:#859188;font-size:10px;line-height:1.5;text-align:center}
+.craft-card{padding:14px;border:1px solid rgba(255,255,255,.13);border-radius:16px;background:rgba(255,255,255,.06)}
+.craft-recipe{display:flex;align-items:center;gap:11px}.craft-recipe .emoji{font-size:38px}.craft-recipe h3{margin:0;font-size:17px}.craft-recipe p{margin:4px 0 0;color:#aebbac;font-size:12px}
+.craft-material{margin:13px 0;padding:10px;border-radius:12px;background:rgba(0,0,0,.16);font-size:12px;line-height:1.7}
+.craft-quantity{display:flex;align-items:center;gap:7px}.craft-quantity button,.craft-submit{border:0;border-radius:10px;background:#527e4c;color:white;padding:9px 12px;cursor:pointer;font-weight:700}
+.craft-quantity output{min-width:38px;text-align:center;font-size:18px;font-weight:700}.craft-quantity output.disabled{color:#778079}.craft-quantity .max{margin-left:auto;background:#78633c}
+.craft-submit{width:100%;margin-top:12px;background:#d75f4a}.craft-submit:disabled,.craft-quantity button:disabled{opacity:.42;cursor:not-allowed}
+.craft-message{min-height:18px;margin:10px 2px 0;color:#b9d8aa;font-size:12px}.craft-message.error{color:#ff9d91}
+.customer-section{margin-bottom:14px}.customer-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.customer-section-head h3{margin:0;font-size:15px}.arrival-countdown{color:#e7ca72;font-size:11px}
+.customer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.customer-card{border:1px solid rgba(255,255,255,.13);border-radius:13px;background:rgba(255,255,255,.055);color:#fff;padding:10px;text-align:left;cursor:pointer}.customer-card:hover,.customer-card.selected{border-color:#d8f1b8;background:rgba(94,140,76,.28)}.customer-card .customer-line{display:flex;align-items:center;gap:7px}.customer-card .avatar{font-size:24px}.customer-card strong{font-size:13px}.customer-card .order{margin-top:7px;color:#f1d68a;font-size:12px}.customer-card .reward{margin-top:3px;color:#a9c5a4;font-size:10px}.customer-empty{padding:20px;text-align:center;color:#93a096;font-size:12px}
+.order-actions{margin:9px 0 13px;padding:10px;border-radius:12px;background:rgba(0,0,0,.17);font-size:12px}.order-actions p{margin:0 0 8px}.order-actions button{width:100%;border:0;border-radius:10px;padding:9px;background:#527e4c;color:#fff;font-weight:700;cursor:pointer}.order-actions button:disabled{opacity:.42;cursor:not-allowed}
 
 @media(max-width:600px){
   .feature-rail{right:8px}
@@ -78,6 +88,29 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#151a27;fon
     <p class="inventory-note">背包只用于查看和保存物品，不提供出售农作物功能。</p>
   </aside>
 
+  <aside class="feature-drawer" id="drink-shop-drawer" aria-hidden="true">
+    <header class="drawer-head">
+      <div class="drawer-title">
+        <h2>🥤 饮品店制作台</h2>
+        <p id="craft-status">选择配方和制作数量</p>
+      </div>
+      <button class="refresh-button" onclick="loadCraftingStation(true)" title="刷新制作台">↻</button>
+      <button class="close-button" onclick="closeFeatureDrawer()" title="收起">✕</button>
+    </header>
+    <section class="customer-section">
+      <div class="customer-section-head">
+        <h3>顾客队列</h3>
+        <span class="arrival-countdown" id="arrival-countdown">读取中…</span>
+      </div>
+      <div class="customer-grid" id="customer-grid">
+        <div class="loading">顾客正在到店…</div>
+      </div>
+      <div id="order-actions"></div>
+    </section>
+    <section id="crafting-station"><div class="loading">正在读取制作台…</div></section>
+    <p class="craft-message" id="craft-message" role="status"></p>
+  </aside>
+
   <nav class="feature-rail" aria-label="功能入口">
     <button
       class="feature-button"
@@ -87,6 +120,14 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#151a27;fon
       <span class="icon">🎒</span>
       <span class="text">背包</span>
       <span class="feature-badge" id="inventory-badge" style="display:none">0</span>
+    </button>
+    <button
+      class="feature-button"
+      id="drink-shop-button"
+      onclick="toggleFeatureDrawer('drink-shop')"
+      title="打开饮品店制作台">
+      <span class="icon">🥤</span>
+      <span class="text">制作台</span>
     </button>
   </nav>
 </main>
@@ -111,26 +152,42 @@ const ITEM_META={
 let token='';
 let activeFeature=null;
 let inventoryLoading=false;
+let craftingLoading=false;
+let selectedRecipe=null;
+let craftQuantity=1;
+let orderCraftQuantity=1;
+let customerQueue=[];
+let nextCustomerArrivalAt=null;
+let selectedOrderId=null;
+let arrivalRefreshPending=false;
 
 function toggleFeatureDrawer(feature){
   if(activeFeature===feature){
     closeFeatureDrawer();
     return;
   }
+  if(activeFeature) closeFeatureDrawer();
   activeFeature=feature;
-  document.getElementById('feature-drawer').classList.add('open');
-  document.getElementById('feature-drawer').setAttribute('aria-hidden','false');
+  const drawer=feature==='inventory'
+    ?document.getElementById('feature-drawer')
+    :document.getElementById('drink-shop-drawer');
+  drawer.classList.add('open');
+  drawer.setAttribute('aria-hidden','false');
   document.getElementById('drawer-shade').classList.add('show');
-  document.getElementById('inventory-button').classList.add('active');
+  document.getElementById(`${feature}-button`).classList.add('active');
   if(feature==='inventory') loadInventory();
+  if(feature==='drink-shop') loadCraftingStation();
 }
 
 function closeFeatureDrawer(){
   activeFeature=null;
   document.getElementById('feature-drawer').classList.remove('open');
   document.getElementById('feature-drawer').setAttribute('aria-hidden','true');
+  document.getElementById('drink-shop-drawer').classList.remove('open');
+  document.getElementById('drink-shop-drawer').setAttribute('aria-hidden','true');
   document.getElementById('drawer-shade').classList.remove('show');
   document.getElementById('inventory-button').classList.remove('active');
+  document.getElementById('drink-shop-button').classList.remove('active');
 }
 
 async function ensureLogin(){
@@ -224,6 +281,241 @@ function renderInventoryError(message){
     `<div class="empty error">${escapeHtml(message)}</div>`;
 }
 
+async function loadCraftingStation(force=false){
+  if(craftingLoading&&!force) return;
+  craftingLoading=true;
+  const station=document.getElementById('crafting-station');
+  if(force) station.innerHTML='<div class="loading">正在刷新制作台…</div>';
+  if(!await ensureLogin()){
+    renderCraftError('无法连接登录服务，请确认 8081 已启动');
+    craftingLoading=false;
+    return;
+  }
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop`,{
+      headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'制作台加载失败');
+    selectedRecipe=response.data?.recipes?.[0]||null;
+    customerQueue=response.data?.customers||[];
+    nextCustomerArrivalAt=response.data?.nextCustomerArrivalAt||null;
+    if(!customerQueue.some(customer=>customer.orderId===selectedOrderId)){
+      selectedOrderId=customerQueue[0]?.orderId||null;
+    }
+    craftQuantity=1;
+    orderCraftQuantity=Math.max(1,customerQueue.find(value=>value.orderId===selectedOrderId)?.quantity||1);
+    renderCustomerQueue();
+    renderCraftingStation();
+    document.getElementById('craft-status').textContent='制作成品会全部进入背包';
+  }catch(error){
+    renderCraftError(error.message||'制作台加载失败');
+  }finally{
+    craftingLoading=false;
+  }
+}
+
+function renderCraftingStation(){
+  const station=document.getElementById('crafting-station');
+  const recipe=selectedRecipe;
+  if(!recipe){
+    station.innerHTML='<div class="empty">暂时没有可用配方</div>';
+    return;
+  }
+  const max=recipe.maxCraftable||0;
+  craftQuantity=Math.max(1,Math.min(99,craftQuantity));
+  const material=recipe.materials[0];
+  const required=(material?.requiredCount||0)*craftQuantity;
+  station.innerHTML=`
+    <article class="craft-card">
+      <div class="craft-recipe">
+        <span class="emoji">${ITEM_META[recipe.outputItem]?.emoji||'🥤'}</span>
+        <div><h3>${escapeHtml(recipe.name)}</h3><p>每份产出 ${escapeHtml(ITEM_META[recipe.outputItem]?.name||recipe.outputItem)} ×${recipe.outputCount}</p></div>
+      </div>
+      <div class="craft-material">
+        材料：${escapeHtml(ITEM_META[material?.itemId]?.name||material?.itemId||'未配置')} ×${material?.requiredCount||0}/份<br>
+        库存：${material?.inventoryCount||0} · 本次消耗：${required} · 最大可制作：${max}
+      </div>
+      <div class="craft-quantity" aria-label="制作数量">
+        <button onclick="changeCraftQuantity(-1)" ${max<1||craftQuantity<=1?'disabled':''}>−</button>
+        <output class="${max<1?'disabled':''}" aria-disabled="${max<1}">${craftQuantity}</output>
+        <button onclick="changeCraftQuantity(1)" ${max<1||craftQuantity>=99?'disabled':''}>＋</button>
+        <button class="max" onclick="setMaximumCraftQuantity()" ${max<1?'disabled':''}>最大</button>
+      </div>
+      <button class="craft-submit" onclick="craftSelectedRecipe()" ${max<craftQuantity?'disabled':''}>制作 ${craftQuantity} 份</button>
+    </article>`;
+}
+
+function renderCustomerQueue(){
+  const grid=document.getElementById('customer-grid');
+  if(customerQueue.length===0){
+    grid.innerHTML='<div class="customer-empty">暂时没有等待中的顾客</div>';
+    document.getElementById('order-actions').innerHTML='';
+    updateArrivalCountdown();
+    return;
+  }
+  grid.innerHTML=customerQueue.map(customer=>`
+    <button class="customer-card ${customer.orderId===selectedOrderId?'selected':''}"
+      onclick="selectCustomerOrder(${Number(customer.orderId)})"
+      aria-pressed="${customer.orderId===selectedOrderId}">
+      <span class="customer-line">
+        <span class="avatar">${escapeHtml(customer.customerAvatar||'🙂')}</span>
+        <strong>${escapeHtml(customer.customerName)}</strong>
+      </span>
+      <span class="order">${escapeHtml(ITEM_META[customer.itemId]?.name||customer.itemId)} ×${customer.quantity}</span>
+      <span class="reward">预计 🪙${customer.expectedGold} · ⭐${customer.expectedExp}</span>
+    </button>
+  `).join('');
+  renderOrderActions();
+  updateArrivalCountdown();
+}
+
+function selectCustomerOrder(orderId){
+  selectedOrderId=orderId;
+  orderCraftQuantity=Math.max(
+    1,
+    customerQueue.find(value=>value.orderId===selectedOrderId)?.quantity||1,
+  );
+  renderCustomerQueue();
+}
+
+function renderOrderActions(){
+  const customer=customerQueue.find(value=>value.orderId===selectedOrderId);
+  const actions=document.getElementById('order-actions');
+  if(!customer){actions.innerHTML='';return}
+  const material=selectedRecipe?.materials?.[0];
+  const required=(material?.requiredCount||0)*orderCraftQuantity;
+  const excess=Math.max(0,orderCraftQuantity-customer.quantity);
+  actions.innerHTML=`<div class="order-actions">
+    <p>交付 ${escapeHtml(ITEM_META[customer.itemId]?.name||customer.itemId)} ×${customer.quantity}，获得 🪙${customer.expectedGold} · ⭐${customer.expectedExp}</p>
+    <button onclick="deliverSelectedOrder()">从背包完整交付</button>
+    <p style="margin-top:10px">现场制作 ${orderCraftQuantity} 份 · 消耗 ${escapeHtml(ITEM_META[material?.itemId]?.name||material?.itemId||'材料')} ×${required} · 交付 ${customer.quantity} · 多余入包 ${excess}</p>
+    <div class="craft-quantity">
+      <button onclick="changeOrderCraftQuantity(-1)" ${orderCraftQuantity<=customer.quantity?'disabled':''}>−</button>
+      <output>${orderCraftQuantity}</output>
+      <button onclick="changeOrderCraftQuantity(1)" ${orderCraftQuantity>=99?'disabled':''}>＋</button>
+    </div>
+    <button style="margin-top:8px" onclick="makeAndDeliverSelectedOrder()">现场制作并交付</button>
+    <button style="margin-top:8px;background:#78633c" onclick="markSelectedOrderOutOfStock()">暂时没货</button>
+  </div>`;
+}
+
+function changeOrderCraftQuantity(delta){
+  const customer=customerQueue.find(value=>value.orderId===selectedOrderId);
+  orderCraftQuantity=Math.max(
+    customer?.quantity||1,
+    Math.min(99,orderCraftQuantity+delta),
+  );
+  renderOrderActions();
+}
+
+async function deliverSelectedOrder(){
+  const message=document.getElementById('craft-message');
+  message.className='craft-message';
+  message.textContent='正在交付…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/orders/${selectedOrderId}/deliver`,{
+      method:'POST',headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'交付失败');
+    message.textContent=`交付成功：🪙${response.data.earnedGold} · ⭐${response.data.earnedExp}`;
+    await Promise.all([loadCraftingStation(true),loadInventory(true)]);
+    document.getElementById('world-frame').contentWindow
+      .postMessage({type:'fruit-island:player-changed'},'*');
+  }catch(error){
+    message.className='craft-message error';
+    message.textContent=error.message||'交付失败';
+  }
+}
+
+async function makeAndDeliverSelectedOrder(){
+  const message=document.getElementById('craft-message');
+  message.className='craft-message';
+  message.textContent='正在现场制作并交付…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/orders/${selectedOrderId}/make-and-deliver`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({quantity:orderCraftQuantity}),
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'制作并交付失败');
+    message.textContent=`已制作 ${response.data.craftedQuantity} 份，交付 ${response.data.deliveredQuantity} 份，多余 ${response.data.excessQuantity} 份已入包`;
+    await Promise.all([loadCraftingStation(true),loadInventory(true)]);
+    document.getElementById('world-frame').contentWindow
+      .postMessage({type:'fruit-island:player-changed'},'*');
+  }catch(error){
+    message.className='craft-message error';
+    message.textContent=error.message||'制作并交付失败';
+  }
+}
+
+async function markSelectedOrderOutOfStock(){
+  const message=document.getElementById('craft-message');
+  message.className='craft-message';
+  message.textContent='正在请顾客离开…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/orders/${selectedOrderId}/out-of-stock`,{
+      method:'POST',headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'订单关闭失败');
+    message.textContent='顾客已因暂时没货离开，本次没有获得奖励';
+    await loadCraftingStation(true);
+  }catch(error){
+    message.className='craft-message error';
+    message.textContent=error.message||'订单关闭失败';
+  }
+}
+
+function updateArrivalCountdown(){
+  const countdown=document.getElementById('arrival-countdown');
+  if(!countdown) return;
+  if(customerQueue.length>=5||!nextCustomerArrivalAt){
+    countdown.textContent=customerQueue.length>=5?'队列已满 · 计时暂停':'等待到店计时';
+    return;
+  }
+  const remaining=Math.max(0,Math.ceil((new Date(nextCustomerArrivalAt).getTime()-Date.now())/1000));
+  const minutes=Math.floor(remaining/60);
+  const seconds=String(remaining%60).padStart(2,'0');
+  countdown.textContent=`下一位 ${minutes}:${seconds}`;
+  if(remaining===0&&!arrivalRefreshPending){
+    arrivalRefreshPending=true;
+    loadCraftingStation(true).finally(()=>{arrivalRefreshPending=false});
+  }
+}
+
+function changeCraftQuantity(delta){
+  craftQuantity=Math.max(1,Math.min(99,craftQuantity+delta));
+  renderCraftingStation();
+}
+
+function setMaximumCraftQuantity(){
+  craftQuantity=Math.max(1,Math.min(99,selectedRecipe?.maxCraftable||1));
+  renderCraftingStation();
+}
+
+async function craftSelectedRecipe(){
+  const message=document.getElementById('craft-message');
+  message.className='craft-message';
+  message.textContent='正在制作…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/craft`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({recipeId:selectedRecipe.recipeId,quantity:craftQuantity}),
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'制作失败');
+    message.textContent=`制作成功：${selectedRecipe.name} ×${response.data.outputCount}`;
+    await Promise.all([loadCraftingStation(true),loadInventory(true)]);
+  }catch(error){
+    message.className='craft-message error';
+    message.textContent=error.message||'制作失败';
+  }
+}
+
+function renderCraftError(message){
+  document.getElementById('craft-status').textContent='制作台暂时不可用';
+  document.getElementById('crafting-station').innerHTML=`<div class="empty error">${escapeHtml(message)}</div>`;
+}
+
 function escapeHtml(value){
   return String(value)
     .replaceAll('&','&amp;')
@@ -248,6 +540,7 @@ window.addEventListener('message',event=>{
 setInterval(()=>{
   if(activeFeature==='inventory') loadInventory();
 },3000);
+setInterval(updateArrivalCountdown,1000);
 
 // 页面初次加载时只更新角标，不主动展开背包。
 loadInventory();

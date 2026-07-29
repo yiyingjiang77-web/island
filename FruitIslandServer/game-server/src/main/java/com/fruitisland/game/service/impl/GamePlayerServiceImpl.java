@@ -47,7 +47,20 @@ public class GamePlayerServiceImpl extends BaseServiceImplX<GamePlayerMapper, Ga
 
         GamePlayer player = getById(playerId);
         if (player == null) throw new RuntimeException("玩家不存在");
+        return applyExperience(player, amount);
+    }
 
+    @Override
+    @Transactional
+    public ExpGainResult settleDrinkSaleReward(Long playerId, int gold, int exp) {
+        if (gold < 0 || exp < 0) throw new IllegalArgumentException("售出收益不能为负数");
+        GamePlayer player = baseMapper.selectForUpdate(playerId);
+        if (player == null) throw new RuntimeException("玩家不存在");
+        player.setGold((player.getGold() == null ? 0L : player.getGold()) + gold);
+        return applyExperience(player, exp);
+    }
+
+    private ExpGainResult applyExperience(GamePlayer player, int amount) {
         int beforeLevel = player.getLevel() == null ? 1 : player.getLevel();
         int level = beforeLevel;
         int exp = (player.getExp() == null ? 0 : player.getExp()) + amount;

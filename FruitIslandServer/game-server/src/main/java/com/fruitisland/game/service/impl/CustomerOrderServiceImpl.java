@@ -8,4 +8,17 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class CustomerOrderServiceImpl extends BaseServiceImplX<CustomerOrderMapper, CustomerOrder> implements CustomerOrderService {
+    @Override
+    public java.util.List<CustomerOrder> listWaiting(Long playerId) {
+        return lambdaQuery()
+                .eq(CustomerOrder::getPlayerId, playerId)
+                .eq(CustomerOrder::getStatus, "WAITING")
+                .orderByAsc(CustomerOrder::getQueuePosition)
+                .list();
+    }
+
+    @Override
+    public CustomerOrder lockWaiting(Long orderId, Long playerId) {
+        return baseMapper.selectWaitingForUpdate(orderId, playerId);
+    }
 }

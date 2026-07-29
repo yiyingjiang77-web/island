@@ -61,7 +61,7 @@ export const MapConfig = {
     { id: 'farm_a', name: '农田A', label: '🌱', gx: 31, gy: 30, w: 4, h: 4, color: '#7EC850' },
     { id: 'farm_b', name: '农田B', label: '🌱', gx: 35.5, gy: 30, w: 4, h: 4, color: '#6DB840' },
     { id: 'farm_c', name: '农田C', label: '🌱', gx: 31, gy: 34.5, w: 4, h: 4, color: '#6DB840' },
-    { id: 'farm_d', name: '农田D', label: '🌱', gx: 36, gy: 34.5, w: 4, h: 4, color: '#7EC850' },
+    { id: 'farm_d', name: '农田D', label: '🌱', gx: 35.5, gy: 34.5, w: 4, h: 4, color: '#7EC850' },
     // 底部 — 码头
     { id: 'dock', name: '码头', label: '⚓', gx: 25, gy: 42, w: 5, h: 4, color: '#64A0DC' },
     // 外围 — 预留扩展

@@ -26,11 +26,11 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowCredentials(true);
     }
 
-    /** JWT 拦截：/game/**, /farm/** 需要认证，/auth/** 公开 */
+    /** JWT 拦截：游戏写入与状态接口需要认证，/auth/** 公开 */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
-                .addPathPatterns("/game/**", "/farm/**")
+                .addPathPatterns("/game/**", "/farm/**", "/drink-shop/**")
                 .excludePathPatterns("/auth/**");
     }
 }
