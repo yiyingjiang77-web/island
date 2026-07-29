@@ -21,6 +21,8 @@ public class CropPlant {
     private Integer growSecondsSnapshot;
     /** 种植时收获数量快照。 */
     private Integer yieldCountSnapshot;
+    /** 种植时收获经验快照。 */
+    private Integer harvestExpSnapshot;
     /** PERMANENT / TEMPORARY。 */
     private String accessType;
     /** 临时种植权限 ID，永久权限为空。 */

@@ -46,6 +46,10 @@ public class PlayerLand {
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Integer yieldCountSnapshot;
 
+    /** 本轮收获经验快照；成长过程中升级作物不会改变本轮奖励。 */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private Integer harvestExpSnapshot;
+
     /** 本轮种植权限来源：PERMANENT / TEMPORARY。 */
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String accessType;

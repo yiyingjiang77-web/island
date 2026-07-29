@@ -9,6 +9,7 @@ import {
   InventoryItem,
   PlayerCrop,
   PlayerCropGrant,
+  PlayerLevelConfig,
 } from '../types';
 import { http } from '../network/HttpClient';
 import { Api } from '../network/Api';
@@ -36,6 +37,7 @@ export class DataManager {
   private _cropUnlockSources: CropUnlockSource[] = [];
   private _playerCrops: PlayerCrop[] = [];
   private _cropGrants: PlayerCropGrant[] = [];
+  private _playerLevelConfigs: PlayerLevelConfig[] = [];
 
   private _loaded: boolean = false;
 
@@ -78,6 +80,7 @@ export class DataManager {
     this._cropUnlockSources = data.cropUnlockSources || [];
     this._playerCrops = data.playerCrops || [];
     this._cropGrants = data.cropGrants || [];
+    this._playerLevelConfigs = data.playerLevelConfigs || [];
 
     this._loaded = true;
 
@@ -129,6 +132,10 @@ export class DataManager {
 
   get cropGrants(): PlayerCropGrant[] {
     return this._cropGrants;
+  }
+
+  get playerLevelConfigs(): PlayerLevelConfig[] {
+    return this._playerLevelConfigs;
   }
 
   /** 本地更新金币（服务器同步后也更新这里） */

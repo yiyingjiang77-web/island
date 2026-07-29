@@ -28,6 +28,17 @@ CREATE TABLE game_player
     INDEX idx_user_id (user_id)
 ) COMMENT = '游戏角色表';
 
+-- 玩家当前 exp 表示“本级进度”，升级所需经验和奖励由配置表驱动。
+CREATE TABLE player_level_config
+(
+    level           INT PRIMARY KEY COMMENT '当前玩家等级',
+    required_exp    INT NOT NULL COMMENT '从当前等级升到下一级所需经验',
+    reward_gold     BIGINT NOT NULL DEFAULT 0 COMMENT '升到下一级时奖励金币',
+    create_time     DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time     DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    CHECK (level >= 1 AND required_exp > 0 AND reward_gold >= 0)
+) COMMENT = '玩家等级成长配置表';
+
 -- ============================================================
 -- 2. Island
 -- ============================================================
@@ -90,6 +101,7 @@ CREATE TABLE player_land
     crop_level     INT          COMMENT '种植时作物等级快照',
     grow_seconds_snapshot INT   COMMENT '本轮成熟秒数快照',
     yield_count_snapshot INT    COMMENT '本轮收获数量快照',
+    harvest_exp_snapshot INT    COMMENT '本轮收获经验快照',
     access_type    VARCHAR(16)  COMMENT '种植权限来源：PERMANENT / TEMPORARY',
     access_grant_id BIGINT      COMMENT '限时权限ID，永久种植时为空',
     plant_time     DATETIME     COMMENT '种植时间',
@@ -113,6 +125,7 @@ CREATE TABLE crop_plant
     crop_level     INT COMMENT '种植时作物等级快照',
     grow_seconds_snapshot INT COMMENT '种植时成熟秒数快照',
     yield_count_snapshot INT COMMENT '种植时收获数量快照',
+    harvest_exp_snapshot INT COMMENT '种植时收获经验快照',
     access_type    VARCHAR(16) COMMENT 'PERMANENT / TEMPORARY',
     access_grant_id BIGINT COMMENT '限时种植权限ID',
     plant_time     DATETIME COMMENT '种植时间',
@@ -163,11 +176,12 @@ CREATE TABLE crop_level_config
     crop_level      INT NOT NULL COMMENT '作物等级，从1开始',
     grow_seconds    INT NOT NULL COMMENT '浇水后成熟秒数',
     yield_count     INT NOT NULL COMMENT '单次收获数量',
+    harvest_exp     INT NOT NULL DEFAULT 0 COMMENT '收获该等级作物一次获得的玩家经验',
     upgrade_gold    BIGINT NOT NULL DEFAULT 0 COMMENT '从上一等级升到本等级所需金币；1级为0',
     create_time     DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time     DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     UNIQUE KEY uk_crop_level (crop_id, crop_level),
-    CHECK (crop_level >= 1 AND grow_seconds > 0 AND yield_count > 0 AND upgrade_gold >= 0)
+    CHECK (crop_level >= 1 AND grow_seconds > 0 AND yield_count > 0 AND harvest_exp >= 0 AND upgrade_gold >= 0)
 ) COMMENT = '作物等级数值配置表';
 
 CREATE TABLE crop_unlock_source
@@ -565,15 +579,21 @@ INSERT INTO crop_config
 ('moonberry', '月光莓', 'RARE', 1, 0, 0, 1, 1, 1);
 
 INSERT INTO crop_level_config
-(crop_id, crop_level, grow_seconds, yield_count, upgrade_gold) VALUES
-('strawberry', 1, 60, 2, 0), ('strawberry', 2, 50, 3, 200), ('strawberry', 3, 40, 4, 500),
-('cabbage', 1, 120, 2, 0), ('cabbage', 2, 105, 3, 300), ('cabbage', 3, 90, 4, 700),
-('carrot', 1, 180, 3, 0), ('carrot', 2, 155, 4, 400), ('carrot', 3, 130, 5, 900),
-('tomato', 1, 240, 3, 0), ('tomato', 2, 210, 4, 500), ('tomato', 3, 180, 5, 1100),
-('potato', 1, 300, 4, 0), ('potato', 2, 270, 5, 600), ('potato', 3, 240, 6, 1300),
-('chili', 1, 480, 3, 0), ('chili', 2, 420, 4, 900), ('chili', 3, 360, 5, 1800),
-('corn', 1, 600, 5, 0), ('corn', 2, 520, 6, 1200), ('corn', 3, 450, 8, 2500),
-('moonberry', 1, 300, 5, 0);
+(crop_id, crop_level, grow_seconds, yield_count, harvest_exp, upgrade_gold) VALUES
+('strawberry', 1, 60, 2, 5, 0), ('strawberry', 2, 50, 3, 8, 200), ('strawberry', 3, 40, 4, 12, 500),
+('cabbage', 1, 120, 2, 8, 0), ('cabbage', 2, 105, 3, 12, 300), ('cabbage', 3, 90, 4, 18, 700),
+('carrot', 1, 180, 3, 12, 0), ('carrot', 2, 155, 4, 18, 400), ('carrot', 3, 130, 5, 25, 900),
+('tomato', 1, 240, 3, 15, 0), ('tomato', 2, 210, 4, 22, 500), ('tomato', 3, 180, 5, 30, 1100),
+('potato', 1, 300, 4, 18, 0), ('potato', 2, 270, 5, 26, 600), ('potato', 3, 240, 6, 36, 1300),
+('chili', 1, 480, 3, 25, 0), ('chili', 2, 420, 4, 36, 900), ('chili', 3, 360, 5, 50, 1800),
+('corn', 1, 600, 5, 30, 0), ('corn', 2, 520, 6, 45, 1200), ('corn', 3, 450, 8, 65, 2500),
+('moonberry', 1, 300, 5, 40, 0);
+
+INSERT INTO player_level_config (level, required_exp, reward_gold) VALUES
+(1,100,50),(2,150,75),(3,220,100),(4,300,125),(5,400,150),
+(6,520,180),(7,660,210),(8,820,250),(9,1000,300),(10,1200,350),
+(11,1450,400),(12,1700,450),(13,2000,500),(14,2350,550),(15,2750,600),
+(16,3200,700),(17,3700,800),(18,4250,900),(19,4850,1000),(20,5500,1200);
 
 INSERT INTO crop_unlock_source
 (crop_id, source_type, currency_type, price, required_player_level, source_ref_id, enabled) VALUES

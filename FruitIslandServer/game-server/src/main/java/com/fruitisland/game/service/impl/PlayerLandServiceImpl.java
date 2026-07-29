@@ -1,6 +1,8 @@
 package com.fruitisland.game.service.impl;
 
 import com.fruitisland.common.base.BaseServiceImplX;
+import com.fruitisland.game.dto.ExpGainResult;
+import com.fruitisland.game.dto.HarvestResultVO;
 import com.fruitisland.game.dto.LandVO;
 import com.fruitisland.game.entity.*;
 import com.fruitisland.game.mapper.PlayerLandMapper;
@@ -93,6 +95,7 @@ public class PlayerLandServiceImpl
                         .cropId(pl.getCropId())
                         .cropLevel(pl.getCropLevel())
                         .yieldCount(pl.getYieldCountSnapshot())
+                        .harvestExp(pl.getHarvestExpSnapshot())
                         .accessType(pl.getAccessType())
                         .plantTime(pl.getPlantTime())
                         .finishTime(pl.getFinishTime())
@@ -183,6 +186,7 @@ public class PlayerLandServiceImpl
         land.setCropLevel(cropLevel);
         land.setGrowSecondsSnapshot(levelConfig.getGrowSeconds());
         land.setYieldCountSnapshot(levelConfig.getYieldCount());
+        land.setHarvestExpSnapshot(levelConfig.getHarvestExp());
         land.setAccessType(accessType);
         land.setAccessGrantId(accessGrantId);
         land.setPlantTime(now);
@@ -197,6 +201,7 @@ public class PlayerLandServiceImpl
         record.setCropLevel(cropLevel);
         record.setGrowSecondsSnapshot(levelConfig.getGrowSeconds());
         record.setYieldCountSnapshot(levelConfig.getYieldCount());
+        record.setHarvestExpSnapshot(levelConfig.getHarvestExp());
         record.setAccessType(accessType);
         record.setAccessGrantId(accessGrantId);
         record.setPlantTime(now);
@@ -245,7 +250,7 @@ public class PlayerLandServiceImpl
 
     @Override
     @Transactional
-    public PlayerLand harvest(Long playerId, Long playerLandId) {
+    public HarvestResultVO harvest(Long playerId, Long playerLandId) {
         PlayerLand land = getById(playerLandId);
         if (land == null) throw new RuntimeException("土地不存在");
         if (!land.getPlayerId().equals(playerId)) throw new RuntimeException("这不是你的土地");
@@ -266,7 +271,13 @@ public class PlayerLandServiceImpl
         Integer yieldCount = land.getYieldCountSnapshot();
         if (yieldCount == null || yieldCount <= 0)
             throw new RuntimeException("本轮作物缺少产量快照");
+        Integer harvestExp = land.getHarvestExpSnapshot();
+        if (harvestExp == null || harvestExp < 0)
+            throw new RuntimeException("本轮作物缺少收获经验快照");
+
+        Integer cropLevel = land.getCropLevel();
         inventoryService.addItem(playerId, cropId, yieldCount);
+        ExpGainResult expResult = gamePlayerService.addExp(playerId, harvestExp);
 
         CropPlant latestRecord = cropPlantService.findLatestByPlayerLand(playerLandId);
         if (latestRecord != null && "GROWING".equals(latestRecord.getStatus())) {
@@ -279,6 +290,7 @@ public class PlayerLandServiceImpl
         land.setCropLevel(null);
         land.setGrowSecondsSnapshot(null);
         land.setYieldCountSnapshot(null);
+        land.setHarvestExpSnapshot(null);
         land.setAccessType(null);
         land.setAccessGrantId(null);
         land.setPlantTime(null);
@@ -287,8 +299,23 @@ public class PlayerLandServiceImpl
         land.setLastWateredAt(null);
         updateById(land);
 
-        log.info("玩家 {} 收获土地 {} 的 {} ×{}", playerId, playerLandId, cropId, yieldCount);
-        return land;
+        log.info(
+                "玩家 {} 收获土地 {} 的 {} ×{}，经验 +{}，等级 {}→{}",
+                playerId, playerLandId, cropId, yieldCount, harvestExp,
+                expResult.getBeforeLevel(), expResult.getAfterLevel()
+        );
+        return HarvestResultVO.builder()
+                .playerLandId(playerLandId)
+                .cropId(cropId)
+                .cropLevel(cropLevel)
+                .yieldCount(yieldCount)
+                .expGained(harvestExp)
+                .playerLevel(expResult.getAfterLevel())
+                .playerExp(expResult.getCurrentExp())
+                .nextLevelExp(expResult.getNextLevelExp())
+                .levelsGained(expResult.getLevelsGained())
+                .levelRewardGold(expResult.getRewardGold())
+                .build();
     }
 
     private CropConfig requireCropConfig(String cropId) {
@@ -311,6 +338,8 @@ public class PlayerLandServiceImpl
             throw new RuntimeException("作物成熟时间配置无效: " + cropId);
         if (config.getYieldCount() == null || config.getYieldCount() <= 0)
             throw new RuntimeException("作物产量配置无效: " + cropId);
+        if (config.getHarvestExp() == null || config.getHarvestExp() < 0)
+            throw new RuntimeException("作物收获经验配置无效: " + cropId);
         return config;
     }
 }

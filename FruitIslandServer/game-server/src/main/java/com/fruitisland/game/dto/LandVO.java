@@ -53,6 +53,9 @@ public class LandVO implements Serializable {
     /** 本轮成熟时可收获的数量快照。 */
     private Integer yieldCount;
 
+    /** 本轮收获时获得的玩家经验快照。 */
+    private Integer harvestExp;
+
     /** 本轮使用的权限：PERMANENT / TEMPORARY。 */
     private String accessType;
 

@@ -131,6 +131,8 @@ export interface LandVO {
   cropLevel?: number;
   /** 本轮成熟后可收获的数量快照。 */
   yieldCount?: number;
+  /** 本轮收获经验快照。 */
+  harvestExp?: number;
   /** PERMANENT / TEMPORARY。 */
   accessType?: string;
   plantTime?: string;
@@ -146,6 +148,7 @@ export interface CropPlant {
   cropLevel: number;
   growSecondsSnapshot: number;
   yieldCountSnapshot: number;
+  harvestExpSnapshot: number;
   accessType: 'PERMANENT' | 'TEMPORARY';
   accessGrantId?: number;
   plantTime: string;
@@ -186,10 +189,33 @@ export interface CropLevelConfig {
   cropLevel: number;
   growSeconds: number;
   yieldCount: number;
+  /** 收获该等级作物一次获得的玩家经验。 */
+  harvestExp: number;
   /** 从上一等级升级到本等级需要的金币；1 级为 0。 */
   upgradeGold: number;
   createTime?: string;
   updateTime?: string;
+}
+
+/** 玩家等级成长配置。 */
+export interface PlayerLevelConfig {
+  level: number;
+  requiredExp: number;
+  rewardGold: number;
+}
+
+/** 收获接口返回的产物与经验结算。 */
+export interface HarvestResult {
+  playerLandId: number;
+  cropId: string;
+  cropLevel: number;
+  yieldCount: number;
+  expGained: number;
+  playerLevel: number;
+  playerExp: number;
+  nextLevelExp?: number;
+  levelsGained: number;
+  levelRewardGold: number;
 }
 
 /** 作物永久种植权获得渠道，对应 crop_unlock_source 表。 */
@@ -309,6 +335,7 @@ export interface GameInitData {
   cropUnlockSources: CropUnlockSource[];
   playerCrops: PlayerCrop[];
   cropGrants: PlayerCropGrant[];
+  playerLevelConfigs: PlayerLevelConfig[];
 }
 
 // ==================== 错误码（与服务端 ErrorCode 对应） ====================

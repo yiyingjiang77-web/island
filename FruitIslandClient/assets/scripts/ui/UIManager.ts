@@ -27,6 +27,9 @@ export class UIManager extends Component {
   @property(Label)
   diamondLabel: Label | null = null;
 
+  @property(Label)
+  expLabel: Label | null = null;
+
   private _messageLabel: Label | null = null;
   private _cropPicker: Node | null = null;
 
@@ -57,6 +60,14 @@ export class UIManager extends Component {
     }
     if (this.diamondLabel) {
       this.diamondLabel.string = `💎 ${p.diamond}`;
+    }
+    if (this.expLabel) {
+      const levelConfig = data.playerLevelConfigs.find(
+        config => config.level === p.level,
+      );
+      this.expLabel.string = levelConfig
+        ? `✨ ${p.exp} / ${levelConfig.requiredExp}`
+        : `✨ ${p.exp}`;
     }
   }
 
@@ -179,6 +190,7 @@ export class UIManager extends Component {
     this.levelLabel = this.levelLabel || this.createLabel('Level', -250, 550, 22);
     this.goldLabel = this.goldLabel || this.createLabel('Gold', 170, 585, 24);
     this.diamondLabel = this.diamondLabel || this.createLabel('Diamond', 170, 550, 22);
+    this.expLabel = this.expLabel || this.createLabel('Experience', 0, 550, 20, 260);
     this._messageLabel = this._messageLabel || this.createLabel('Message', 0, -580, 24, 680);
   }
 

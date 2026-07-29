@@ -8,6 +8,7 @@ import com.fruitisland.game.entity.Inventory;
 import com.fruitisland.game.entity.Island;
 import com.fruitisland.game.entity.PlayerCrop;
 import com.fruitisland.game.entity.PlayerCropGrant;
+import com.fruitisland.game.entity.PlayerLevelConfig;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -50,6 +51,9 @@ public class GameInitVO implements Serializable {
     /** 玩家当前有效的限时稀有作物权限。 */
     private List<PlayerCropGrant> cropGrants;
 
+    /** 玩家等级成长配置，用于客户端经验条和升级预览。 */
+    private List<PlayerLevelConfig> playerLevelConfigs;
+
     public static GameInitVO of(
             GamePlayer player,
             Island island,
@@ -59,7 +63,8 @@ public class GameInitVO implements Serializable {
             List<CropLevelConfig> cropLevelConfigs,
             List<CropUnlockSource> cropUnlockSources,
             List<PlayerCrop> playerCrops,
-            List<PlayerCropGrant> cropGrants
+            List<PlayerCropGrant> cropGrants,
+            List<PlayerLevelConfig> playerLevelConfigs
     ) {
         GameInitVO vo = new GameInitVO();
         vo.setPlayer(player);
@@ -71,6 +76,7 @@ public class GameInitVO implements Serializable {
         vo.setCropUnlockSources(cropUnlockSources);
         vo.setPlayerCrops(playerCrops);
         vo.setCropGrants(cropGrants);
+        vo.setPlayerLevelConfigs(playerLevelConfigs);
         return vo;
     }
 }

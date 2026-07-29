@@ -1,6 +1,7 @@
 package com.fruitisland.game.controller;
 
 import com.fruitisland.common.result.Result;
+import com.fruitisland.game.dto.HarvestResultVO;
 import com.fruitisland.game.dto.LandVO;
 import com.fruitisland.game.entity.PlayerLand;
 import com.fruitisland.game.service.GamePlayerService;
@@ -124,7 +125,7 @@ public class FarmController {
      * body: {"playerLandId": 1}
      */
     @PostMapping("/harvest")
-    public Result<LandVO> harvest(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+    public Result<HarvestResultVO> harvest(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         var player = gamePlayerService.findByUserId(userId);
         if (player == null) {
@@ -134,8 +135,8 @@ public class FarmController {
         Long playerLandId = ((Number) body.get("playerLandId")).longValue();
 
         try {
-            PlayerLand land = playerLandService.harvest(player.getId(), playerLandId);
-            return Result.ok(toLandVO(land));
+            HarvestResultVO result = playerLandService.harvest(player.getId(), playerLandId);
+            return Result.ok(result);
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
         }
@@ -149,6 +150,7 @@ public class FarmController {
                 .cropId(land.getCropId())
                 .cropLevel(land.getCropLevel())
                 .yieldCount(land.getYieldCountSnapshot())
+                .harvestExp(land.getHarvestExpSnapshot())
                 .accessType(land.getAccessType())
                 .plantTime(land.getPlantTime())
                 .finishTime(land.getFinishTime())

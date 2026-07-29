@@ -34,6 +34,7 @@ public class GameController {
     private final CropUnlockSourceService cropUnlockSourceService;
     private final PlayerCropService playerCropService;
     private final PlayerCropGrantService playerCropGrantService;
+    private final PlayerLevelConfigService playerLevelConfigService;
 
     /**
      * 游戏初始化
@@ -98,6 +99,9 @@ public class GameController {
         var playerCrops = playerCropService.listByPlayer(player.getId());
         var cropGrants = playerCropGrantService.listActiveByPlayer(
                 player.getId(), java.time.LocalDateTime.now());
+        var playerLevelConfigs = playerLevelConfigService.lambdaQuery()
+                .orderByAsc(com.fruitisland.game.entity.PlayerLevelConfig::getLevel)
+                .list();
 
         GameInitVO vo = GameInitVO.of(
                 player,
@@ -108,7 +112,8 @@ public class GameController {
                 cropLevelConfigs,
                 cropUnlockSources,
                 playerCrops,
-                cropGrants
+                cropGrants,
+                playerLevelConfigs
         );
         return Result.ok(vo);
     }

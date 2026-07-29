@@ -3,6 +3,7 @@ import { DataManager } from '../data/DataManager';
 import { Api } from '../network/Api';
 import { http } from '../network/HttpClient';
 import { CropConfig, LandVO } from '../types';
+import type { HarvestResult } from '../types';
 import { FarmBlockConfig } from './MapLoader';
 import { GridManager } from './GridManager';
 
@@ -232,7 +233,7 @@ export class LandManager extends Component {
           playerLandId: land.playerLandId,
         });
       } else if (state === 'READY') {
-        result = await http.post(Api.HARVEST, {
+        result = await http.post<HarvestResult>(Api.HARVEST, {
           playerLandId: land.playerLandId,
         });
       } else {
@@ -250,7 +251,16 @@ export class LandManager extends Component {
         PLANTED: '浇水成功，作物开始发芽 🌱',
         READY: '收获成功，产物已进入背包',
       };
-      const successMessage = actionMessage[state] || '操作成功';
+      let successMessage = actionMessage[state] || '操作成功';
+      if (state === 'READY' && result.data) {
+        const harvest = result.data as HarvestResult;
+        const levelUp = harvest.levelsGained > 0
+          ? `，升级到 Lv.${harvest.playerLevel} 🎉`
+          : '';
+        successMessage =
+          `收获 ${this.getCropEmoji(harvest.cropId)} ×${harvest.yieldCount}`
+          + `，经验 +${harvest.expGained}${levelUp}`;
+      }
 
       const loaded = await DataManager.getInstance().loadGameData();
       if (loaded) {

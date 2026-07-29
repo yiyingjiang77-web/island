@@ -3,7 +3,7 @@
     { "id": "farm_a", "gx": 31, "gy": 30, "width": 4, "height": 4, "unlockLevel": 1 },
     { "id": "farm_b", "gx": 35.5, "gy": 30, "width": 4, "height": 4, "unlockLevel": 3 },
     { "id": "farm_c", "gx": 31, "gy": 34.5, "width": 4, "height": 4, "unlockLevel": 5 },
-    { "id": "farm_d", "gx": 36, "gy": 34.5, "width": 4, "height": 4, "unlockLevel": 8 }
+    { "id": "farm_d", "gx": 35.5, "gy": 34.5, "width": 4, "height": 4, "unlockLevel": 8 }
   ],
   "blockSize": 4,
   "defaultCropGrowSeconds": 60

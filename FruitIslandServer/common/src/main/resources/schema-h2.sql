@@ -46,6 +46,14 @@ CREATE TABLE IF NOT EXISTS game_player (
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS player_level_config (
+    level INT PRIMARY KEY,
+    required_exp INT NOT NULL,
+    reward_gold BIGINT NOT NULL DEFAULT 0,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS island (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     player_id BIGINT NOT NULL,
@@ -84,6 +92,7 @@ CREATE TABLE IF NOT EXISTS crop_level_config (
     crop_level INT NOT NULL,
     grow_seconds INT NOT NULL,
     yield_count INT NOT NULL,
+    harvest_exp INT NOT NULL DEFAULT 0,
     upgrade_gold BIGINT NOT NULL DEFAULT 0,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -169,6 +178,7 @@ CREATE TABLE IF NOT EXISTS player_land (
     crop_level INT,
     grow_seconds_snapshot INT,
     yield_count_snapshot INT,
+    harvest_exp_snapshot INT,
     access_type VARCHAR(16),
     access_grant_id BIGINT,
     plant_time TIMESTAMP,
@@ -186,6 +196,7 @@ CREATE TABLE IF NOT EXISTS crop_plant (
     crop_level INT,
     grow_seconds_snapshot INT,
     yield_count_snapshot INT,
+    harvest_exp_snapshot INT,
     access_type VARCHAR(16),
     access_grant_id BIGINT,
     plant_time TIMESTAMP,
@@ -247,15 +258,21 @@ INSERT INTO crop_config
 ('moonberry','月光莓','RARE',1,0,0,1,1,1);
 
 INSERT INTO crop_level_config
-(crop_id,crop_level,grow_seconds,yield_count,upgrade_gold) VALUES
-('strawberry',1,60,2,0),('strawberry',2,50,3,200),('strawberry',3,40,4,500),
-('cabbage',1,120,2,0),('cabbage',2,105,3,300),('cabbage',3,90,4,700),
-('carrot',1,180,3,0),('carrot',2,155,4,400),('carrot',3,130,5,900),
-('tomato',1,240,3,0),('tomato',2,210,4,500),('tomato',3,180,5,1100),
-('potato',1,300,4,0),('potato',2,270,5,600),('potato',3,240,6,1300),
-('chili',1,480,3,0),('chili',2,420,4,900),('chili',3,360,5,1800),
-('corn',1,600,5,0),('corn',2,520,6,1200),('corn',3,450,8,2500),
-('moonberry',1,300,5,0);
+(crop_id,crop_level,grow_seconds,yield_count,harvest_exp,upgrade_gold) VALUES
+('strawberry',1,60,2,5,0),('strawberry',2,50,3,8,200),('strawberry',3,40,4,12,500),
+('cabbage',1,120,2,8,0),('cabbage',2,105,3,12,300),('cabbage',3,90,4,18,700),
+('carrot',1,180,3,12,0),('carrot',2,155,4,18,400),('carrot',3,130,5,25,900),
+('tomato',1,240,3,15,0),('tomato',2,210,4,22,500),('tomato',3,180,5,30,1100),
+('potato',1,300,4,18,0),('potato',2,270,5,26,600),('potato',3,240,6,36,1300),
+('chili',1,480,3,25,0),('chili',2,420,4,36,900),('chili',3,360,5,50,1800),
+('corn',1,600,5,30,0),('corn',2,520,6,45,1200),('corn',3,450,8,65,2500),
+('moonberry',1,300,5,40,0);
+
+INSERT INTO player_level_config (level,required_exp,reward_gold) VALUES
+(1,100,50),(2,150,75),(3,220,100),(4,300,125),(5,400,150),
+(6,520,180),(7,660,210),(8,820,250),(9,1000,300),(10,1200,350),
+(11,1450,400),(12,1700,450),(13,2000,500),(14,2350,550),(15,2750,600),
+(16,3200,700),(17,3700,800),(18,4250,900),(19,4850,1000),(20,5500,1200);
 
 INSERT INTO crop_unlock_source
 (crop_id,source_type,currency_type,price,required_player_level,source_ref_id,enabled) VALUES

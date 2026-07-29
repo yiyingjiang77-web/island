@@ -1,6 +1,7 @@
 package com.fruitisland.game.service;
 
 import com.fruitisland.common.base.BaseServiceX;
+import com.fruitisland.game.dto.HarvestResultVO;
 import com.fruitisland.game.dto.LandVO;
 import com.fruitisland.game.entity.PlayerLand;
 
@@ -21,5 +22,5 @@ public interface PlayerLandService extends BaseServiceX<PlayerLand> {
     PlayerLand water(Long playerId, Long playerLandId);
 
     /** 收获 */
-    PlayerLand harvest(Long playerId, Long playerLandId);
+    HarvestResultVO harvest(Long playerId, Long playerLandId);
 }

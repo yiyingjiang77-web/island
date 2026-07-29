@@ -1,6 +1,8 @@
 package com.fruitisland.game.service.impl;
 
 import com.fruitisland.game.entity.*;
+import com.fruitisland.game.dto.ExpGainResult;
+import com.fruitisland.game.dto.HarvestResultVO;
 import com.fruitisland.game.mapper.PlayerLandMapper;
 import com.fruitisland.game.service.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,6 +62,11 @@ class PlayerLandServiceImplTest {
         player.setId(1L);
         player.setLevel(5);
         when(gamePlayerService.getById(1L)).thenReturn(player);
+        when(gamePlayerService.addExp(eq(1L), anyInt()))
+                .thenAnswer(invocation -> new ExpGainResult(
+                        invocation.getArgument(1),
+                        5, 5, 20, 400, 0, 0L
+                ));
     }
 
     @Test
@@ -74,6 +81,7 @@ class PlayerLandServiceImplTest {
         assertEquals(2, result.getCropLevel());
         assertEquals(50, result.getGrowSecondsSnapshot());
         assertEquals(3, result.getYieldCountSnapshot());
+        assertEquals(8, result.getHarvestExpSnapshot());
         assertEquals("PERMANENT", result.getAccessType());
         assertNull(result.getAccessGrantId());
         assertNull(result.getFinishTime());
@@ -155,6 +163,7 @@ class PlayerLandServiceImplTest {
         land.setCropId("strawberry");
         land.setCropLevel(2);
         land.setYieldCountSnapshot(7);
+        land.setHarvestExpSnapshot(11);
         land.setAccessType("TEMPORARY");
         land.setAccessGrantId(99L);
 
@@ -163,14 +172,16 @@ class PlayerLandServiceImplTest {
         when(playerLandMapper.selectById(10L)).thenReturn(land);
         when(cropPlantService.findLatestByPlayerLand(10L)).thenReturn(cropRecord);
 
-        service.harvest(1L, 10L);
+        HarvestResultVO result = service.harvest(1L, 10L);
 
         verify(inventoryService).addItem(1L, "strawberry", 7);
+        verify(gamePlayerService).addExp(1L, 11);
         verify(playerCropGrantService, never()).findActiveGrant(anyLong(), anyString(), any());
         assertEquals("EMPTY", land.getStatus());
         assertNull(land.getCropId());
         assertNull(land.getAccessGrantId());
         assertEquals("HARVESTED", cropRecord.getStatus());
+        assertEquals(11, result.getExpGained());
     }
 
     @Test
@@ -215,6 +226,11 @@ class PlayerLandServiceImplTest {
         config.setCropLevel(cropLevel);
         config.setGrowSeconds(growSeconds);
         config.setYieldCount(yieldCount);
+        config.setHarvestExp(switch (cropLevel) {
+            case 1 -> 5;
+            case 2 -> 8;
+            default -> 12;
+        });
         config.setUpgradeGold(0L);
         return config;
     }

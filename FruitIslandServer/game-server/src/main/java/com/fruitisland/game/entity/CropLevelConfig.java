@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 /**
  * 作物等级数值配置。
  *
- * <p>成熟秒数、收获数量、升级金币都从数据库读取。修改平衡数值不需要改代码。</p>
+ * <p>成熟秒数、收获数量、收获经验、升级金币都从数据库读取。</p>
  */
 @Data
 @TableName("crop_level_config")
@@ -30,6 +30,9 @@ public class CropLevelConfig {
 
     /** 本等级单次收获数量。 */
     private Integer yieldCount;
+
+    /** 收获该等级作物一次获得的玩家经验。 */
+    private Integer harvestExp;
 
     /** 从上一等级升级到本等级所需金币；1 级固定为 0。 */
     private Long upgradeGold;
