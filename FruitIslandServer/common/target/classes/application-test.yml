@@ -6,7 +6,8 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
   datasource:
     driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:fruit_island;MODE=MySQL;DB_CLOSE_DELAY=-1
+    # 每个 Spring 测试上下文使用独立数据库，避免不同可控时钟配置互相污染。
+    url: jdbc:h2:mem:fruit_island_${random.value};MODE=MySQL;DB_CLOSE_DELAY=-1
     username: sa
     password:
   sql:
