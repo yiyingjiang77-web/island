@@ -15,8 +15,8 @@ public class HarvestResultVO implements Serializable {
     private Integer yieldCount;
     private Integer expGained;
     private Integer playerLevel;
-    private Integer playerExp;
-    private Integer nextLevelExp;
+    private Integer cumulativeExp;
+    private Integer nextLevelThreshold;
     private Integer levelsGained;
-    private Long levelRewardGold;
+    private java.util.List<IslandLevelRewardVO> levelRewards;
 }

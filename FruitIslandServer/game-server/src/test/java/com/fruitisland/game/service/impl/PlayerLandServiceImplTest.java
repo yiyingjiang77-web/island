@@ -65,7 +65,7 @@ class PlayerLandServiceImplTest {
         when(gamePlayerService.addExp(eq(1L), anyInt()))
                 .thenAnswer(invocation -> new ExpGainResult(
                         invocation.getArgument(1),
-                        5, 5, 20, 400, 0, 0L
+                        5, 5, 20, 400, 0, null
                 ));
     }
 

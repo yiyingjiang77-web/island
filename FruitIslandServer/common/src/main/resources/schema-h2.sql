@@ -277,6 +277,55 @@ CREATE TABLE IF NOT EXISTS player_land (
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS customer_template (
+    id VARCHAR(64) PRIMARY KEY,
+    name VARCHAR(32),
+    avatar VARCHAR(255),
+    type VARCHAR(32)
+);
+
+CREATE TABLE IF NOT EXISTS customer_order (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    player_id BIGINT,
+    customer_id VARCHAR(64),
+    recipe_id VARCHAR(64),
+    item_id VARCHAR(64),
+    quantity INT NOT NULL DEFAULT 1,
+    unit_gold_snapshot INT NOT NULL DEFAULT 0,
+    unit_exp_snapshot INT NOT NULL DEFAULT 0,
+    queue_position INT,
+    status VARCHAR(32),
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    close_time TIMESTAMP,
+    close_reason VARCHAR(32)
+);
+CREATE INDEX IF NOT EXISTS idx_waiting_queue ON customer_order(player_id, status, queue_position);
+
+CREATE TABLE IF NOT EXISTS customer_arrival_state (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    player_id BIGINT NOT NULL,
+    next_arrival_at TIMESTAMP,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (player_id)
+);
+
+CREATE TABLE IF NOT EXISTS order_quantity_weight (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    quantity INT NOT NULL,
+    weight INT NOT NULL,
+    enabled INT NOT NULL DEFAULT 1,
+    UNIQUE (quantity)
+);
+
+INSERT INTO customer_template (id, name, avatar, type) VALUES
+('berry', '莓莓', 'girl', 'ISLANDER'),
+('sunny', '小晴', 'boy', 'ISLANDER'),
+('captain', '船长', 'man', 'VISITOR');
+
+INSERT INTO order_quantity_weight (quantity, weight, enabled) VALUES
+(1, 60, 1), (2, 30, 1), (3, 10, 1);
+
 CREATE TABLE IF NOT EXISTS crop_plant (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     player_land_id BIGINT NOT NULL,

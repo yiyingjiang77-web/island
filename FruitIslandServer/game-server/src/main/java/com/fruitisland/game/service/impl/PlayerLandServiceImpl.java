@@ -311,10 +311,10 @@ public class PlayerLandServiceImpl
                 .yieldCount(yieldCount)
                 .expGained(harvestExp)
                 .playerLevel(expResult.getAfterLevel())
-                .playerExp(expResult.getCurrentExp())
-                .nextLevelExp(expResult.getNextLevelExp())
+                .cumulativeExp(expResult.getCumulativeExp())
+                .nextLevelThreshold(expResult.getNextLevelThreshold())
                 .levelsGained(expResult.getLevelsGained())
-                .levelRewardGold(expResult.getRewardGold())
+                .levelRewards(expResult.getLevelRewards())
                 .build();
     }
 

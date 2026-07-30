@@ -171,7 +171,7 @@ public class DrinkBarServiceImpl implements DrinkBarService {
                 settledGold,
                 settledExp,
                 player.getGold(),
-                player.getExp(),
+                player.getCumulativeExp(),
                 player.getLevel());
     }
 
@@ -244,7 +244,7 @@ public class DrinkBarServiceImpl implements DrinkBarService {
                 settledGold,
                 settledExp,
                 player.getGold(),
-                player.getExp(),
+                player.getCumulativeExp(),
                 player.getLevel());
     }
 

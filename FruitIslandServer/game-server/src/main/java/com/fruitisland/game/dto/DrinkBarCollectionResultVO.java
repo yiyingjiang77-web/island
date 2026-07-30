@@ -8,7 +8,7 @@ public record DrinkBarCollectionResultVO(
         int settledGold,
         int settledExp,
         long currentGold,
-        int currentExp,
+        int cumulativeExp,
         int currentLevel
 ) {
 }

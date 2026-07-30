@@ -88,7 +88,7 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
         customerQueueService.recordDeparture(player.getId());
         return new OrderFulfillmentResultVO(
                 order.getId(), order.getStatus(), 0, 0, 0, 0, 0,
-                player.getLevel(), player.getExp(), player.getGold());
+                player.getLevel(), player.getCumulativeExp(), player.getGold());
     }
 
     private OrderFulfillmentResultVO closeDelivered(
@@ -105,7 +105,7 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
         if (refreshed == null) throw new IllegalArgumentException("玩家不存在");
         return new OrderFulfillmentResultVO(
                 order.getId(), order.getStatus(), delivered, crafted, excess, gold, exp,
-                expResult.getAfterLevel(), expResult.getCurrentExp(), refreshed.getGold());
+                expResult.getAfterLevel(), expResult.getCumulativeExp(), refreshed.getGold());
     }
 
     private static int positive(Integer value, String message) {

@@ -36,8 +36,8 @@ class OrderFulfillmentServiceImplTest {
         when(players.getById(7L)).thenReturn(player);
         when(players.settleDrinkSaleReward(7L, 90, 15)).thenAnswer(invocation -> {
             player.setGold(190L);
-            player.setExp(15);
-            return new ExpGainResult(15, 1, 1, 15, 100, 0, 0L);
+            player.setCumulativeExp(15);
+            return new ExpGainResult(15, 1, 1, 15, 100, 0, null);
         });
 
         var service = new OrderFulfillmentServiceImpl(
@@ -92,7 +92,7 @@ class OrderFulfillmentServiceImplTest {
         when(orders.lockWaiting(11L, 7L)).thenReturn(waitingOrder(11L, 7L, 2, 30, 5));
         when(players.getById(7L)).thenReturn(player);
         when(players.settleDrinkSaleReward(7L, 60, 10))
-                .thenReturn(new ExpGainResult(10, 1, 1, 10, 100, 0, 0L));
+                .thenReturn(new ExpGainResult(10, 1, 1, 10, 100, 0, null));
         when(qualifications.findActive(7L, "strawberry_juice")).thenReturn(new PlayerRecipe());
         RecipeConfig recipe = new RecipeConfig();
         recipe.setId("strawberry_juice");
@@ -142,7 +142,7 @@ class OrderFulfillmentServiceImplTest {
         raw.setCount(4);
         when(inventory.findByPlayerAndItem(7L, "strawberry")).thenReturn(raw);
         when(players.settleDrinkSaleReward(7L, 60, 10))
-                .thenReturn(new ExpGainResult(10, 1, 1, 10, 100, 0, 0L));
+                .thenReturn(new ExpGainResult(10, 1, 1, 10, 100, 0, null));
         when(players.getById(7L)).thenReturn(player);
         var service = new OrderFulfillmentServiceImpl(
                 inventory, orders, players, mock(CustomerQueueService.class),
@@ -246,6 +246,7 @@ class OrderFulfillmentServiceImplTest {
         player.setGold(gold);
         player.setLevel(1);
         player.setExp(0);
+        player.setCumulativeExp(0);
         return player;
     }
 

@@ -3,20 +3,45 @@ package com.fruitisland.game.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fruitisland.common.base.BaseServiceImplX;
 import com.fruitisland.game.dto.ExpGainResult;
+import com.fruitisland.game.dto.IslandLevelRewardVO;
 import com.fruitisland.game.entity.GamePlayer;
-import com.fruitisland.game.entity.PlayerLevelConfig;
+import com.fruitisland.game.entity.IslandLevelConfig;
+import com.fruitisland.game.entity.PlayerIslandLevelRewardClaim;
 import com.fruitisland.game.mapper.GamePlayerMapper;
+import com.fruitisland.game.mapper.IslandLevelConfigMapper;
+import com.fruitisland.game.mapper.PlayerIslandLevelRewardClaimMapper;
 import com.fruitisland.game.service.GamePlayerService;
-import com.fruitisland.game.service.PlayerLevelConfigService;
-import lombok.RequiredArgsConstructor;
+import com.fruitisland.game.service.PlayerCropService;
+import com.fruitisland.game.service.PlayerRecipeService;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 @Service
-@RequiredArgsConstructor
 public class GamePlayerServiceImpl extends BaseServiceImplX<GamePlayerMapper, GamePlayer> implements GamePlayerService {
 
-    private final PlayerLevelConfigService playerLevelConfigService;
+    private final IslandLevelConfigMapper islandLevelConfigMapper;
+    private final PlayerIslandLevelRewardClaimMapper claimMapper;
+    private final PlayerCropService playerCropService;
+    private final PlayerRecipeService playerRecipeService;
+
+    public GamePlayerServiceImpl(
+            IslandLevelConfigMapper islandLevelConfigMapper,
+            PlayerIslandLevelRewardClaimMapper claimMapper,
+            @Lazy PlayerCropService playerCropService,
+            PlayerRecipeService playerRecipeService) {
+        this.islandLevelConfigMapper = islandLevelConfigMapper;
+        this.claimMapper = claimMapper;
+        this.playerCropService = playerCropService;
+        this.playerRecipeService = playerRecipeService;
+    }
 
     @Override
     public GamePlayer findByUserId(Long userId) {
@@ -45,8 +70,7 @@ public class GamePlayerServiceImpl extends BaseServiceImplX<GamePlayerMapper, Ga
     @Transactional
     public ExpGainResult addExp(Long playerId, int amount) {
         if (amount < 0) throw new IllegalArgumentException("经验值不能为负数");
-
-        GamePlayer player = getById(playerId);
+        GamePlayer player = baseMapper.selectForUpdate(playerId);
         if (player == null) throw new RuntimeException("玩家不存在");
         return applyExperience(player, amount);
     }
@@ -63,33 +87,86 @@ public class GamePlayerServiceImpl extends BaseServiceImplX<GamePlayerMapper, Ga
 
     private ExpGainResult applyExperience(GamePlayer player, int amount) {
         int beforeLevel = player.getLevel() == null ? 1 : player.getLevel();
-        int level = beforeLevel;
-        int exp = (player.getExp() == null ? 0 : player.getExp()) + amount;
-        long rewardGold = 0L;
-        int levelsGained = 0;
+        int cumulativeExp = (player.getCumulativeExp() == null ? 0 : player.getCumulativeExp()) + amount;
 
-        PlayerLevelConfig levelConfig = playerLevelConfigService.findByLevel(level);
-        while (levelConfig != null && exp >= levelConfig.getRequiredExp()) {
-            exp -= levelConfig.getRequiredExp();
-            rewardGold += levelConfig.getRewardGold();
-            level++;
-            levelsGained++;
-            levelConfig = playerLevelConfigService.findByLevel(level);
+        List<IslandLevelConfig> configs = islandLevelConfigMapper.selectList(
+                new LambdaQueryWrapper<IslandLevelConfig>()
+                        .eq(IslandLevelConfig::getEnabled, 1)
+                        .orderByAsc(IslandLevelConfig::getLevel));
+
+        int newLevel = beforeLevel;
+        for (IslandLevelConfig config : configs) {
+            if (cumulativeExp >= config.getCumulativeExp()) {
+                newLevel = Math.max(newLevel, config.getLevel());
+            }
         }
+        final int resolvedLevel = newLevel;
 
-        player.setLevel(level);
-        player.setExp(exp);
-        player.setGold((player.getGold() == null ? 0L : player.getGold()) + rewardGold);
+        player.setCumulativeExp(cumulativeExp);
+        player.setLevel(resolvedLevel);
+        int currentLevelFloor = configs.stream()
+                .filter(c -> c.getLevel() <= resolvedLevel)
+                .map(IslandLevelConfig::getCumulativeExp)
+                .max(Integer::compareTo)
+                .orElse(0);
+        player.setExp(cumulativeExp - currentLevelFloor);
         updateById(player);
 
+        Set<Integer> claimedLevels = new HashSet<>();
+        claimMapper.selectList(new LambdaQueryWrapper<PlayerIslandLevelRewardClaim>()
+                        .eq(PlayerIslandLevelRewardClaim::getPlayerId, player.getId()))
+                .forEach(claim -> claimedLevels.add(claim.getIslandLevel()));
+
+        List<IslandLevelRewardVO> levelRewards = new ArrayList<>();
+        for (IslandLevelConfig config : configs) {
+            if (config.getLevel() <= resolvedLevel && !claimedLevels.contains(config.getLevel())) {
+                playerCropService.grantPermanent(
+                        player.getId(), config.getCropId(), "ISLAND_LEVEL_REWARD");
+                playerRecipeService.grantPermanent(
+                        player.getId(), config.getRecipeId(), "ISLAND_LEVEL_REWARD");
+                recordClaim(player.getId(), config.getLevel());
+                levelRewards.add(new IslandLevelRewardVO(
+                        config.getLevel(),
+                        config.getCumulativeExp(),
+                        config.getCropId(),
+                        config.getRecipeId(),
+                        true,
+                        config.getMaterialSourceHint(),
+                        config.getShopCapabilityHint()));
+            }
+        }
+
+        Integer nextLevelThreshold = configs.stream()
+                .filter(c -> c.getLevel() > resolvedLevel)
+                .map(IslandLevelConfig::getCumulativeExp)
+                .findFirst()
+                .orElse(null);
+
+        int levelsGained = resolvedLevel - beforeLevel;
         return new ExpGainResult(
                 amount,
                 beforeLevel,
-                level,
-                exp,
-                levelConfig == null ? null : levelConfig.getRequiredExp(),
+                resolvedLevel,
+                cumulativeExp,
+                nextLevelThreshold,
                 levelsGained,
-                rewardGold
-        );
+                levelRewards);
+    }
+
+    private void recordClaim(Long playerId, Integer level) {
+        PlayerIslandLevelRewardClaim existing = claimMapper.selectOne(
+                new LambdaQueryWrapper<PlayerIslandLevelRewardClaim>()
+                        .eq(PlayerIslandLevelRewardClaim::getPlayerId, playerId)
+                        .eq(PlayerIslandLevelRewardClaim::getIslandLevel, level));
+        if (existing != null) return;
+        PlayerIslandLevelRewardClaim claim = new PlayerIslandLevelRewardClaim();
+        claim.setPlayerId(playerId);
+        claim.setIslandLevel(level);
+        claim.setClaimedAt(LocalDateTime.now());
+        try {
+            claimMapper.insert(claim);
+        } catch (DuplicateKeyException ignored) {
+            // 唯一约束保证并发只保留一条领取记录。
+        }
     }
 }

@@ -14,6 +14,6 @@ public class OrderFulfillmentResultVO {
     private int earnedGold;
     private int earnedExp;
     private Integer playerLevel;
-    private Integer playerExp;
+    private Integer cumulativeExp;
     private Long playerGold;
 }

@@ -59,6 +59,10 @@ class DrinkBarControllerHttpTest {
         jdbcTemplate.update("DELETE FROM drink_bar_batch");
         jdbcTemplate.update("DELETE FROM drink_bar");
         jdbcTemplate.update("DELETE FROM inventory");
+        jdbcTemplate.update("DELETE FROM player_island_level_reward_claim WHERE player_id IN (SELECT id FROM game_player WHERE user_id IN (6101, 6102))");
+        jdbcTemplate.update("DELETE FROM player_crop_grant WHERE player_id IN (SELECT id FROM game_player WHERE user_id IN (6101, 6102))");
+        jdbcTemplate.update("DELETE FROM player_crop WHERE player_id IN (SELECT id FROM game_player WHERE user_id IN (6101, 6102))");
+        jdbcTemplate.update("DELETE FROM player_recipe WHERE player_id IN (SELECT id FROM game_player WHERE user_id IN (6101, 6102))");
         jdbcTemplate.update("DELETE FROM game_player WHERE user_id IN (6101, 6102)");
         jdbcTemplate.update("DELETE FROM recipe_config WHERE id = 'strawberry_juice'");
         jdbcTemplate.update("""
@@ -67,12 +71,12 @@ class DrinkBarControllerHttpTest {
                 VALUES ('strawberry_juice', '草莓汁', 'strawberry_juice', 30, 5, 180, 1)
                 """);
         jdbcTemplate.update("""
-                INSERT INTO game_player (user_id, game_id, nickname, level, exp, gold, diamond)
-                VALUES (6101, 'fruit_island', '吧台测试玩家', 1, 0, 500, 20)
+                INSERT INTO game_player (user_id, game_id, nickname, level, exp, cumulative_exp, gold, diamond)
+                VALUES (6101, 'fruit_island', '吧台测试玩家', 1, 0, 0, 500, 20)
                 """);
         jdbcTemplate.update("""
-                INSERT INTO game_player (user_id, game_id, nickname, level, exp, gold, diamond)
-                VALUES (6102, 'fruit_island', '另一位玩家', 1, 0, 500, 20)
+                INSERT INTO game_player (user_id, game_id, nickname, level, exp, cumulative_exp, gold, diamond)
+                VALUES (6102, 'fruit_island', '另一位玩家', 1, 0, 0, 500, 20)
                 """);
     }
 
@@ -119,7 +123,7 @@ class DrinkBarControllerHttpTest {
                 VALUES (?, 'strawberry_juice', 3)
                 """, playerId);
         jdbcTemplate.update(
-                "UPDATE game_player SET exp = 98 WHERE id = ?", playerId);
+                "UPDATE game_player SET cumulative_exp = 98 WHERE id = ?", playerId);
         String token = jwtUtils.generateToken(6101L, "partial-take-down");
         listDrink(token, barId).andExpect(jsonPath("$.code").value(0));
         clock.advance(Duration.ofSeconds(180));
@@ -135,8 +139,8 @@ class DrinkBarControllerHttpTest {
                 .andExpect(jsonPath("$.data.returnedQuantity").value(2))
                 .andExpect(jsonPath("$.data.settledGold").value(30))
                 .andExpect(jsonPath("$.data.settledExp").value(5))
-                .andExpect(jsonPath("$.data.currentGold").value(580))
-                .andExpect(jsonPath("$.data.currentExp").value(3))
+                .andExpect(jsonPath("$.data.currentGold").value(530))
+                .andExpect(jsonPath("$.data.cumulativeExp").value(103))
                 .andExpect(jsonPath("$.data.currentLevel").value(2))
                 .andExpect(jsonPath("$.data.bar.state").value("EMPTY"));
 
@@ -281,7 +285,7 @@ class DrinkBarControllerHttpTest {
                 .andExpect(jsonPath("$.data.settledGold").value(60))
                 .andExpect(jsonPath("$.data.settledExp").value(10))
                 .andExpect(jsonPath("$.data.currentGold").value(560))
-                .andExpect(jsonPath("$.data.currentExp").value(10))
+                .andExpect(jsonPath("$.data.cumulativeExp").value(10))
                 .andExpect(jsonPath("$.data.currentLevel").value(1));
 
         mockMvc.perform(get("/drink-shop/bars")
@@ -300,7 +304,7 @@ class DrinkBarControllerHttpTest {
         insertBatch(playerId, alreadySoldOut, "SOLD_OUT", 1, 2, 2, 30, 5, 180);
         insertBatch(playerId, reachesSoldOut, "SELLING", 1, 1, 0, 90, 15, 180);
         insertBatch(playerId, remainsSelling, "SELLING", 1, 2, 0, 40, 7, 180);
-        jdbcTemplate.update("UPDATE game_player SET exp = 95 WHERE id = ?", playerId);
+        jdbcTemplate.update("UPDATE game_player SET cumulative_exp = 95 WHERE id = ?", playerId);
         clock.advance(Duration.ofSeconds(180));
         String token = jwtUtils.generateToken(6101L, "collect-all");
 
@@ -317,8 +321,8 @@ class DrinkBarControllerHttpTest {
                 .andExpect(jsonPath("$.data.collectedBarIds[1]").value(reachesSoldOut))
                 .andExpect(jsonPath("$.data.settledGold").value(150))
                 .andExpect(jsonPath("$.data.settledExp").value(25))
-                .andExpect(jsonPath("$.data.currentGold").value(700))
-                .andExpect(jsonPath("$.data.currentExp").value(20))
+                .andExpect(jsonPath("$.data.currentGold").value(650))
+                .andExpect(jsonPath("$.data.cumulativeExp").value(120))
                 .andExpect(jsonPath("$.data.currentLevel").value(2));
 
         mockMvc.perform(get("/drink-shop/bars")

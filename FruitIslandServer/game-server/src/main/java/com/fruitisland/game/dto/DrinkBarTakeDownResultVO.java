@@ -6,7 +6,7 @@ public record DrinkBarTakeDownResultVO(
         int settledGold,
         int settledExp,
         long currentGold,
-        int currentExp,
+        int cumulativeExp,
         int currentLevel
 ) {
 }
