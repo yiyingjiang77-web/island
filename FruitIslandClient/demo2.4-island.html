@@ -722,9 +722,12 @@ function renderOrderActions(){
     return `${escapeHtml(ITEM_META[m.itemId]?.name||m.itemId)} ×${req}${short?' <span style="color:#e74c3c">(不足)</span>':''}`;
   }).join(' · ');
   const plusDisabled=orderCraftQuantity>=99||orderCraftQuantity>=maxCraftable;
+  const deliverItem=customer.itemId;
+  const deliverHave=(drinkBarState.drinks||[]).find(d=>d.itemId===deliverItem)?.inventoryCount||0;
+  const canDeliver=deliverHave>=customer.quantity;
   actions.innerHTML=`<div class="order-actions">
     <p>交付 ${escapeHtml(ITEM_META[customer.itemId]?.name||customer.itemId)} ×${customer.quantity}，获得 🪙${customer.expectedGold} · ⭐${customer.expectedExp}</p>
-    <button onclick="deliverSelectedOrder()">从背包完整交付</button>
+    <button onclick="deliverSelectedOrder()" ${canDeliver?'':'disabled'}>从背包完整交付 ${canDeliver?'':'(库存 '+deliverHave+')'}</button>
     <p style="margin-top:10px">现场制作 ${orderCraftQuantity} 份 · 消耗 ${matsHtml||'(未知配方)'} · 交付 ${customer.quantity} · 多余入包 ${excess}</p>
     <div class="craft-quantity">
       <button onclick="changeOrderCraftQuantity(-1)" ${orderCraftQuantity<=customer.quantity?'disabled':''}>−</button>
