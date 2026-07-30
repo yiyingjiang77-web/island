@@ -39,7 +39,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#151a27;fon
 .inventory-note{margin:12px 2px 0;color:#859188;font-size:10px;line-height:1.5;text-align:center}
 .craft-card{padding:14px;border:1px solid rgba(255,255,255,.13);border-radius:16px;background:rgba(255,255,255,.06)}
 .craft-recipe{display:flex;align-items:center;gap:11px}.craft-recipe .emoji{font-size:38px}.craft-recipe h3{margin:0;font-size:17px}.craft-recipe p{margin:4px 0 0;color:#aebbac;font-size:12px}
-.craft-material{margin:13px 0;padding:10px;border-radius:12px;background:rgba(0,0,0,.16);font-size:12px;line-height:1.7}
+.craft-material{margin:13px 0;padding:10px;border-radius:12px;background:rgba(0,0,0,.16);font-size:12px;line-height:1.7}.craft-materials{margin:13px 0}.craft-materials .craft-material{margin:4px 0;padding:6px 10px}.craft-materials .craft-material.short{background:rgba(231,76,60,.18)}.craft-materials .craft-material .insufficient{color:#e74c3c;font-weight:600}.craft-materials .craft-material-summary{margin-top:6px;font-size:12px;opacity:.8}
 .craft-quantity{display:flex;align-items:center;gap:7px}.craft-quantity button,.craft-submit{border:0;border-radius:10px;background:#527e4c;color:white;padding:9px 12px;cursor:pointer;font-weight:700}
 .craft-quantity output{min-width:38px;text-align:center;font-size:18px;font-weight:700}.craft-quantity output.disabled{color:#778079}.craft-quantity .max{margin-left:auto;background:#78633c}
 .craft-submit{width:100%;margin-top:12px;background:#d75f4a}.craft-submit:disabled,.craft-quantity button:disabled{opacity:.42;cursor:not-allowed}
@@ -370,10 +370,16 @@ function renderCraftingStation(){
   }
   const max=recipe.maxCraftable||0;
   craftQuantity=Math.max(1,Math.min(99,craftQuantity));
-  const material=recipe.materials[0];
-  const required=(material?.requiredCount||0)*craftQuantity;
-  const remaining=Math.max(0,(material?.inventoryCount||0)-required);
   const maximumQuantity=Math.min(99,max);
+  const materialsHtml=recipe.materials.map(m=>{
+    const req=(m.requiredCount||0)*craftQuantity;
+    const have=m.inventoryCount||0;
+    const short=have<req;
+    return `<div class="craft-material ${short?'short':''}">
+      ${escapeHtml(ITEM_META[m.itemId]?.name||m.itemId)} ×${m.requiredCount||0}/份
+      <span class="${short?'insufficient':''}">库存 ${have} · 本次消耗 ${req}${short?' · 不足！':''}</span>
+    </div>`;
+  }).join('');
   station.innerHTML=`
     <div class="recipe-options">${craftRecipes.map(value=>`
       <button class="recipe-option" onclick="selectCraftRecipe(${htmlJsArgument(value.recipeId)})">
@@ -384,10 +390,8 @@ function renderCraftingStation(){
         <span class="emoji">${ITEM_META[recipe.outputItem]?.emoji||'🥤'}</span>
         <div><h3>${escapeHtml(recipe.name)}</h3><p>每份产出 ${escapeHtml(ITEM_META[recipe.outputItem]?.name||recipe.outputItem)} ×${recipe.outputCount}</p></div>
       </div>
-      <div class="craft-material">
-        材料：${escapeHtml(ITEM_META[material?.itemId]?.name||material?.itemId||'未配置')} ×${material?.requiredCount||0}/份<br>
-        库存：${material?.inventoryCount||0} · 本次消耗：${required} · 制作后剩余：${remaining}<br>
-        最大可制作：${max}
+      <div class="craft-materials">${materialsHtml}
+        <div class="craft-material-summary">最大可制作：${max}</div>
       </div>
       <div class="craft-quantity" aria-label="制作数量">
         <button onclick="changeCraftQuantity(-1)" ${max<1||craftQuantity<=1?'disabled':''}>−</button>
@@ -679,39 +683,75 @@ function renderCustomerQueue(){
 
 function selectCustomerOrder(orderId){
   selectedOrderId=orderId;
-  orderCraftQuantity=Math.max(
-    1,
-    customerQueue.find(value=>value.orderId===selectedOrderId)?.quantity||1,
-  );
+  const customer=customerQueue.find(value=>value.orderId===selectedOrderId);
+  orderCraftQuantity=Math.max(1,customer?.quantity||1);
+  if(customer?.recipeId){
+    const matchingRecipe=craftRecipes.find(r=>r.recipeId===customer.recipeId);
+    if(matchingRecipe){
+      selectedRecipe=matchingRecipe;
+      craftQuantity=1;
+    }
+  }
   renderCustomerQueue();
+  renderCraftingStation();
 }
 
 function renderOrderActions(){
   const customer=customerQueue.find(value=>value.orderId===selectedOrderId);
   const actions=document.getElementById('order-actions');
   if(!customer){actions.innerHTML='';return}
-  const material=selectedRecipe?.materials?.[0];
-  const required=(material?.requiredCount||0)*orderCraftQuantity;
+  const orderRecipe=craftRecipes.find(r=>r.recipeId===customer.recipeId);
   const excess=Math.max(0,orderCraftQuantity-customer.quantity);
+  const hasRecipe=!!orderRecipe;
+  let maxCraftable=99;
+  if(orderRecipe?.materials){
+    maxCraftable=orderRecipe.materials.reduce((limit,m)=>{
+      const have=m.inventoryCount||0;
+      const per=m.requiredCount||0;
+      if(per<=0) return limit;
+      return Math.min(limit,Math.floor(have/per));
+    },99);
+  }
+  if(maxCraftable<1) maxCraftable=1;
+  let canCraft=true;
+  const matsHtml=(orderRecipe?.materials||[]).map(m=>{
+    const req=(m.requiredCount||0)*orderCraftQuantity;
+    const have=m.inventoryCount||0;
+    const short=have<req;
+    if(short) canCraft=false;
+    return `${escapeHtml(ITEM_META[m.itemId]?.name||m.itemId)} ×${req}${short?' <span style="color:#e74c3c">(不足)</span>':''}`;
+  }).join(' · ');
+  const plusDisabled=orderCraftQuantity>=99||orderCraftQuantity>=maxCraftable;
   actions.innerHTML=`<div class="order-actions">
     <p>交付 ${escapeHtml(ITEM_META[customer.itemId]?.name||customer.itemId)} ×${customer.quantity}，获得 🪙${customer.expectedGold} · ⭐${customer.expectedExp}</p>
     <button onclick="deliverSelectedOrder()">从背包完整交付</button>
-    <p style="margin-top:10px">现场制作 ${orderCraftQuantity} 份 · 消耗 ${escapeHtml(ITEM_META[material?.itemId]?.name||material?.itemId||'材料')} ×${required} · 交付 ${customer.quantity} · 多余入包 ${excess}</p>
+    <p style="margin-top:10px">现场制作 ${orderCraftQuantity} 份 · 消耗 ${matsHtml||'(未知配方)'} · 交付 ${customer.quantity} · 多余入包 ${excess}</p>
     <div class="craft-quantity">
       <button onclick="changeOrderCraftQuantity(-1)" ${orderCraftQuantity<=customer.quantity?'disabled':''}>−</button>
       <output>${orderCraftQuantity}</output>
-      <button onclick="changeOrderCraftQuantity(1)" ${orderCraftQuantity>=99?'disabled':''}>＋</button>
+      <button onclick="changeOrderCraftQuantity(1)" ${plusDisabled?'disabled':''}>＋</button>
     </div>
-    <button style="margin-top:8px" onclick="makeAndDeliverSelectedOrder()">现场制作并交付</button>
+    <button style="margin-top:8px" onclick="makeAndDeliverSelectedOrder()" ${(hasRecipe&&canCraft)?'':'disabled'}>现场制作并交付</button>
     <button style="margin-top:8px;background:#78633c" onclick="markSelectedOrderOutOfStock()">暂时没货</button>
   </div>`;
 }
 
 function changeOrderCraftQuantity(delta){
   const customer=customerQueue.find(value=>value.orderId===selectedOrderId);
+  const orderRecipe=craftRecipes.find(r=>r.recipeId===customer?.recipeId);
+  let maxCraftable=99;
+  if(orderRecipe?.materials){
+    maxCraftable=orderRecipe.materials.reduce((limit,m)=>{
+      const have=m.inventoryCount||0;
+      const per=m.requiredCount||0;
+      if(per<=0) return limit;
+      return Math.min(limit,Math.floor(have/per));
+    },99);
+  }
+  if(maxCraftable<1) maxCraftable=1;
   orderCraftQuantity=Math.max(
     customer?.quantity||1,
-    Math.min(99,orderCraftQuantity+delta),
+    Math.min(maxCraftable,orderCraftQuantity+delta),
   );
   renderOrderActions();
 }

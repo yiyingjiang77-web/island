@@ -6,7 +6,7 @@
 
 ## Demo2.7 进度（截至 2026-07-30）
 - **任务 01（已完成）**：建立 island_level_config 表（1-10级累计经验阈值 + 固定作物/配方）、player_island_level_reward_claim 表、game_player.cumulative_exp 字段、IslandGrowthService.initialize() 在 /game/init 时迁移并补发奖励
-- **任务 02（下一步）**：将 applyExperience() 从旧 player_level_config 单级模式切换为累计经验模式，升级时发放作物种植权和配方
+- **任务 02（已完成）**：applyExperience() 切换为累计经验模式，升级时发放作物种植权和配方，69 个测试全部通过。分支 demo2.7-cumulative-exp
 - 任务 03-07：饮品店装修、等级驱动队列、每日满意度、成长面板 UI、满意度面板 UI
 
 ## 关键架构决策
