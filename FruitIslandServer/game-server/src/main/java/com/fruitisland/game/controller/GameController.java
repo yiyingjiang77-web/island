@@ -35,7 +35,7 @@ public class GameController {
     private final PlayerCropService playerCropService;
     private final PlayerCropGrantService playerCropGrantService;
     private final PlayerLevelConfigService playerLevelConfigService;
-    private final PlayerRecipeService playerRecipeService;
+    private final IslandGrowthService islandGrowthService;
 
     /**
      * 游戏初始化
@@ -67,23 +67,14 @@ public class GameController {
             log.info("新岛屿创建: islandId={}", island.getId());
         }
 
-        // 3. 新玩家：赠送第一块地 + 草莓永久种植权
+        // 3. 新玩家：赠送第一块地
         if (isNewPlayer) {
             initNewPlayerLands(player.getId());
             log.info("新玩家初始土地初始化完成: playerId={}", player.getId());
         }
 
-        /*
-         * 兼容作物权限模型上线前创建的旧账号。
-         * 老账号可能已经有角色和土地，却没有 player_crop 记录；此时补发教程作物草莓，
-         * 保证点击空地时至少能看到并选择一个品种。该方法有唯一索引保护，不会重复发放。
-         */
-        if (playerCropService.findByPlayerAndCrop(player.getId(), "strawberry") == null) {
-            playerCropService.grantPermanent(player.getId(), "strawberry", "MIGRATION_DEFAULT");
-        }
-        // 草莓汁是所有玩家的初始永久配方；对旧账号幂等补发。
-        playerRecipeService.grantPermanent(
-                player.getId(), "strawberry_juice", isNewPlayer ? "INITIAL" : "MIGRATION_DEFAULT");
+        // 小岛等级配置是奖励发放与迁移的权威来源；重复初始化不会重复领取。
+        var islandGrowth = islandGrowthService.initialize(player);
 
         // 4. 加载土地数据
         List<LandVO> lands = playerLandService.listByPlayer(player.getId(), player.getLevel());
@@ -117,19 +108,17 @@ public class GameController {
                 cropUnlockSources,
                 playerCrops,
                 cropGrants,
-                playerLevelConfigs
+                playerLevelConfigs,
+                islandGrowth
         );
         return Result.ok(vo);
     }
 
     /**
-     * 新玩家初始化：赠送第一块农田 + 草莓永久种植权。
-     *
-     * <p>获得永久种植权后可以无限次种植，不再向背包发放或消耗“种子数量”。</p>
+     * 新玩家初始化：赠送第一块农田。
      */
     private void initNewPlayerLands(Long playerId) {
         // 第一块免费地 (land_config_id=1)
         playerLandService.buy(playerId, 1L, 1);
-        playerCropService.grantPermanent(playerId, "strawberry", "INITIAL");
     }
 }

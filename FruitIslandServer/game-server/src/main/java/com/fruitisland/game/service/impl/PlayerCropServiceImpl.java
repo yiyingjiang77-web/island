@@ -11,6 +11,7 @@ import com.fruitisland.game.service.CropLevelConfigService;
 import com.fruitisland.game.service.GamePlayerService;
 import com.fruitisland.game.service.PlayerCropService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,8 +69,12 @@ public class PlayerCropServiceImpl
         playerCrop.setCropLevel(1);
         playerCrop.setUnlockSource(source);
         playerCrop.setUnlockTime(LocalDateTime.now());
-        save(playerCrop);
-        return playerCrop;
+        try {
+            save(playerCrop);
+            return playerCrop;
+        } catch (DuplicateKeyException ignored) {
+            return findByPlayerAndCrop(playerId, cropId);
+        }
     }
 
     @Override

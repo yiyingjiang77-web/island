@@ -54,6 +54,9 @@ public class GameInitVO implements Serializable {
     /** 玩家等级成长配置，用于客户端经验条和升级预览。 */
     private List<PlayerLevelConfig> playerLevelConfigs;
 
+    /** 小岛累计经验、等级阈值及逐级固定奖励状态。 */
+    private IslandGrowthVO islandGrowth;
+
     public static GameInitVO of(
             GamePlayer player,
             Island island,
@@ -64,7 +67,8 @@ public class GameInitVO implements Serializable {
             List<CropUnlockSource> cropUnlockSources,
             List<PlayerCrop> playerCrops,
             List<PlayerCropGrant> cropGrants,
-            List<PlayerLevelConfig> playerLevelConfigs
+            List<PlayerLevelConfig> playerLevelConfigs,
+            IslandGrowthVO islandGrowth
     ) {
         GameInitVO vo = new GameInitVO();
         vo.setPlayer(player);
@@ -77,6 +81,7 @@ public class GameInitVO implements Serializable {
         vo.setPlayerCrops(playerCrops);
         vo.setCropGrants(cropGrants);
         vo.setPlayerLevelConfigs(playerLevelConfigs);
+        vo.setIslandGrowth(islandGrowth);
         return vo;
     }
 }

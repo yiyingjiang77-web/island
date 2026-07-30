@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS game_player (
     nickname VARCHAR(32),
     level INT DEFAULT 1,
     exp INT DEFAULT 0,
+    cumulative_exp INT DEFAULT 0,
     gold BIGINT DEFAULT 500,
     diamond INT DEFAULT 20,
     avatar_id VARCHAR(64),
@@ -52,6 +53,27 @@ CREATE TABLE IF NOT EXISTS player_level_config (
     reward_gold BIGINT NOT NULL DEFAULT 0,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS island_level_config (
+    level INT PRIMARY KEY,
+    cumulative_exp INT NOT NULL,
+    crop_id VARCHAR(64) NOT NULL,
+    recipe_id VARCHAR(64) NOT NULL,
+    material_source_hint VARCHAR(255),
+    shop_capability_hint VARCHAR(255),
+    enabled INT NOT NULL DEFAULT 1,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS player_island_level_reward_claim (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    player_id BIGINT NOT NULL,
+    island_level INT NOT NULL,
+    claimed_at TIMESTAMP NOT NULL,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (player_id, island_level)
 );
 
 CREATE TABLE IF NOT EXISTS island (
@@ -172,6 +194,27 @@ CREATE TABLE IF NOT EXISTS recipe_config (
     enabled INT NOT NULL DEFAULT 1
 );
 
+CREATE TABLE IF NOT EXISTS recipe_material (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    recipe_id VARCHAR(64) NOT NULL,
+    item_id VARCHAR(64) NOT NULL,
+    count INT NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS player_recipe (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    player_id BIGINT NOT NULL,
+    recipe_id VARCHAR(64) NOT NULL,
+    qualification_type VARCHAR(16) NOT NULL DEFAULT 'PERMANENT',
+    unlock_source VARCHAR(32) NOT NULL,
+    unlock_time TIMESTAMP NOT NULL,
+    valid_from TIMESTAMP,
+    valid_until TIMESTAMP,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (player_id, recipe_id, qualification_type)
+);
+
 CREATE TABLE IF NOT EXISTS drink_bar (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     player_id BIGINT NOT NULL,
@@ -288,24 +331,67 @@ INSERT INTO item_config (id, name, type, icon, sell_price) VALUES
 ('potato','土豆','CROP','potato',5),
 ('chili','辣椒','CROP','chili',20),
 ('corn','玉米','CROP','corn',40),
-('moonberry','月光莓','CROP','moonberry',120);
+('moonberry','月光莓','CROP','moonberry',120),
+('orange','橙子','CROP','orange',10),
+('blueberry','蓝莓','CROP','blueberry',12),
+('apple','苹果','CROP','apple',14),
+('watermelon','西瓜','CROP','watermelon',16),
+('wheat','小麦','CROP','wheat',10),
+('lemon','柠檬','CROP','lemon',14),
+('cucumber','黄瓜','CROP','cucumber',12),
+('milk','牛奶','MATERIAL','milk',0),
+('egg','鸡蛋','MATERIAL','egg',0);
 
 INSERT INTO crop_config
 (crop_id,name,rarity,reward_eligible,permanent_unlock_enabled,upgrade_enabled,
  player_unlock_level,max_crop_level,enabled) VALUES
 ('strawberry','草莓','COMMON',0,1,1,1,3,1),
 ('cabbage','白菜','COMMON',0,1,1,2,3,1),
-('carrot','胡萝卜','COMMON',0,1,1,3,3,1),
+('carrot','胡萝卜','COMMON',0,1,1,2,3,1),
 ('tomato','番茄','COMMON',0,1,1,4,3,1),
 ('potato','土豆','COMMON',0,1,1,5,3,1),
 ('chili','辣椒','COMMON',0,1,1,8,3,1),
 ('corn','玉米','COMMON',0,1,1,10,3,1),
-('moonberry','月光莓','RARE',1,0,0,1,1,1);
+('moonberry','月光莓','RARE',1,0,0,1,1,1),
+('orange','橙子','COMMON',0,1,0,3,1,1),
+('blueberry','蓝莓','COMMON',0,1,0,5,1,1),
+('apple','苹果','COMMON',0,1,0,6,1,1),
+('watermelon','西瓜','COMMON',0,1,0,7,1,1),
+('wheat','小麦','COMMON',0,1,0,8,1,1),
+('lemon','柠檬','COMMON',0,1,0,9,1,1),
+('cucumber','黄瓜','COMMON',0,1,0,10,1,1);
 
 INSERT INTO recipe_config
 (id,name,output_item,make_time,unlock_level,sale_gold,sale_exp,
  bar_sale_interval_seconds,order_weight,enabled) VALUES
-('strawberry_juice','草莓汁','strawberry_juice',0,1,30,5,180,100,1);
+('strawberry_juice','草莓汁','strawberry_juice',0,1,30,5,180,100,1),
+('carrot_juice','胡萝卜汁','carrot_juice',0,2,35,5,180,100,1),
+('orange_juice','橙汁','orange_juice',0,3,40,6,180,100,1),
+('tomato_juice','番茄汁','tomato_juice',0,4,40,6,180,100,1),
+('milk_ice_cream','牛奶冰淇淋','milk_ice_cream',0,5,55,8,180,100,1),
+('apple_carrot_juice','苹果胡萝卜汁','apple_carrot_juice',0,6,50,7,180,100,1),
+('watermelon_milk_ice_cream','西瓜牛奶冰淇淋','watermelon_milk_ice_cream',0,7,65,9,180,100,1),
+('strawberry_cake','草莓蛋糕','strawberry_cake',0,8,80,12,180,100,1),
+('lemon_milk_ice_cream','柠檬牛奶冰淇淋','lemon_milk_ice_cream',0,9,70,10,180,100,1),
+('cucumber_apple_juice','黄瓜苹果汁','cucumber_apple_juice',0,10,60,8,180,100,1);
+
+INSERT INTO recipe_material (recipe_id,item_id,count) VALUES
+('strawberry_juice','strawberry',2),
+('carrot_juice','carrot',2),
+('orange_juice','orange',2),
+('tomato_juice','tomato',2),
+('milk_ice_cream','milk',2),
+('apple_carrot_juice','apple',1),
+('apple_carrot_juice','carrot',1),
+('watermelon_milk_ice_cream','watermelon',2),
+('watermelon_milk_ice_cream','milk',1),
+('strawberry_cake','strawberry',2),
+('strawberry_cake','wheat',2),
+('strawberry_cake','egg',1),
+('lemon_milk_ice_cream','lemon',2),
+('lemon_milk_ice_cream','milk',1),
+('cucumber_apple_juice','cucumber',1),
+('cucumber_apple_juice','apple',1);
 
 INSERT INTO crop_level_config
 (crop_id,crop_level,grow_seconds,yield_count,harvest_exp,upgrade_gold) VALUES
@@ -316,13 +402,33 @@ INSERT INTO crop_level_config
 ('potato',1,300,4,18,0),('potato',2,270,5,26,600),('potato',3,240,6,36,1300),
 ('chili',1,480,3,25,0),('chili',2,420,4,36,900),('chili',3,360,5,50,1800),
 ('corn',1,600,5,30,0),('corn',2,520,6,45,1200),('corn',3,450,8,65,2500),
-('moonberry',1,300,5,40,0);
+('moonberry',1,300,5,40,0),
+('orange',1,240,3,15,0),
+('blueberry',1,300,4,18,0),
+('apple',1,360,4,22,0),
+('watermelon',1,480,3,25,0),
+('wheat',1,300,5,20,0),
+('lemon',1,420,4,25,0),
+('cucumber',1,360,4,22,0);
 
 INSERT INTO player_level_config (level,required_exp,reward_gold) VALUES
 (1,100,50),(2,150,75),(3,220,100),(4,300,125),(5,400,150),
 (6,520,180),(7,660,210),(8,820,250),(9,1000,300),(10,1200,350),
 (11,1450,400),(12,1700,450),(13,2000,500),(14,2350,550),(15,2750,600),
 (16,3200,700),(17,3700,800),(18,4250,900),(19,4850,1000),(20,5500,1200);
+
+INSERT INTO island_level_config
+(level,cumulative_exp,crop_id,recipe_id,material_source_hint,shop_capability_hint,enabled) VALUES
+(1,0,'strawberry','strawberry_juice',NULL,NULL,1),
+(2,100,'carrot','carrot_juice',NULL,NULL,1),
+(3,250,'orange','orange_juice',NULL,NULL,1),
+(4,450,'tomato','tomato_juice',NULL,NULL,1),
+(5,700,'blueberry','milk_ice_cream','解锁牛棚后可获得牛奶材料','饮品店达到5级后可制作冰淇淋',1),
+(6,1000,'apple','apple_carrot_juice',NULL,NULL,1),
+(7,1400,'watermelon','watermelon_milk_ice_cream','解锁牛棚后可获得牛奶材料','饮品店达到5级后可制作冰淇淋',1),
+(8,1900,'wheat','strawberry_cake','解锁鸡舍后可获得鸡蛋材料','解锁蛋糕店后可制作蛋糕',1),
+(9,2500,'lemon','lemon_milk_ice_cream','解锁牛棚后可获得牛奶材料','饮品店达到5级后可制作冰淇淋',1),
+(10,3200,'cucumber','cucumber_apple_juice',NULL,NULL,1);
 
 INSERT INTO crop_unlock_source
 (crop_id,source_type,currency_type,price,required_player_level,source_ref_id,enabled) VALUES
@@ -333,6 +439,18 @@ INSERT INTO crop_unlock_source
 ('potato','LEVEL_REWARD','NONE',0,5,'LEVEL_5',1),
 ('chili','GOLD_SHOP','GOLD',1000,8,'SHOP_CHILI',1),
 ('corn','LEVEL_REWARD','NONE',0,10,'LEVEL_10',1);
+
+INSERT INTO crop_unlock_source
+(crop_id,source_type,currency_type,price,required_player_level,source_ref_id,enabled) VALUES
+('carrot','LEVEL_REWARD','NONE',0,2,'ISLAND_LEVEL_2',1),
+('orange','LEVEL_REWARD','NONE',0,3,'ISLAND_LEVEL_3',1),
+('tomato','LEVEL_REWARD','NONE',0,4,'ISLAND_LEVEL_4',1),
+('blueberry','LEVEL_REWARD','NONE',0,5,'ISLAND_LEVEL_5',1),
+('apple','LEVEL_REWARD','NONE',0,6,'ISLAND_LEVEL_6',1),
+('watermelon','LEVEL_REWARD','NONE',0,7,'ISLAND_LEVEL_7',1),
+('wheat','LEVEL_REWARD','NONE',0,8,'ISLAND_LEVEL_8',1),
+('lemon','LEVEL_REWARD','NONE',0,9,'ISLAND_LEVEL_9',1),
+('cucumber','LEVEL_REWARD','NONE',0,10,'ISLAND_LEVEL_10',1);
 
 INSERT INTO crop_reward_pool_item
 (pool_code,crop_id,grant_crop_level,weight,duration_seconds,enabled) VALUES

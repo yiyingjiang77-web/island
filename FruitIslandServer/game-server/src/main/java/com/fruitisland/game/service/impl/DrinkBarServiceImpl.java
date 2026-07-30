@@ -64,6 +64,7 @@ public class DrinkBarServiceImpl implements DrinkBarService {
                 .toList();
         var drinkViews = recipeConfigService.lambdaQuery()
                 .eq(RecipeConfig::getEnabled, 1)
+                .orderByAsc(RecipeConfig::getUnlockLevel)
                 .orderByAsc(RecipeConfig::getId)
                 .list()
                 .stream()

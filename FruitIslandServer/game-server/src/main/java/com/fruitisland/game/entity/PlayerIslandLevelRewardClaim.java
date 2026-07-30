@@ -8,20 +8,13 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("game_player")
-public class GamePlayer {
+@TableName("player_island_level_reward_claim")
+public class PlayerIslandLevelRewardClaim {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long userId;
-    private String gameId;
-    private String nickname;
-    private Integer level;
-    private Integer exp;
-    private Integer cumulativeExp;
-    private Long gold;
-    private Integer diamond;
-    private String avatarId;
+    private Long playerId;
+    private Integer islandLevel;
+    private LocalDateTime claimedAt;
     private LocalDateTime createTime;
-    private LocalDateTime updateTime;
 }
