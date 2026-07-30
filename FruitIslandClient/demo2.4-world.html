@@ -82,6 +82,7 @@ canvas{display:block}
   </div>
 </div>
 
+<script src="./assets/configs/MapConfig.browser.js"></script>
 <script>
 // ================================================================
 // Demo2.4 — 世界地图、土地种植和成长结算
@@ -111,19 +112,14 @@ const BUILDINGS=[
   {id:'dock',name:'码头',type:'dock',gx:25,gy:42,w:5,h:4,color:'#64A0DC', icon:'⚓',unlock:1},
 ];
 
-// 饮品店小屋不可进入；六套室外桌椅分列左右，中间入口和通道保持空闲。
-const DRINK_BARS=[
-  {slotNumber:1,side:'left', gx:16.7,gy:31.6,state:'EMPTY'},
-  {slotNumber:2,side:'left', gx:16.7,gy:33.5,state:'EMPTY'},
-  {slotNumber:3,side:'left', gx:16.7,gy:35.4,state:'EMPTY'},
-  {slotNumber:4,side:'right',gx:25.3,gy:31.6,state:'EMPTY'},
-  {slotNumber:5,side:'right',gx:25.3,gy:33.5,state:'EMPTY'},
-  {slotNumber:6,side:'right',gx:25.3,gy:35.4,state:'EMPTY'},
-];
+// 位置统一由地图配置维护；状态会在服务端吧台数据到达后按 slotNumber 更新。
+const DRINK_BARS=MapConfig.DRINK_BARS.map(bar=>({...bar}));
 const drinkBarLayoutValid=
-  DRINK_BARS.filter(bar=>bar.side==='left').length===3
+  DRINK_BARS.length===6
+  &&new Set(DRINK_BARS.map(bar=>bar.slotNumber)).size===6
+  &&DRINK_BARS.filter(bar=>bar.side==='left').length===3
   &&DRINK_BARS.filter(bar=>bar.side==='right').length===3;
-if(!drinkBarLayoutValid) throw new Error('室外吧台必须左三右三');
+if(!drinkBarLayoutValid) throw new Error('室外吧台配置必须是六个唯一槽位，并保持左三右三');
 
 // ==================== 农田 = FarmConfig.json ====================
 const FARM_ZONES=[

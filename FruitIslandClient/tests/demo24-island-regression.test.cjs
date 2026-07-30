@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const vm = require('node:vm');
 
 const page = fs.readFileSync(
   path.join(__dirname, '..', 'demo2.4-island.html'),
@@ -9,6 +10,10 @@ const page = fs.readFileSync(
 );
 const world = fs.readFileSync(
   path.join(__dirname, '..', 'demo2.4-world.html'),
+  'utf8',
+);
+const mapConfig = fs.readFileSync(
+  path.join(__dirname, '..', 'assets', 'configs', 'MapConfig.browser.js'),
   'utf8',
 );
 
@@ -76,9 +81,17 @@ test('sold out bars expose individual and sold-out-only collect all actions with
 });
 
 test('the outdoor map renders three clickable bars on each side of the drink shop', () => {
-  assert.match(world, /const DRINK_BARS=\[/);
-  assert.match(world, /side:'left'/);
-  assert.match(world, /side:'right'/);
+  const configContext = vm.createContext({});
+  vm.runInContext(mapConfig, configContext);
+  const configuredBars = configContext.MapConfig.DRINK_BARS;
+
+  assert.match(world, /src="\.\/assets\/configs\/MapConfig\.browser\.js"/);
+  assert.match(world, /const DRINK_BARS=MapConfig\.DRINK_BARS/);
+  assert.doesNotMatch(world, /const DRINK_BARS=\[/);
+  assert.equal(configuredBars.length, 6);
+  assert.equal(new Set(configuredBars.map(bar => bar.slotNumber)).size, 6);
+  assert.equal(configuredBars.filter(bar => bar.side === 'left').length, 3);
+  assert.equal(configuredBars.filter(bar => bar.side === 'right').length, 3);
   assert.match(world, /DRINK_BARS\.filter\(bar=>bar\.side==='left'\)\.length/);
   assert.match(world, /DRINK_BARS\.filter\(bar=>bar\.side==='right'\)\.length/);
   assert.match(world, /fruit-island:drink-bars-state/);

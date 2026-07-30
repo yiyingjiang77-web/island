@@ -302,7 +302,12 @@ CREATE TABLE recipe_config
     name         VARCHAR(64),
     output_item  VARCHAR(64),
     make_time    INT COMMENT '制作秒数',
-    unlock_level INT DEFAULT 1
+    unlock_level INT DEFAULT 1,
+    sale_gold    INT NOT NULL DEFAULT 0 COMMENT '单份售出金币',
+    sale_exp     INT NOT NULL DEFAULT 0 COMMENT '单份售出玩家经验',
+    bar_sale_interval_seconds INT NOT NULL DEFAULT 180 COMMENT '吧台单份销售间隔秒数',
+    order_weight INT NOT NULL DEFAULT 1 COMMENT '订单配方权重',
+    enabled      TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用'
 ) COMMENT = '制作配方';
 
 -- ============================================================
@@ -315,6 +320,22 @@ CREATE TABLE recipe_material
     item_id   VARCHAR(64),
     count     INT DEFAULT 1
 ) COMMENT = '配方材料';
+
+CREATE TABLE player_recipe
+(
+    id            BIGINT PRIMARY KEY AUTO_INCREMENT,
+    player_id     BIGINT NOT NULL,
+    recipe_id     VARCHAR(64) NOT NULL,
+    qualification_type VARCHAR(16) NOT NULL DEFAULT 'PERMANENT',
+    unlock_source VARCHAR(32) NOT NULL,
+    unlock_time   DATETIME NOT NULL,
+    valid_from    DATETIME,
+    valid_until   DATETIME,
+    create_time   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_player_recipe (player_id, recipe_id, qualification_type),
+    INDEX idx_player_recipe_player (player_id)
+) COMMENT = '玩家永久或限时配方资格';
 
 -- ============================================================
 -- 13. Production Order
@@ -375,11 +396,83 @@ CREATE TABLE customer_order
     id          BIGINT PRIMARY KEY AUTO_INCREMENT,
     player_id   BIGINT,
     customer_id VARCHAR(64),
+    recipe_id   VARCHAR(64),
     item_id     VARCHAR(64),
-    reward_gold INT,
+    quantity    INT NOT NULL DEFAULT 1,
+    unit_gold_snapshot INT NOT NULL DEFAULT 0,
+    unit_exp_snapshot INT NOT NULL DEFAULT 0,
+    queue_position INT,
     status      VARCHAR(32),
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    close_time  DATETIME,
+    close_reason VARCHAR(32),
+    INDEX idx_waiting_queue (player_id, status, queue_position)
 ) COMMENT = '顾客订单';
+
+CREATE TABLE customer_arrival_state
+(
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
+    player_id       BIGINT NOT NULL,
+    next_arrival_at DATETIME,
+    create_time     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time     DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_customer_arrival_player (player_id)
+) COMMENT = '玩家顾客到店状态';
+
+CREATE TABLE order_quantity_weight
+(
+    id       BIGINT PRIMARY KEY AUTO_INCREMENT,
+    quantity INT NOT NULL,
+    weight   INT NOT NULL,
+    enabled  TINYINT NOT NULL DEFAULT 1,
+    UNIQUE KEY uk_order_quantity (quantity),
+    CHECK (quantity > 0 AND weight > 0)
+) COMMENT = '顾客订单数量权重';
+
+CREATE TABLE drink_bar
+(
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+    player_id   BIGINT NOT NULL,
+    slot_number TINYINT NOT NULL,
+    opened      TINYINT NOT NULL DEFAULT 1,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_drink_bar_player_slot (player_id, slot_number),
+    CHECK (slot_number BETWEEN 1 AND 6)
+) COMMENT = '玩家室外吧台';
+
+CREATE TABLE drink_bar_batch
+(
+    id                             BIGINT PRIMARY KEY AUTO_INCREMENT,
+    player_id                      BIGINT NOT NULL,
+    bar_id                         BIGINT NOT NULL,
+    recipe_id                      VARCHAR(64) NOT NULL,
+    item_id                        VARCHAR(64) NOT NULL,
+    listed_quantity                INT NOT NULL,
+    sold_quantity                  INT NOT NULL DEFAULT 0,
+    status                         VARCHAR(32) NOT NULL,
+    active_marker                  TINYINT NULL COMMENT '活动批次固定为1；关闭后为空',
+    unit_gold_snapshot             INT NOT NULL,
+    unit_exp_snapshot              INT NOT NULL,
+    sale_interval_seconds_snapshot INT NOT NULL,
+    listed_at                      DATETIME NOT NULL,
+    sold_out_at                    DATETIME,
+    closed_at                      DATETIME,
+    create_time                    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time                    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_drink_bar_active_batch (bar_id, active_marker),
+    INDEX idx_drink_bar_batch_player (player_id, active_marker),
+    INDEX idx_drink_bar_batch_history (bar_id, create_time),
+    CHECK (listed_quantity BETWEEN 1 AND 10),
+    CHECK (sold_quantity BETWEEN 0 AND listed_quantity),
+    CHECK (unit_gold_snapshot >= 0),
+    CHECK (unit_exp_snapshot >= 0),
+    CHECK (sale_interval_seconds_snapshot > 0),
+    CHECK (
+        (status IN ('SELLING', 'SOLD_OUT') AND active_marker = 1)
+        OR (status = 'CLOSED' AND active_marker IS NULL)
+    )
+) COMMENT = '吧台销售批次及快照历史';
 
 -- ============================================================
 -- 18. Quest Config
@@ -561,7 +654,26 @@ INSERT INTO item_config (id, name, type, icon, sell_price) VALUES
 ('potato', '土豆', 'CROP', 'potato', 5),
 ('chili', '辣椒', 'CROP', 'chili', 20),
 ('corn', '玉米', 'CROP', 'corn', 40),
-('moonberry', '月光莓', 'CROP', 'moonberry', 120);
+('moonberry', '月光莓', 'CROP', 'moonberry', 120),
+('strawberry_juice', '草莓汁', 'DRINK', 'strawberry_juice', 0);
+
+INSERT INTO recipe_config
+(id, name, output_item, make_time, unlock_level, sale_gold, sale_exp,
+ bar_sale_interval_seconds, order_weight, enabled) VALUES
+('strawberry_juice', '草莓汁', 'strawberry_juice', 0, 1, 30, 5, 180, 100, 1);
+
+INSERT INTO recipe_material (recipe_id, item_id, count) VALUES
+('strawberry_juice', 'strawberry', 2);
+
+INSERT INTO order_quantity_weight (quantity, weight, enabled) VALUES
+(1, 60, 1), (2, 30, 1), (3, 10, 1);
+
+INSERT INTO customer_template (id, name, avatar, type) VALUES
+('berry', '莓莓', '👧', 'ISLANDER'),
+('sunny', '小晴', '🧒', 'ISLANDER'),
+('captain', '船长', '🧔', 'VISITOR'),
+('artist', '画家', '👩‍🎨', 'VISITOR'),
+('ranger', '巡林员', '🧑‍🌾', 'ISLANDER');
 -- ============================================================
 -- Crop Config Seed Data
 -- 基础属性与等级数值分离；种植时从两张配置表共同读取。
