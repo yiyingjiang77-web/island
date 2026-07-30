@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>果香小岛 Demo2.4 — 可收起背包</title>
+<style>
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#151a27;font-family:'PingFang SC','Microsoft YaHei',sans-serif}
+.stage{position:relative;width:100%;height:100%}
+.world-frame{display:block;width:100%;height:100%;border:0;background:#151a27}
+
+/* 通用功能入口：以后任务中心、图鉴等继续向下追加按钮。 */
+.feature-rail{position:absolute;right:12px;top:50%;z-index:60;display:flex;flex-direction:column;gap:9px;transform:translateY(-50%)}
+.feature-button{position:relative;width:58px;height:58px;border:2px solid rgba(255,255,255,.3);border-radius:18px;background:rgba(39,54,48,.94);color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.32);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.feature-button:hover,.feature-button.active{background:#4e7c4c;border-color:#d8f1b8;transform:translateX(-2px)}
+.feature-button .icon{font-size:25px;line-height:1}
+.feature-button .text{font-size:10px}
+.feature-badge{position:absolute;right:-3px;top:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#ef6c57;color:#fff;font-size:11px;line-height:20px;text-align:center}
+
+.drawer-shade{display:none;position:absolute;inset:0;z-index:30;background:rgba(7,12,16,.28)}
+.drawer-shade.show{display:block}
+.feature-drawer{position:absolute;right:82px;top:50%;z-index:50;width:min(360px,calc(100vw - 104px));max-height:min(680px,calc(100vh - 24px));padding:15px;border:1px solid rgba(220,245,195,.32);border-radius:20px;background:rgba(32,43,48,.97);box-shadow:0 16px 46px rgba(0,0,0,.48);transform:translate(120%, -50%);opacity:0;pointer-events:none;transition:transform .22s ease,opacity .18s ease;color:#fff;overflow:auto}
+.feature-drawer.open{transform:translate(0,-50%);opacity:1;pointer-events:auto}
+.drawer-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.drawer-title{flex:1}
+.drawer-title h2{margin:0;font-size:19px}
+.drawer-title p{margin:3px 0 0;color:#aebbac;font-size:11px}
+.close-button,.refresh-button{border:0;border-radius:10px;background:rgba(255,255,255,.09);color:#fff;padding:8px 10px;cursor:pointer}
+.summary{display:flex;justify-content:space-between;align-items:center;padding:8px 11px;margin-bottom:10px;border-radius:12px;background:rgba(135,186,109,.12);font-size:12px;color:#cfe9bd}
+.inventory-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.inventory-item{min-height:94px;padding:10px 6px;border:1px solid rgba(255,255,255,.12);border-radius:13px;background:rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.inventory-item .emoji{font-size:29px;line-height:1.1}
+.inventory-item .name{margin-top:6px;color:#e6eadf;font-size:12px}
+.inventory-item .count{margin-top:3px;color:#f4d36b;font-size:13px;font-weight:700}
+.empty{padding:42px 12px;text-align:center;color:#93a096;font-size:13px}
+.loading{padding:36px 12px;text-align:center;color:#b8c6b6;font-size:13px}
+.error{color:#ff9d91}
+.inventory-note{margin:12px 2px 0;color:#859188;font-size:10px;line-height:1.5;text-align:center}
+.craft-card{padding:14px;border:1px solid rgba(255,255,255,.13);border-radius:16px;background:rgba(255,255,255,.06)}
+.craft-recipe{display:flex;align-items:center;gap:11px}.craft-recipe .emoji{font-size:38px}.craft-recipe h3{margin:0;font-size:17px}.craft-recipe p{margin:4px 0 0;color:#aebbac;font-size:12px}
+.craft-material{margin:13px 0;padding:10px;border-radius:12px;background:rgba(0,0,0,.16);font-size:12px;line-height:1.7}
+.craft-quantity{display:flex;align-items:center;gap:7px}.craft-quantity button,.craft-submit{border:0;border-radius:10px;background:#527e4c;color:white;padding:9px 12px;cursor:pointer;font-weight:700}
+.craft-quantity output{min-width:38px;text-align:center;font-size:18px;font-weight:700}.craft-quantity output.disabled{color:#778079}.craft-quantity .max{margin-left:auto;background:#78633c}
+.craft-submit{width:100%;margin-top:12px;background:#d75f4a}.craft-submit:disabled,.craft-quantity button:disabled{opacity:.42;cursor:not-allowed}
+.craft-message{min-height:18px;margin:10px 2px 0;color:#b9d8aa;font-size:12px}.craft-message.error{color:#ff9d91}
+.customer-section{margin-bottom:14px}.customer-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.customer-section-head h3{margin:0;font-size:15px}.arrival-countdown{color:#e7ca72;font-size:11px}
+.customer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.customer-card{border:1px solid rgba(255,255,255,.13);border-radius:13px;background:rgba(255,255,255,.055);color:#fff;padding:10px;text-align:left;cursor:pointer}.customer-card:hover,.customer-card.selected{border-color:#d8f1b8;background:rgba(94,140,76,.28)}.customer-card .customer-line{display:flex;align-items:center;gap:7px}.customer-card .avatar{font-size:24px}.customer-card strong{font-size:13px}.customer-card .order{margin-top:7px;color:#f1d68a;font-size:12px}.customer-card .reward{margin-top:3px;color:#a9c5a4;font-size:10px}.customer-empty{padding:20px;text-align:center;color:#93a096;font-size:12px}
+.order-actions{margin:9px 0 13px;padding:10px;border-radius:12px;background:rgba(0,0,0,.17);font-size:12px}.order-actions p{margin:0 0 8px}.order-actions button{width:100%;border:0;border-radius:10px;padding:9px;background:#527e4c;color:#fff;font-weight:700;cursor:pointer}.order-actions button:disabled{opacity:.42;cursor:not-allowed}
+.bar-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}.bar-slot{border:1px solid rgba(255,255,255,.13);border-radius:12px;background:rgba(255,255,255,.055);color:#fff;padding:10px 5px;cursor:pointer}.bar-slot.selected{border-color:#d8f1b8;background:rgba(94,140,76,.28)}.bar-slot:disabled{cursor:not-allowed;opacity:.7}.bar-slot strong,.bar-slot span{display:block}.bar-slot span{margin-top:3px;color:#a9c5a4;font-size:10px}
+.bar-drink{padding:12px;border:1px solid rgba(255,255,255,.13);border-radius:14px;background:rgba(255,255,255,.06);margin-top:9px}.bar-drink-head{display:flex;align-items:center;gap:9px}.bar-drink-head .emoji{font-size:30px}.bar-drink p{margin:7px 0;color:#b8c6b6;font-size:11px;line-height:1.55}.bar-actions{display:flex;gap:8px}.bar-actions button,.recipe-option{flex:1;border:0;border-radius:10px;padding:9px;background:#527e4c;color:#fff;font-weight:700;cursor:pointer}.bar-actions .make{background:#78633c}.recipe-options{display:flex;gap:8px;margin-bottom:10px}.bar-message{min-height:18px;margin:10px 2px 0;color:#b9d8aa;font-size:12px}.bar-message.error{color:#ff9d91}
+
+@media(max-width:600px){
+  .feature-rail{right:8px}
+  .feature-button{width:51px;height:51px;border-radius:15px}
+  .feature-button .icon{font-size:22px}
+  .feature-drawer{right:67px;width:calc(100vw - 78px);padding:12px;border-radius:16px}
+  .inventory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+</style>
+</head>
+<body>
+<main class="stage">
+  <!-- Demo2.4 世界层负责地图、移动、种植和经验；外层负责背包等通用功能入口。 -->
+  <iframe
+    id="world-frame"
+    class="world-frame"
+    title="果香小岛世界地图"
+    src="./demo2.4-world.html">
+  </iframe>
+
+  <div class="drawer-shade" id="drawer-shade" onclick="closeFeatureDrawer()"></div>
+
+  <aside class="feature-drawer" id="feature-drawer" aria-hidden="true">
+    <header class="drawer-head">
+      <div class="drawer-title">
+        <h2>🎒 我的背包</h2>
+        <p id="inventory-status">收获的原料会自动放入这里</p>
+      </div>
+      <button class="refresh-button" onclick="loadInventory(true)" title="刷新背包">↻</button>
+      <button class="close-button" onclick="closeFeatureDrawer()" title="收起">✕</button>
+    </header>
+    <div class="summary">
+      <span>物品种类</span>
+      <strong id="inventory-kind-count">0</strong>
+    </div>
+    <section class="inventory-grid" id="inventory-grid">
+      <div class="loading">正在读取背包…</div>
+    </section>
+    <p class="inventory-note">背包只用于查看和保存物品，不提供出售农作物功能。</p>
+  </aside>
+
+  <aside class="feature-drawer" id="drink-shop-drawer" aria-hidden="true">
+    <header class="drawer-head">
+      <div class="drawer-title">
+        <h2>🥤 饮品店制作台</h2>
+        <p id="craft-status">选择配方和制作数量</p>
+      </div>
+      <button class="refresh-button" onclick="loadCraftingStation(true)" title="刷新制作台">↻</button>
+      <button class="close-button" onclick="closeFeatureDrawer()" title="收起">✕</button>
+    </header>
+    <section class="customer-section">
+      <div class="customer-section-head">
+        <h3>顾客队列</h3>
+        <span class="arrival-countdown" id="arrival-countdown">读取中…</span>
+      </div>
+      <div class="customer-grid" id="customer-grid">
+        <div class="loading">顾客正在到店…</div>
+      </div>
+      <div id="order-actions"></div>
+    </section>
+    <section id="crafting-station"><div class="loading">正在读取制作台…</div></section>
+    <p class="craft-message" id="craft-message" role="status"></p>
+  </aside>
+
+  <aside class="feature-drawer" id="drink-bar-drawer" aria-hidden="true">
+    <header class="drawer-head">
+      <div class="drawer-title">
+        <h2>🍹 室外吧台</h2>
+        <p id="drink-bar-status">查看六个吧台并经营饮品</p>
+      </div>
+      <button class="refresh-button" onclick="loadDrinkBars(true)" title="刷新吧台">↻</button>
+      <button class="close-button" onclick="closeFeatureDrawer()" title="收起">✕</button>
+    </header>
+    <section id="drink-bar-panel"><div class="loading">正在读取吧台…</div></section>
+    <p class="bar-message" id="drink-bar-message" role="status"></p>
+  </aside>
+
+  <nav class="feature-rail" aria-label="功能入口">
+    <button
+      class="feature-button"
+      id="inventory-button"
+      onclick="toggleFeatureDrawer('inventory')"
+      title="展开或收起背包">
+      <span class="icon">🎒</span>
+      <span class="text">背包</span>
+      <span class="feature-badge" id="inventory-badge" style="display:none">0</span>
+    </button>
+    <button
+      class="feature-button"
+      id="drink-shop-button"
+      onclick="toggleFeatureDrawer('drink-shop')"
+      title="打开饮品店制作台">
+      <span class="icon">🥤</span>
+      <span class="text">制作台</span>
+    </button>
+    <button
+      class="feature-button"
+      id="drink-bar-button"
+      onclick="toggleFeatureDrawer('drink-bar')"
+      title="打开吧台上架">
+      <span class="icon">🍹</span>
+      <span class="text">吧台</span>
+      <span class="feature-badge" id="drink-bar-badge" style="display:none">0</span>
+    </button>
+  </nav>
+</main>
+
+<script>
+const AUTH_URL='http://localhost:8081';
+const GAME_URL='http://localhost:8082';
+const DEV_LOGIN_CODE='dev_demo23_browser';
+
+const ITEM_META={
+  strawberry:{name:'草莓',emoji:'🍓'},
+  cabbage:{name:'白菜',emoji:'🥬'},
+  carrot:{name:'胡萝卜',emoji:'🥕'},
+  tomato:{name:'番茄',emoji:'🍅'},
+  potato:{name:'土豆',emoji:'🥔'},
+  chili:{name:'辣椒',emoji:'🌶️'},
+  corn:{name:'玉米',emoji:'🌽'},
+  moonberry:{name:'月光莓',emoji:'🫐'},
+  strawberry_juice:{name:'草莓汁',emoji:'🥤'},
+};
+
+let token='';
+let activeFeature=null;
+let inventoryLoading=false;
+let craftingLoading=false;
+let drinkBarLoading=false;
+let selectedRecipe=null;
+let craftRecipes=[];
+let craftQuantity=1;
+let craftOpenUnselected=false;
+let orderCraftQuantity=1;
+let customerQueue=[];
+let nextCustomerArrivalAt=null;
+let selectedOrderId=null;
+let arrivalRefreshPending=false;
+let drinkBarState={bars:[],drinks:[]};
+let selectedBarId=null;
+let requestedBarSlotNumber=null;
+let drinkBarLoadedAt=0;
+let drinkBarRefreshPending=false;
+
+function toggleFeatureDrawer(feature){
+  if(activeFeature===feature){
+    closeFeatureDrawer();
+    return;
+  }
+  if(activeFeature) closeFeatureDrawer();
+  activeFeature=feature;
+  const drawer=feature==='inventory'
+    ?document.getElementById('feature-drawer')
+    :feature==='drink-shop'
+      ?document.getElementById('drink-shop-drawer')
+      :document.getElementById('drink-bar-drawer');
+  drawer.classList.add('open');
+  drawer.setAttribute('aria-hidden','false');
+  document.getElementById('drawer-shade').classList.add('show');
+  document.getElementById(`${feature}-button`).classList.add('active');
+  if(feature==='inventory') loadInventory();
+  if(feature==='drink-shop') loadCraftingStation();
+  if(feature==='drink-bar') loadDrinkBars();
+}
+
+function closeFeatureDrawer(){
+  activeFeature=null;
+  document.getElementById('feature-drawer').classList.remove('open');
+  document.getElementById('feature-drawer').setAttribute('aria-hidden','true');
+  document.getElementById('drink-shop-drawer').classList.remove('open');
+  document.getElementById('drink-shop-drawer').setAttribute('aria-hidden','true');
+  document.getElementById('drink-bar-drawer').classList.remove('open');
+  document.getElementById('drink-bar-drawer').setAttribute('aria-hidden','true');
+  document.getElementById('drawer-shade').classList.remove('show');
+  document.getElementById('inventory-button').classList.remove('active');
+  document.getElementById('drink-shop-button').classList.remove('active');
+  document.getElementById('drink-bar-button').classList.remove('active');
+}
+
+async function ensureLogin(){
+  if(token) return true;
+  try{
+    const response=await fetch(`${AUTH_URL}/auth/wechat/login`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:DEV_LOGIN_CODE}),
+    }).then(result=>result.json());
+    if(response.code===0&&response.data?.token){
+      token=response.data.token;
+      return true;
+    }
+  }catch(error){
+    console.warn('[Demo2.4] 登录服务不可用',error);
+  }
+  return false;
+}
+
+async function loadInventory(force=false){
+  if(inventoryLoading&&!force) return;
+  inventoryLoading=true;
+  const grid=document.getElementById('inventory-grid');
+  const status=document.getElementById('inventory-status');
+  if(grid.children.length===0||force) grid.innerHTML='<div class="loading">正在刷新背包…</div>';
+
+  const loggedIn=await ensureLogin();
+  if(!loggedIn){
+    renderInventoryError('无法连接登录服务，请确认 8081 已启动');
+    inventoryLoading=false;
+    return;
+  }
+
+  try{
+    const response=await fetch(`${GAME_URL}/game/init`,{
+      headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0||!response.data){
+      if(response.code===10002) token='';
+      throw new Error(response.message||'背包加载失败');
+    }
+    const cropNames=new Map(
+      (response.data.cropConfigs||[]).map(config=>[
+        config.cropId,
+        {name:config.name,emoji:ITEM_META[config.cropId]?.emoji||'🌿'},
+      ]),
+    );
+    const items=(response.data.inventory||[])
+      .filter(item=>(item.count||0)>0)
+      .map(item=>({
+        ...item,
+        meta:ITEM_META[item.itemId]||cropNames.get(item.itemId)||{
+          name:item.itemId,
+          emoji:'📦',
+        },
+      }));
+    renderInventory(items);
+    status.textContent=`与服务器同步 · ${new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}`;
+  }catch(error){
+    renderInventoryError(error.message||'背包加载失败');
+  }finally{
+    inventoryLoading=false;
+  }
+}
+
+function renderInventory(items){
+  const grid=document.getElementById('inventory-grid');
+  const kindCount=document.getElementById('inventory-kind-count');
+  const badge=document.getElementById('inventory-badge');
+  kindCount.textContent=String(items.length);
+  badge.textContent=String(items.length);
+  badge.style.display=items.length>0?'block':'none';
+
+  if(items.length===0){
+    grid.innerHTML='<div class="empty">背包还是空的<br>成熟后收获作物试试吧 🌱</div>';
+    return;
+  }
+  grid.innerHTML=items.map(item=>`
+    <article class="inventory-item" title="${escapeHtml(item.itemId)}">
+      <span class="emoji">${item.meta.emoji}</span>
+      <span class="name">${escapeHtml(item.meta.name)}</span>
+      <span class="count">× ${item.count}</span>
+    </article>
+  `).join('');
+}
+
+function renderInventoryError(message){
+  document.getElementById('inventory-status').textContent='背包暂时不可用';
+  document.getElementById('inventory-grid').innerHTML=
+    `<div class="empty error">${escapeHtml(message)}</div>`;
+}
+
+async function loadCraftingStation(force=false){
+  if(craftingLoading&&!force) return;
+  craftingLoading=true;
+  const station=document.getElementById('crafting-station');
+  if(force) station.innerHTML='<div class="loading">正在刷新制作台…</div>';
+  if(!await ensureLogin()){
+    renderCraftError('无法连接登录服务，请确认 8081 已启动');
+    craftingLoading=false;
+    return;
+  }
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop`,{
+      headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'制作台加载失败');
+    craftRecipes=response.data?.recipes||[];
+    selectedRecipe=craftOpenUnselected?null:(craftRecipes[0]||null);
+    craftOpenUnselected=false;
+    customerQueue=response.data?.customers||[];
+    nextCustomerArrivalAt=response.data?.nextCustomerArrivalAt||null;
+    if(!customerQueue.some(customer=>customer.orderId===selectedOrderId)){
+      selectedOrderId=customerQueue[0]?.orderId||null;
+    }
+    craftQuantity=1;
+    orderCraftQuantity=Math.max(1,customerQueue.find(value=>value.orderId===selectedOrderId)?.quantity||1);
+    renderCustomerQueue();
+    renderCraftingStation();
+    document.getElementById('craft-status').textContent='制作成品会全部进入背包';
+  }catch(error){
+    renderCraftError(error.message||'制作台加载失败');
+  }finally{
+    craftingLoading=false;
+  }
+}
+
+function renderCraftingStation(){
+  const station=document.getElementById('crafting-station');
+  const recipe=selectedRecipe;
+  if(!recipe){
+    if(craftRecipes.length===0){
+      station.innerHTML='<div class="empty">暂时没有可用配方</div>';
+      return;
+    }
+    station.innerHTML=`<div class="recipe-options">${craftRecipes.map(value=>`
+      <button class="recipe-option" onclick="selectCraftRecipe(${htmlJsArgument(value.recipeId)})">
+        ${ITEM_META[value.outputItem]?.emoji||'🥤'} ${escapeHtml(value.name)}
+      </button>`).join('')}</div><div class="empty">请选择要制作的配方，数量将从 1 开始</div>`;
+    return;
+  }
+  const max=recipe.maxCraftable||0;
+  craftQuantity=Math.max(1,Math.min(99,craftQuantity));
+  const material=recipe.materials[0];
+  const required=(material?.requiredCount||0)*craftQuantity;
+  const remaining=Math.max(0,(material?.inventoryCount||0)-required);
+  const maximumQuantity=Math.min(99,max);
+  station.innerHTML=`
+    <div class="recipe-options">${craftRecipes.map(value=>`
+      <button class="recipe-option" onclick="selectCraftRecipe(${htmlJsArgument(value.recipeId)})">
+        ${ITEM_META[value.outputItem]?.emoji||'🥤'} ${escapeHtml(value.name)}
+      </button>`).join('')}</div>
+    <article class="craft-card">
+      <div class="craft-recipe">
+        <span class="emoji">${ITEM_META[recipe.outputItem]?.emoji||'🥤'}</span>
+        <div><h3>${escapeHtml(recipe.name)}</h3><p>每份产出 ${escapeHtml(ITEM_META[recipe.outputItem]?.name||recipe.outputItem)} ×${recipe.outputCount}</p></div>
+      </div>
+      <div class="craft-material">
+        材料：${escapeHtml(ITEM_META[material?.itemId]?.name||material?.itemId||'未配置')} ×${material?.requiredCount||0}/份<br>
+        库存：${material?.inventoryCount||0} · 本次消耗：${required} · 制作后剩余：${remaining}<br>
+        最大可制作：${max}
+      </div>
+      <div class="craft-quantity" aria-label="制作数量">
+        <button onclick="changeCraftQuantity(-1)" ${max<1||craftQuantity<=1?'disabled':''}>−</button>
+        <output class="${max<1?'disabled':''}" aria-disabled="${max<1}">${craftQuantity}</output>
+        <button onclick="changeCraftQuantity(1)" ${max<1||craftQuantity>=maximumQuantity?'disabled':''}>＋</button>
+        <button class="max" onclick="setMaximumCraftQuantity()" ${max<1?'disabled':''}>最大</button>
+      </div>
+      <button class="craft-submit" onclick="craftSelectedRecipe()" ${max<craftQuantity?'disabled':''}>制作 ${craftQuantity} 份</button>
+    </article>`;
+}
+
+function selectCraftRecipe(recipeId){
+  selectedRecipe=craftRecipes.find(recipe=>recipe.recipeId===recipeId)||null;
+  craftQuantity=1;
+  renderCraftingStation();
+}
+
+async function loadDrinkBars(force=false){
+  if(drinkBarLoading&&!force) return;
+  drinkBarLoading=true;
+  const panel=document.getElementById('drink-bar-panel');
+  if(force) panel.innerHTML='<div class="loading">正在刷新吧台…</div>';
+  if(!await ensureLogin()){
+    renderDrinkBarError('无法连接登录服务，请确认 8081 已启动');
+    drinkBarLoading=false;
+    return;
+  }
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/bars`,{
+      headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'吧台加载失败');
+    drinkBarState=response.data||{bars:[],drinks:[]};
+    drinkBarLoadedAt=Date.now();
+    const requestedBar=(drinkBarState.bars||[])
+      .find(bar=>bar.slotNumber===requestedBarSlotNumber);
+    if(requestedBar){
+      selectedBarId=requestedBar.barId;
+      requestedBarSlotNumber=null;
+    }else if(!drinkBarState.bars.some(bar=>bar.barId===selectedBarId)){
+      selectedBarId=drinkBarState.bars[0]?.barId||null;
+    }
+    updateDrinkBarBadge();
+    publishDrinkBarsToWorld();
+    renderDrinkBars();
+    document.getElementById('drink-bar-status').textContent='小屋左三桌、右三桌 · 每桌独立经营';
+  }catch(error){
+    renderDrinkBarError(error.message||'吧台加载失败');
+  }finally{
+    drinkBarLoading=false;
+  }
+}
+
+function renderDrinkBars(){
+  const panel=document.getElementById('drink-bar-panel');
+  const bars=drinkBarState.bars||[];
+  const drinks=drinkBarState.drinks||[];
+  const selectedBar=bars.find(bar=>bar.barId===selectedBarId)||null;
+  const collectableCount=bars.filter(bar=>bar.state==='SOLD_OUT').length;
+  panel.innerHTML=`
+    <div class="summary"><span>可收取吧台</span><strong>${collectableCount}</strong></div>
+    ${collectableCount>0
+      ?'<div class="bar-actions"><button onclick="collectAllSoldOutBars()">一键收取全部售罄收益</button></div>'
+      :''}
+    <div class="bar-grid">${bars.map(bar=>`
+      <button class="bar-slot ${bar.barId===selectedBarId?'selected':''}"
+        onclick="selectDrinkBar(${Number(bar.barId)})">
+        <strong>${bar.slotNumber} 号吧台</strong>
+        <span>${bar.state==='EMPTY'?'空闲':bar.state==='SOLD_OUT'?'已售罄':'售卖中'}</span>
+      </button>`).join('')}</div>
+    ${selectedBar===null
+      ?'<div class="empty">暂时没有可用吧台</div>'
+      :selectedBar.state==='EMPTY'
+        ?drinks.map(drink=>renderBarDrink(drink)).join('')
+        :renderBarBatch(selectedBar)}`;
+}
+
+function renderBarBatch(bar){
+  const batch=bar.batch;
+  const meta=ITEM_META[batch.itemId]||{name:batch.itemId,emoji:'🥤'};
+  const countdown=currentBarCountdown(batch);
+  const action=bar.state==='SELLING'
+    ?'<button onclick="takeDownSelectedBar()">下架并结算</button>'
+    :'<button onclick="collectSelectedBar()">收取本桌收益</button>';
+  return `<article class="bar-drink">
+    <div class="bar-drink-head"><span class="emoji">${meta.emoji}</span>
+      <strong>${bar.slotNumber} 号吧台 · ${escapeHtml(meta.name)}</strong></div>
+    <p>剩余：${batch.remainingQuantity} 份 · 已售：${batch.soldQuantity} 份<br>
+      待收收益：🪙${batch.pendingGold} · ⭐${batch.pendingExp}<br>
+      ${bar.state==='SELLING'?'下一份：'+formatBarCountdown(countdown):'状态：已售罄，等待收取'}</p>
+    <div class="bar-actions">${action}</div>
+  </article>`;
+}
+
+function currentBarCountdown(batch){
+  if(batch.nextSaleInSeconds===null||batch.nextSaleInSeconds===undefined) return null;
+  const elapsed=Math.floor((Date.now()-drinkBarLoadedAt)/1000);
+  return Math.max(0,Number(batch.nextSaleInSeconds)-elapsed);
+}
+
+function formatBarCountdown(seconds){
+  const safe=Math.max(0,Number(seconds)||0);
+  return `${Math.floor(safe/60)}:${String(safe%60).padStart(2,'0')}`;
+}
+
+function renderBarDrink(drink){
+  const meta=ITEM_META[drink.itemId]||{name:drink.name||drink.itemId,emoji:'🥤'};
+  const directAction=drink.inventoryCount>0
+    ?`<button onclick="listSelectedDrink(${htmlJsArgument(drink.recipeId)})">直接上架 ${drink.listingQuantity} 份</button>`
+    :'';
+  const makeAction=drink.inventoryCount<10
+    ?'<button class="make" onclick="openCraftingStationFromBar()">去制作</button>'
+    :'';
+  return `<article class="bar-drink">
+    <div class="bar-drink-head"><span class="emoji">${meta.emoji}</span>
+      <strong>${escapeHtml(drink.name||meta.name)}</strong></div>
+    <p>背包成品：${drink.inventoryCount} 份 · 本批上架：${drink.listingQuantity} 份<br>
+      单份预计 🪙${drink.unitGold} · ⭐${drink.unitExp}<br>
+      整批预计 🪙${drink.expectedBatchGold} · ⭐${drink.expectedBatchExp}</p>
+    <div class="bar-actions">${directAction}${makeAction}</div>
+  </article>`;
+}
+
+function selectDrinkBar(barId){
+  if(!drinkBarState.bars.some(bar=>bar.barId===barId)) return;
+  selectedBarId=barId;
+  renderDrinkBars();
+}
+
+async function listSelectedDrink(recipeId){
+  const message=document.getElementById('drink-bar-message');
+  message.className='bar-message';
+  message.textContent='正在上架…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/bars/${selectedBarId}/list`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({recipeId}),
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'上架失败');
+    message.textContent=`上架成功：${response.data.bar.batch.listedQuantity} 份，预计 🪙${response.data.expectedBatchGold} · ⭐${response.data.expectedBatchExp}`;
+    await Promise.all([loadDrinkBars(true),loadInventory(true)]);
+  }catch(error){
+    message.className='bar-message error';
+    message.textContent=error.message||'上架失败';
+  }
+}
+
+async function takeDownSelectedBar(){
+  if(!confirm('确定下架这个吧台的当前批次吗？')) return;
+  const message=document.getElementById('drink-bar-message');
+  message.className='bar-message';
+  message.textContent='正在下架并结算…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/bars/${selectedBarId}/take-down`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:'{}',
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'下架失败');
+    message.textContent=`下架成功：退回 ${response.data.returnedQuantity} 份，结算 🪙${response.data.settledGold} · ⭐${response.data.settledExp}`;
+    await Promise.all([loadDrinkBars(true),loadInventory(true)]);
+    document.getElementById('world-frame').contentWindow
+      .postMessage({type:'fruit-island:player-changed'},'*');
+  }catch(error){
+    message.className='bar-message error';
+    message.textContent=error.message||'下架失败';
+  }
+}
+
+async function collectSelectedBar(){
+  const message=document.getElementById('drink-bar-message');
+  message.className='bar-message';
+  message.textContent='正在收取本桌收益…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/bars/${selectedBarId}/collect`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:'{}',
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'收取失败');
+    message.textContent=`收取成功：🪙${response.data.settledGold} · ⭐${response.data.settledExp}`;
+    await Promise.all([loadDrinkBars(true),loadInventory(true)]);
+    notifyWorldPlayerChanged();
+  }catch(error){
+    message.className='bar-message error';
+    message.textContent=error.message||'收取失败';
+  }
+}
+
+async function collectAllSoldOutBars(){
+  const collectableCount=(drinkBarState.bars||[])
+    .filter(bar=>bar.state==='SOLD_OUT').length;
+  if(collectableCount<1) return;
+  const message=document.getElementById('drink-bar-message');
+  message.className='bar-message';
+  message.textContent='正在汇总收取售罄吧台…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/bars/collect-all`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:'{}',
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'一键收取失败');
+    message.textContent=`已收取 ${response.data.collectedBarCount} 个吧台：🪙${response.data.settledGold} · ⭐${response.data.settledExp}`;
+    await Promise.all([loadDrinkBars(true),loadInventory(true)]);
+    notifyWorldPlayerChanged();
+  }catch(error){
+    message.className='bar-message error';
+    message.textContent=error.message||'一键收取失败';
+  }
+}
+
+function updateDrinkBarBadge(){
+  const collectableCount=(drinkBarState.bars||[])
+    .filter(bar=>bar.state==='SOLD_OUT').length;
+  const badge=document.getElementById('drink-bar-badge');
+  badge.textContent=String(collectableCount);
+  badge.style.display=collectableCount>0?'block':'none';
+}
+
+function publishDrinkBarsToWorld(){
+  const states=(drinkBarState.bars||[]).map(bar=>({
+    slotNumber:bar.slotNumber,
+    state:bar.state,
+  }));
+  document.getElementById('world-frame').contentWindow
+    .postMessage({type:'fruit-island:drink-bars-state',bars:states},'*');
+}
+
+function notifyWorldPlayerChanged(){
+  document.getElementById('world-frame').contentWindow
+    .postMessage({type:'fruit-island:player-changed'},'*');
+}
+
+function openDrinkBarSlot(slotNumber){
+  requestedBarSlotNumber=slotNumber;
+  const bar=(drinkBarState.bars||[]).find(value=>value.slotNumber===slotNumber);
+  if(bar){
+    selectedBarId=bar.barId;
+    requestedBarSlotNumber=null;
+  }
+  if(activeFeature!=='drink-bar') toggleFeatureDrawer('drink-bar');
+  else if(bar) renderDrinkBars();
+  else loadDrinkBars();
+}
+
+function openCraftingStationFromBar(){
+  closeFeatureDrawer();
+  craftOpenUnselected=true;
+  selectedRecipe=null;
+  craftQuantity=1;
+  toggleFeatureDrawer('drink-shop');
+}
+
+function renderDrinkBarError(message){
+  document.getElementById('drink-bar-status').textContent='吧台暂时不可用';
+  document.getElementById('drink-bar-panel').innerHTML=
+    `<div class="empty error">${escapeHtml(message)}</div>`;
+}
+
+function htmlJsArgument(value){
+  return escapeHtml(JSON.stringify(String(value)));
+}
+
+function renderCustomerQueue(){
+  const grid=document.getElementById('customer-grid');
+  if(customerQueue.length===0){
+    grid.innerHTML='<div class="customer-empty">暂时没有等待中的顾客</div>';
+    document.getElementById('order-actions').innerHTML='';
+    updateArrivalCountdown();
+    return;
+  }
+  grid.innerHTML=customerQueue.map(customer=>`
+    <button class="customer-card ${customer.orderId===selectedOrderId?'selected':''}"
+      onclick="selectCustomerOrder(${Number(customer.orderId)})"
+      aria-pressed="${customer.orderId===selectedOrderId}">
+      <span class="customer-line">
+        <span class="avatar">${escapeHtml(customer.customerAvatar||'🙂')}</span>
+        <strong>${escapeHtml(customer.customerName)}</strong>
+      </span>
+      <span class="order">${escapeHtml(ITEM_META[customer.itemId]?.name||customer.itemId)} ×${customer.quantity}</span>
+      <span class="reward">预计 🪙${customer.expectedGold} · ⭐${customer.expectedExp}</span>
+    </button>
+  `).join('');
+  renderOrderActions();
+  updateArrivalCountdown();
+}
+
+function selectCustomerOrder(orderId){
+  selectedOrderId=orderId;
+  orderCraftQuantity=Math.max(
+    1,
+    customerQueue.find(value=>value.orderId===selectedOrderId)?.quantity||1,
+  );
+  renderCustomerQueue();
+}
+
+function renderOrderActions(){
+  const customer=customerQueue.find(value=>value.orderId===selectedOrderId);
+  const actions=document.getElementById('order-actions');
+  if(!customer){actions.innerHTML='';return}
+  const material=selectedRecipe?.materials?.[0];
+  const required=(material?.requiredCount||0)*orderCraftQuantity;
+  const excess=Math.max(0,orderCraftQuantity-customer.quantity);
+  actions.innerHTML=`<div class="order-actions">
+    <p>交付 ${escapeHtml(ITEM_META[customer.itemId]?.name||customer.itemId)} ×${customer.quantity}，获得 🪙${customer.expectedGold} · ⭐${customer.expectedExp}</p>
+    <button onclick="deliverSelectedOrder()">从背包完整交付</button>
+    <p style="margin-top:10px">现场制作 ${orderCraftQuantity} 份 · 消耗 ${escapeHtml(ITEM_META[material?.itemId]?.name||material?.itemId||'材料')} ×${required} · 交付 ${customer.quantity} · 多余入包 ${excess}</p>
+    <div class="craft-quantity">
+      <button onclick="changeOrderCraftQuantity(-1)" ${orderCraftQuantity<=customer.quantity?'disabled':''}>−</button>
+      <output>${orderCraftQuantity}</output>
+      <button onclick="changeOrderCraftQuantity(1)" ${orderCraftQuantity>=99?'disabled':''}>＋</button>
+    </div>
+    <button style="margin-top:8px" onclick="makeAndDeliverSelectedOrder()">现场制作并交付</button>
+    <button style="margin-top:8px;background:#78633c" onclick="markSelectedOrderOutOfStock()">暂时没货</button>
+  </div>`;
+}
+
+function changeOrderCraftQuantity(delta){
+  const customer=customerQueue.find(value=>value.orderId===selectedOrderId);
+  orderCraftQuantity=Math.max(
+    customer?.quantity||1,
+    Math.min(99,orderCraftQuantity+delta),
+  );
+  renderOrderActions();
+}
+
+async function deliverSelectedOrder(){
+  const message=document.getElementById('craft-message');
+  message.className='craft-message';
+  message.textContent='正在交付…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/orders/${selectedOrderId}/deliver`,{
+      method:'POST',headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'交付失败');
+    message.textContent=`交付成功：🪙${response.data.earnedGold} · ⭐${response.data.earnedExp}`;
+    await Promise.all([loadCraftingStation(true),loadInventory(true)]);
+    document.getElementById('world-frame').contentWindow
+      .postMessage({type:'fruit-island:player-changed'},'*');
+  }catch(error){
+    message.className='craft-message error';
+    message.textContent=error.message||'交付失败';
+  }
+}
+
+async function makeAndDeliverSelectedOrder(){
+  const message=document.getElementById('craft-message');
+  message.className='craft-message';
+  message.textContent='正在现场制作并交付…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/orders/${selectedOrderId}/make-and-deliver`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({quantity:orderCraftQuantity}),
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'制作并交付失败');
+    message.textContent=`已制作 ${response.data.craftedQuantity} 份，交付 ${response.data.deliveredQuantity} 份，多余 ${response.data.excessQuantity} 份已入包`;
+    await Promise.all([loadCraftingStation(true),loadInventory(true)]);
+    document.getElementById('world-frame').contentWindow
+      .postMessage({type:'fruit-island:player-changed'},'*');
+  }catch(error){
+    message.className='craft-message error';
+    message.textContent=error.message||'制作并交付失败';
+  }
+}
+
+async function markSelectedOrderOutOfStock(){
+  const message=document.getElementById('craft-message');
+  message.className='craft-message';
+  message.textContent='正在请顾客离开…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/orders/${selectedOrderId}/out-of-stock`,{
+      method:'POST',headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'订单关闭失败');
+    message.textContent='顾客已因暂时没货离开，本次没有获得奖励';
+    await loadCraftingStation(true);
+  }catch(error){
+    message.className='craft-message error';
+    message.textContent=error.message||'订单关闭失败';
+  }
+}
+
+function updateArrivalCountdown(){
+  const countdown=document.getElementById('arrival-countdown');
+  if(!countdown) return;
+  if(customerQueue.length>=5||!nextCustomerArrivalAt){
+    countdown.textContent=customerQueue.length>=5?'队列已满 · 计时暂停':'等待到店计时';
+    return;
+  }
+  const remaining=Math.max(0,Math.ceil((new Date(nextCustomerArrivalAt).getTime()-Date.now())/1000));
+  const minutes=Math.floor(remaining/60);
+  const seconds=String(remaining%60).padStart(2,'0');
+  countdown.textContent=`下一位 ${minutes}:${seconds}`;
+  if(remaining===0&&!arrivalRefreshPending){
+    arrivalRefreshPending=true;
+    loadCraftingStation(true).finally(()=>{arrivalRefreshPending=false});
+  }
+}
+
+function changeCraftQuantity(delta){
+  const maximumQuantity=Math.max(1,Math.min(99,selectedRecipe?.maxCraftable||1));
+  craftQuantity=Math.max(1,Math.min(maximumQuantity,craftQuantity+delta));
+  renderCraftingStation();
+}
+
+function setMaximumCraftQuantity(){
+  craftQuantity=Math.max(1,Math.min(99,selectedRecipe?.maxCraftable||1));
+  renderCraftingStation();
+}
+
+async function craftSelectedRecipe(){
+  const message=document.getElementById('craft-message');
+  message.className='craft-message';
+  message.textContent='正在制作…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/craft`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({recipeId:selectedRecipe.recipeId,quantity:craftQuantity}),
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'制作失败');
+    message.textContent=`制作成功：${selectedRecipe.name} ×${response.data.outputCount}`;
+    await Promise.all([loadCraftingStation(true),loadInventory(true)]);
+  }catch(error){
+    message.className='craft-message error';
+    message.textContent=error.message||'制作失败';
+  }
+}
+
+function renderCraftError(message){
+  document.getElementById('craft-status').textContent='制作台暂时不可用';
+  document.getElementById('crafting-station').innerHTML=`<div class="empty error">${escapeHtml(message)}</div>`;
+}
+
+function escapeHtml(value){
+  return String(value)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'",'&#039;');
+}
+
+window.addEventListener('keydown',event=>{
+  if(event.key==='Escape') closeFeatureDrawer();
+});
+
+// 世界层收获完成后立即同步背包；只接收当前世界 iframe 的消息。
+window.addEventListener('message',event=>{
+  const worldFrame=document.getElementById('world-frame');
+  if(event.source!==worldFrame.contentWindow) return;
+  if(event.data?.type==='fruit-island:inventory-changed') loadInventory(true);
+  if(event.data?.type==='fruit-island:open-drink-bar'){
+    openDrinkBarSlot(Number(event.data.slotNumber));
+  }
+  if(event.data?.type==='fruit-island:drink-bars-ready') publishDrinkBarsToWorld();
+});
+
+// 抽屉展开期间定期同步，收获后无需重新打开页面。
+setInterval(()=>{
+  if(activeFeature==='inventory') loadInventory();
+},3000);
+setInterval(updateArrivalCountdown,1000);
+setInterval(()=>{
+  if(activeFeature!=='drink-bar'||drinkBarLoading) return;
+  const bar=(drinkBarState.bars||[]).find(item=>item.barId===selectedBarId);
+  if(bar?.state!=='SELLING') return;
+  if(currentBarCountdown(bar.batch)>0){
+    renderDrinkBars();
+    return;
+  }
+  if(drinkBarRefreshPending) return;
+  drinkBarRefreshPending=true;
+  loadDrinkBars(true).finally(()=>{drinkBarRefreshPending=false;});
+},1000);
+
+// 页面初次加载时只更新状态与角标，不自动展开或结算吧台。
+loadInventory();
+loadDrinkBars();
+</script>
+</body>
+</html>

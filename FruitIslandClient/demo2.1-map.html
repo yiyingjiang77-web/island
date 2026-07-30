@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>果香小岛 Demo2.1 — 完整岛屿</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;height:100vh;font-family:'PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden}
+.game{position:relative;border:3px solid #4a9eff;border-radius:12px;overflow:hidden;box-shadow:0 0 40px rgba(74,158,255,.3)}
+canvas{display:block;}
+.hud{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none;gap:8px;flex-wrap:wrap}
+.hud-item{background:rgba(0,0,0,.6);color:#fff;padding:5px 12px;border-radius:16px;font-size:12px;backdrop-filter:blur(4px);white-space:nowrap}
+.info{position:absolute;bottom:12px;left:12px;right:12px;background:rgba(0,0,0,.6);color:#ccc;padding:6px 14px;border-radius:16px;font-size:12px;text-align:center;pointer-events:none;backdrop-filter:blur(4px)}
+.minimap{position:absolute;bottom:50px;right:12px;background:rgba(0,0,0,.7);border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.2)}
+.minimap canvas{display:block}
+.legend{position:absolute;top:60px;right:12px;background:rgba(0,0,0,.65);padding:8px 10px;border-radius:8px;font-size:10px;pointer-events:none;line-height:1.7;color:#ddd}
+.leg-dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.blocked-flash{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#ff4444;font-size:18px;font-weight:bold;pointer-events:none;animation:flash .8s ease-out forwards;z-index:50}
+@keyframes flash{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}}
+</style>
+</head>
+<body>
+<div class="game" id="game-wrapper">
+  <canvas id="game"></canvas>
+  <div class="hud">
+    <span class="hud-item">🏝️ 果香小岛 Demo2.1</span>
+    <span class="hud-item">📐 <span id="hud-grid">Grid(-,-)</span></span>
+    <span class="hud-item">📍 <span id="hud-world">World(-,-)</span></span>
+    <span class="hud-item" id="hud-blocked" style="display:none;color:#ff6666">🚫 前方有建筑!</span>
+  </div>
+  <div class="legend" id="legend"></div>
+  <div class="minimap"><canvas id="minimap" width="120" height="120"></canvas></div>
+  <div class="info" id="info">点击草地移动 | 拖拽视野 | 🟫不能穿建筑</div>
+</div>
+
+<script>
+// ================================================================
+// 配置（与 MapConfig.json + FarmConfig.json 完全一致）
+// ================================================================
+const MAP={width:72,height:72,gridSize:120,worldSize:8640,waterEdge:1,beachWidth:2};
+const GRASS_START=MAP.waterEdge+MAP.beachWidth,GRASS_END=MAP.width-MAP.waterEdge-MAP.beachWidth-1;
+
+// 建筑（对应 MapConfig.json）
+const BUILDINGS=[
+  {id:'chicken_coop',name:'鸡舍',type:'animal',gx:6,gy:4,w:8,h:6,color:'#A0D468',icon:'🐔'},
+  {id:'cow_barn',name:'牛棚',type:'animal',gx:16,gy:4,w:10,h:8,color:'#A0D468',icon:'🐄'},
+  {id:'bee_house',name:'蜂箱',type:'decoration',gx:26,gy:17,w:4,h:4,color:'#FFB7C5',icon:'🐝'},
+  {id:'cake_shop',name:'蛋糕店',type:'shop',gx:10,gy:28,w:12,h:8,color:'#FF9F43',icon:'🍰'},
+  {id:'drink_shop',name:'饮品店',type:'shop',gx:12,gy:40,w:12,h:8,color:'#FF9F43',icon:'🥤'},
+  {id:'exchange_shop',name:'交易所',type:'shop',gx:10,gy:52,w:12,h:8,color:'#FF9F43',icon:'💱'},
+  {id:'dock',name:'码头',type:'dock',gx:54,gy:50,w:5,h:16,color:'#64A0DC',icon:'⚓'},
+  {id:'player_house',name:'小屋',type:'house',gx:34,gy:34,w:4,h:4,color:'#DEB887',icon:'🏠'},
+];
+
+// 农场（对应 FarmConfig.json）
+const FARMS=[
+  {id:'farm_A',gx:40,gy:28,w:4,h:4,unlockLevel:1},
+  {id:'farm_B',gx:52,gy:28,w:4,h:4,unlockLevel:3},
+  {id:'farm_C',gx:40,gy:40,w:4,h:5,unlockLevel:5},
+  {id:'farm_D',gx:52,gy:40,w:4,h:5,unlockLevel:8},
+];
+
+// ================================================================
+// Canvas + Camera
+// ================================================================
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const CW=950,CH=700;canvas.width=CW;canvas.height=CH;
+const camera={x:MAP.worldSize/2-CW/2,y:MAP.worldSize/2-CH/2};
+const SMOOTH=6;
+
+// 坐标转换
+const g2wx=c=>c*MAP.gridSize,g2wy=r=>r*MAP.gridSize;
+const g2wcx=c=>c*MAP.gridSize+MAP.gridSize/2,g2wcy=r=>r*MAP.gridSize+MAP.gridSize/2;
+const w2gx=wx=>Math.floor(wx/MAP.gridSize),w2gy=wy=>Math.floor(wy/MAP.gridSize);
+
+// ================================================================
+// 碰撞系统（对应 MapCollisionManager）
+// ================================================================
+function isWalkable(wx,wy){
+  if(wx<0||wx>=MAP.worldSize||wy<0||wy>=MAP.worldSize)return false;
+  const gx=w2gx(wx),gy=w2gy(wy);
+  // 地形
+  if(gx<GRASS_START||gx>GRASS_END||gy<GRASS_START||gy>GRASS_END)return false;
+  // 建筑
+  for(const b of BUILDINGS){
+    const bl=b.gx*MAP.gridSize,br=(b.gx+b.w)*MAP.gridSize;
+    const bb=b.gy*MAP.gridSize,bt=(b.gy+b.h)*MAP.gridSize;
+    if(wx>=bl&&wx<br&&wy>=bb&&wy<bt)return false;
+  }
+  return true;
+}
+
+// 推开
+function clampToWalkable(wx,wy){
+  let cx=Math.max(GRASS_START*MAP.gridSize,Math.min((GRASS_END+1)*MAP.gridSize-1,wx));
+  let cy=Math.max(GRASS_START*MAP.gridSize,Math.min((GRASS_END+1)*MAP.gridSize-1,wy));
+  if(isWalkable(cx,cy))return{x:cx,y:cy};
+  const offs=[MAP.gridSize,-MAP.gridSize,MAP.gridSize*2,-MAP.gridSize*2,MAP.gridSize*3,-MAP.gridSize*3];
+  for(const ox of offs){if(isWalkable(cx+ox,cy))return{x:cx+ox,y:cy}}
+  for(const oy of offs){if(isWalkable(cx,cy+oy))return{x:cx,y:cy+oy}}
+  return{x:cx,y:cy};
+}
+
+// ================================================================
+// 玩家
+// ================================================================
+const player={x:g2wcx(36),y:g2wcy(36),tx:null,ty:null,moving:false};
+const SPEED=300,THRESHOLD=8;
+
+// ================================================================
+// 拖动
+// ================================================================
+let dragging=false,lmx=0,lmy=0,downX=0,downY=0;
+canvas.addEventListener('mousedown',e=>{dragging=true;lmx=e.clientX;lmy=e.clientY;downX=e.clientX;downY=e.clientY});
+canvas.addEventListener('mousemove',e=>{
+  if(!dragging)return;
+  const dx=e.clientX-lmx,dy=e.clientY-lmy;
+  camera.x-=dx;camera.y-=dy;clampCam();
+  lmx=e.clientX;lmy=e.clientY;
+});
+canvas.addEventListener('mouseup',e=>{
+  const dist=Math.hypot(e.clientX-downX,e.clientY-downY);
+  if(dist<4){ // 点击
+    const wx=camera.x+e.offsetX,wy=camera.y+e.offsetY;
+    if(isWalkable(wx,wy)){
+      player.tx=wx;player.ty=wy;player.moving=true;
+      document.getElementById('info').textContent='🏃 走过去...';
+    }else{
+      // 闪红提示
+      const el=document.createElement('div');el.className='blocked-flash';
+      el.textContent='🚫';el.style.left=e.offsetX+'px';el.style.top=e.offsetY+'px';
+      document.getElementById('game-wrapper').appendChild(el);
+      setTimeout(()=>el.remove(),800);
+      document.getElementById('info').textContent='🚫 不可通行！点击草地移动';
+    }
+  }
+  dragging=false;
+});
+canvas.addEventListener('mouseleave',()=>{dragging=false});
+
+function clampCam(){
+  camera.x=Math.max(0,Math.min(MAP.worldSize-CW,camera.x));
+  camera.y=Math.max(0,Math.min(MAP.worldSize-CH,camera.y));
+}
+
+// ================================================================
+// 地形颜色缓存
+// ================================================================
+const terrainCache=new Map();
+function getTileColor(gx,gy){
+  const k=`${gx},${gy}`;if(terrainCache.has(k))return terrainCache.get(k);
+  let c;
+  if(gx<MAP.waterEdge||gx>=MAP.width-MAP.waterEdge||gy<MAP.waterEdge||gy>=MAP.height-MAP.waterEdge) c='#5a90c8';
+  else if(gx<GRASS_START||gx>GRASS_END||gy<GRASS_START||gy>GRASS_END) c='#e8d4a8';
+  else{const s=Math.floor(Math.random()*30)-15;c=`rgb(${110+s},${160+s},${70+Math.floor(s/2)})`}
+  terrainCache.set(k,c);return c;
+}
+
+// ================================================================
+// 渲染
+// ================================================================
+function drawTerrain(){
+  const sgx=Math.max(0,Math.floor(camera.x/MAP.gridSize)-1);
+  const egx=Math.min(MAP.width-1,Math.ceil((camera.x+CW)/MAP.gridSize)+1);
+  const sgy=Math.max(0,Math.floor(camera.y/MAP.gridSize)-1);
+  const egy=Math.min(MAP.height-1,Math.ceil((camera.y+CH)/MAP.gridSize)+1);
+
+  for(let gx=sgx;gx<=egx;gx++)for(let gy=sgy;gy<=egy;gy++){
+    const wx=g2wcx(gx),wy=g2wcy(gy),sx=wx-camera.x,sy=wy-camera.y;
+    ctx.fillStyle=getTileColor(gx,gy);
+    ctx.fillRect(sx-MAP.gridSize/2,sy-MAP.gridSize/2,MAP.gridSize,MAP.gridSize);
+    ctx.strokeStyle='rgba(0,0,0,.05)';ctx.lineWidth=.5;
+    ctx.strokeRect(sx-MAP.gridSize/2,sy-MAP.gridSize/2,MAP.gridSize,MAP.gridSize);
+  }
+}
+
+function drawBuildings(){
+  for(const b of BUILDINGS){
+    const cx=(b.gx+b.w/2)*MAP.gridSize,cy=(b.gy+b.h/2)*MAP.gridSize;
+    const sx=cx-camera.x,sy=cy-camera.y;
+    const hw=b.w*MAP.gridSize/2,hh=b.h*MAP.gridSize/2;
+    if(sx+hw<0||sx-hw>CW||sy+hh<0||sy-hh>CH)continue;
+
+    // 填充
+    ctx.fillStyle=b.color+'99';ctx.fillRect(sx-hw,sy-hh,b.w*MAP.gridSize,b.h*MAP.gridSize);
+    // 边框
+    ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=2;
+    ctx.strokeRect(sx-hw,sy-hh,b.w*MAP.gridSize,b.h*MAP.gridSize);
+    // 图标+名称
+    ctx.font='20px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(b.icon,sx,sy-10);
+    ctx.font='bold 11px sans-serif';ctx.fillStyle='#fff';
+    ctx.fillText(b.name,sx,sy+16);
+    // 碰撞框（调试，半透明）
+    ctx.strokeStyle='rgba(255,100,100,.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.strokeRect(sx-hw,sy-hh,b.w*MAP.gridSize,b.h*MAP.gridSize);ctx.setLineDash([]);
+  }
+}
+
+function drawFarms(){
+  for(const f of FARMS){
+    const cx=(f.gx+f.w/2)*MAP.gridSize,cy=(f.gy+f.h/2)*MAP.gridSize;
+    const sx=cx-camera.x,sy=cy-camera.y;
+    const hw=f.w*MAP.gridSize/2,hh=f.h*MAP.gridSize/2;
+    if(sx+hw<0||sx-hw>CW||sy+hh<0||sy-hh>CH)continue;
+
+    ctx.fillStyle='rgba(126,200,80,.35)';ctx.fillRect(sx-hw,sy-hh,f.w*MAP.gridSize,f.h*MAP.gridSize);
+    ctx.strokeStyle='rgba(180,220,140,.6)';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+    ctx.strokeRect(sx-hw,sy-hh,f.w*MAP.gridSize,f.h*MAP.gridSize);ctx.setLineDash([]);
+
+    ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='rgba(255,255,255,.9)';
+    ctx.fillText(f.id.replace('farm_','农田'),cx-camera.x,cy-camera.y+hh-MAP.gridSize/2);
+  }
+}
+
+function drawPlayer(){
+  const sx=player.x-camera.x,sy=player.y-camera.y;
+  const pw=40,ph=75;
+  ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(sx,sy+ph*.15,pw*.7,ph*.06,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#4a3728';ctx.fillRect(sx-pw*.25,sy+ph*.1,pw*.15,ph*.25);ctx.fillRect(sx+pw*.1,sy+ph*.1,pw*.15,ph*.25);
+  ctx.fillStyle='#6db3f2';ctx.fillRect(sx-pw*.35,sy-ph*.35,pw*.7,ph*.5);
+  ctx.fillStyle='#ffc864';ctx.beginPath();ctx.arc(sx,sy-ph*.4,pw*.35,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#dc503c';ctx.beginPath();ctx.moveTo(sx-pw*.4,sy-ph*.5);ctx.lineTo(sx,sy-ph*.85);ctx.lineTo(sx+pw*.4,sy-ph*.5);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.2)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(sx,sy-ph*.4,pw*.35,0,Math.PI*2);ctx.stroke();
+  if(player.moving&&player.tx!==null){const t=player.tx-camera.x,tt=player.ty-camera.y;ctx.fillStyle='rgba(255,255,255,.4)';ctx.beginPath();ctx.arc(t,tt,8,0,Math.PI*2);ctx.fill()}
+}
+
+function drawMinimap(){
+  const mw=120,mh=120,mmCtx=document.getElementById('minimap').getContext('2d');
+  mmCtx.fillStyle='rgba(0,0,0,.7)';mmCtx.fillRect(0,0,mw,mh);
+  const s=mw/MAP.worldSize;
+  // 地形（缩略）
+  for(let gx=0;gx<MAP.width;gx+=3)for(let gy=0;gy<MAP.height;gy+=3){
+    mmCtx.fillStyle=getTileColor(gx,gy);mmCtx.fillRect(gx*MAP.gridSize*s,gy*MAP.gridSize*s,3*MAP.gridSize*s,3*MAP.gridSize*s);
+  }
+  // 建筑
+  for(const b of BUILDINGS){mmCtx.fillStyle=b.color+'aa';mmCtx.fillRect(b.gx*MAP.gridSize*s,b.gy*MAP.gridSize*s,b.w*MAP.gridSize*s,b.h*MAP.gridSize*s)}
+  // 农田
+  for(const f of FARMS){mmCtx.fillStyle='rgba(126,200,80,.5)';mmCtx.fillRect(f.gx*MAP.gridSize*s,f.gy*MAP.gridSize*s,f.w*MAP.gridSize*s,f.h*MAP.gridSize*s)}
+  // 视口
+  mmCtx.strokeStyle='#fff';mmCtx.lineWidth=1;mmCtx.strokeRect(camera.x*s,camera.y*s,CW*s,CH*s);
+  // 玩家
+  mmCtx.fillStyle='#ff4444';mmCtx.beginPath();mmCtx.arc(player.x*s,player.y*s,2.5,0,Math.PI*2);mmCtx.fill();
+}
+
+// ================================================================
+// 图例
+// ================================================================
+function buildLegend(){
+  let h='<div style="margin-bottom:4px;font-weight:bold">🏗️ 建筑</div>';
+  for(const b of BUILDINGS) h+=`<div><span class="leg-dot" style="background:${b.color}"></span>${b.icon} ${b.name}</div>`;
+  h+='<div style="margin-top:4px;font-weight:bold">🌱 农田</div>';
+  for(const f of FARMS) h+=`<div style="color:#b4dc8c">🟩 ${f.id.replace('farm_','农田')} (Lv.${f.unlockLevel})</div>`;
+  document.getElementById('legend').innerHTML=h;
+}
+
+// ================================================================
+// 游戏循环
+// ================================================================
+let lt=performance.now();
+function loop(now){
+  let dt=(now-lt)/1000;lt=now;if(dt>.1)dt=.016;
+
+  // 玩家
+  if(player.moving&&player.tx!==null){
+    const dx=player.tx-player.x,dy=player.ty-player.y,dist=Math.hypot(dx,dy);
+    if(dist<=THRESHOLD){player.x=player.tx;player.y=player.ty;player.moving=false;document.getElementById('info').textContent='点击草地移动 | 拖拽视野 | 🟫不能穿建筑'}
+    else{const s=SPEED*dt;player.x+=(dx/dist)*s;player.y+=(dy/dist)*s}
+  }
+  // 摄像机
+  if(!dragging){
+    const tc=player.x-CW/2,tcy=player.y-CH/2;
+    camera.x+=(tc-camera.x)*Math.min(1,dt*SMOOTH);
+    camera.y+=(tcy-camera.y)*Math.min(1,dt*SMOOTH);
+    clampCam();
+  }
+
+  // 渲染
+  ctx.fillStyle='#1a2a10';ctx.fillRect(0,0,CW,CH);
+  drawTerrain();drawFarms();drawBuildings();drawPlayer();drawMinimap();
+
+  // HUD
+  document.getElementById('hud-grid').textContent=`Grid(${w2gx(player.x)},${w2gy(player.y)})`;
+  document.getElementById('hud-world').textContent=`World(${player.x.toFixed(0)},${player.y.toFixed(0)})`;
+
+  requestAnimationFrame(loop);
+}
+
+buildLegend();
+requestAnimationFrame(loop);
+console.log('🏝️ Demo2.1 完整岛屿已就绪');
+console.log(`  ${BUILDINGS.length} 个建筑, ${FARMS.length} 块农田`);
+console.log('  点击 → 移动 | 拖拽 → 视野 | 碰建筑 → 🚫');
+</script>
+</body>
+</html>

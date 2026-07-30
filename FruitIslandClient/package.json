@@ -1,0 +1,16 @@
+{
+  "name": "fruitislandclient",
+  "version": "1.0.0",
+  "description": "Cocos Creator 3.8 微信小游戏客户端",
+  "main": "index.js",
+  "scripts": {
+    "check": "tsc -p tsconfig.check.json",
+    "test": "npm run check && node --test tests/*.test.cjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
