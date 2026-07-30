@@ -20,6 +20,7 @@ public class RecipeConfig {
 
     private Integer saleGold;
     private Integer saleExp;
+    private Integer barSaleIntervalSeconds;
     private Integer orderWeight;
     private Integer enabled;
 }

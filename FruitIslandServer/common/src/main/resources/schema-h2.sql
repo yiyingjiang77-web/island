@@ -155,7 +155,52 @@ CREATE TABLE IF NOT EXISTS inventory (
     player_id BIGINT NOT NULL,
     item_id VARCHAR(64) NOT NULL,
     count INT DEFAULT 0,
-    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (player_id, item_id)
+);
+
+CREATE TABLE IF NOT EXISTS recipe_config (
+    id VARCHAR(64) PRIMARY KEY,
+    name VARCHAR(64) NOT NULL,
+    output_item VARCHAR(64) NOT NULL,
+    make_time INT NOT NULL DEFAULT 0,
+    unlock_level INT NOT NULL DEFAULT 1,
+    sale_gold INT NOT NULL DEFAULT 0,
+    sale_exp INT NOT NULL DEFAULT 0,
+    bar_sale_interval_seconds INT NOT NULL DEFAULT 180,
+    order_weight INT NOT NULL DEFAULT 1,
+    enabled INT NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS drink_bar (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    player_id BIGINT NOT NULL,
+    slot_number INT NOT NULL,
+    opened INT NOT NULL DEFAULT 1,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (player_id, slot_number)
+);
+
+CREATE TABLE IF NOT EXISTS drink_bar_batch (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    player_id BIGINT NOT NULL,
+    bar_id BIGINT NOT NULL,
+    recipe_id VARCHAR(64) NOT NULL,
+    item_id VARCHAR(64) NOT NULL,
+    listed_quantity INT NOT NULL,
+    sold_quantity INT NOT NULL DEFAULT 0,
+    status VARCHAR(32) NOT NULL,
+    active_marker INT,
+    unit_gold_snapshot INT NOT NULL,
+    unit_exp_snapshot INT NOT NULL,
+    sale_interval_seconds_snapshot INT NOT NULL,
+    listed_at TIMESTAMP NOT NULL,
+    sold_out_at TIMESTAMP,
+    closed_at TIMESTAMP,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (bar_id, active_marker)
 );
 
 CREATE TABLE IF NOT EXISTS land_config (
@@ -256,6 +301,11 @@ INSERT INTO crop_config
 ('chili','辣椒','COMMON',0,1,1,8,3,1),
 ('corn','玉米','COMMON',0,1,1,10,3,1),
 ('moonberry','月光莓','RARE',1,0,0,1,1,1);
+
+INSERT INTO recipe_config
+(id,name,output_item,make_time,unlock_level,sale_gold,sale_exp,
+ bar_sale_interval_seconds,order_weight,enabled) VALUES
+('strawberry_juice','草莓汁','strawberry_juice',0,1,30,5,180,100,1);
 
 INSERT INTO crop_level_config
 (crop_id,crop_level,grow_seconds,yield_count,harvest_exp,upgrade_gold) VALUES

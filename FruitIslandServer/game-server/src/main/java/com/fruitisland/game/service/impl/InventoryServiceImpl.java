@@ -18,17 +18,13 @@ public class InventoryServiceImpl extends BaseServiceImplX<InventoryMapper, Inve
     @Override
     @Transactional
     public void addItem(Long playerId, String itemId, int count) {
-        Inventory inv = baseMapper.selectByPlayerAndItem(playerId, itemId);
-        if (inv != null) {
-            inv.setCount(inv.getCount() + count);
-            updateById(inv);
-        } else {
-            inv = new Inventory();
-            inv.setPlayerId(playerId);
-            inv.setItemId(itemId);
-            inv.setCount(count);
-            save(inv);
-        }
+        if (count <= 0) throw new IllegalArgumentException("增加数量必须为正数");
+        if (baseMapper.incrementExisting(playerId, itemId, count) == 1) return;
+        Inventory inv = new Inventory();
+        inv.setPlayerId(playerId);
+        inv.setItemId(itemId);
+        inv.setCount(count);
+        save(inv);
     }
 
     @Override

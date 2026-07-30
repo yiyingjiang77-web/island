@@ -111,6 +111,20 @@ const BUILDINGS=[
   {id:'dock',name:'码头',type:'dock',gx:25,gy:42,w:5,h:4,color:'#64A0DC', icon:'⚓',unlock:1},
 ];
 
+// 饮品店小屋不可进入；六套室外桌椅分列左右，中间入口和通道保持空闲。
+const DRINK_BARS=[
+  {slotNumber:1,side:'left', gx:16.7,gy:31.6,state:'EMPTY'},
+  {slotNumber:2,side:'left', gx:16.7,gy:33.5,state:'EMPTY'},
+  {slotNumber:3,side:'left', gx:16.7,gy:35.4,state:'EMPTY'},
+  {slotNumber:4,side:'right',gx:25.3,gy:31.6,state:'EMPTY'},
+  {slotNumber:5,side:'right',gx:25.3,gy:33.5,state:'EMPTY'},
+  {slotNumber:6,side:'right',gx:25.3,gy:35.4,state:'EMPTY'},
+];
+const drinkBarLayoutValid=
+  DRINK_BARS.filter(bar=>bar.side==='left').length===3
+  &&DRINK_BARS.filter(bar=>bar.side==='right').length===3;
+if(!drinkBarLayoutValid) throw new Error('室外吧台必须左三右三');
+
 // ==================== 农田 = FarmConfig.json ====================
 const FARM_ZONES=[
   {id:'farm_a',blockId:'Farm-A',name:'农田A',gx:31,gy:30,color:'#7EC850',unlockLevel:1},
@@ -149,6 +163,11 @@ const buildingRects = BUILDINGS.map(b => ({
   left:b.gx*TILE, right:(b.gx+b.w)*TILE,
   bottom:b.gy*TILE, top:(b.gy+b.h)*TILE
 }));
+const drinkBarRects=DRINK_BARS.map(bar=>({
+  ...bar,
+  left:(bar.gx-.55)*TILE,right:(bar.gx+.55)*TILE,
+  bottom:(bar.gy-.45)*TILE,top:(bar.gy+.45)*TILE,
+}));
 const zoneRects = allZones.map(z => ({
   ...z,
   left:z.gx*TILE, right:(z.gx+(z.w||4))*TILE,
@@ -161,7 +180,14 @@ function isWalkable(wx, wy){
   // 草地范围检查（WATER_EDGE=1, BEACH_WIDTH=1 → grass=2~45）
   if(gx<GS||gx>GE||gy<GS||gy>GE) return false;
   for(const r of buildingRects) if(wx>=r.left&&wx<r.right&&wy>=r.bottom&&wy<r.top) return false;
+  for(const r of drinkBarRects) if(wx>=r.left&&wx<r.right&&wy>=r.bottom&&wy<r.top) return false;
   return true;
+}
+
+function getClickedDrinkBar(wx,wy){
+  return drinkBarRects.find(
+    bar=>wx>=bar.left&&wx<bar.right&&wy>=bar.bottom&&wy<bar.top,
+  )||null;
 }
 
 function getClickedZone(wx, wy){
@@ -265,6 +291,15 @@ canvas.addEventListener('pointerup',e=>{
     const farmCell=getClickedFarmCell(wx,wy);
     if(farmCell){
       openMapLandActions({...farmCell,screenX:sx,screenY:sy});
+      return;
+    }
+    const drinkBar=getClickedDrinkBar(wx,wy);
+    if(drinkBar){
+      window.parent.postMessage({
+        type:'fruit-island:open-drink-bar',
+        slotNumber:drinkBar.slotNumber,
+      },'*');
+      document.getElementById('info').textContent=`🍹 已打开 ${drinkBar.slotNumber} 号室外吧台`;
       return;
     }
     // 点到农田外时收起操作条，地图拖动和角色移动始终保持可用。
@@ -428,6 +463,23 @@ function renderMap(){
     }
   }
 
+  // 室外吧台只表达空桌、饮品托盘、金币提示三态，不在地图展示经营数字。
+  for(const bar of DRINK_BARS){
+    const sx=bar.gx*TILE-cam.x,sy=bar.gy*TILE-cam.y;
+    const width=TILE*1.1,height=TILE*.9;
+    if(sx+width<0||sx-width>viewWorldW||sy+height<0||sy-height>viewWorldH) continue;
+    ctx.fillStyle='rgba(111,75,47,.88)';
+    ctx.fillRect(sx-width/2,sy-height/4,width,height/2);
+    ctx.strokeStyle='rgba(255,239,190,.75)';
+    ctx.lineWidth=line(1.5);
+    ctx.strokeRect(sx-width/2,sy-height/4,width,height/2);
+    ctx.font=font(18);ctx.textAlign='center';ctx.textBaseline='middle';
+    const stateIcon=bar.state==='SOLD_OUT'?'🪙'
+      :bar.state==='SELLING'?'🥤'
+        :'🪑';
+    ctx.fillText(stateIcon,sx,sy-gap(4));
+  }
+
   // 玩家世界尺寸 120×210；由镜头缩放到手机合适大小
   const psx=player.x-cam.x, psy=player.y-cam.y, pw=120, ph=210;
   ctx.fillStyle='rgba(0,0,0,.2)'; ctx.beginPath();
@@ -526,7 +578,15 @@ async function refresh(){
 window.addEventListener('message',event=>{
   if(event.source!==window.parent) return;
   if(event.data?.type==='fruit-island:player-changed') refresh();
+  if(event.data?.type==='fruit-island:drink-bars-state'){
+    const states=new Map((event.data.bars||[])
+      .map(bar=>[Number(bar.slotNumber),bar.state]));
+    for(const bar of DRINK_BARS){
+      bar.state=states.get(bar.slotNumber)||'EMPTY';
+    }
+  }
 });
+window.parent.postMessage({type:'fruit-island:drink-bars-ready'},'*');
 
 async function reconnectApi(){
   if(reconnecting) return false;

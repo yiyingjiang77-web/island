@@ -47,6 +47,8 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#151a27;fon
 .customer-section{margin-bottom:14px}.customer-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.customer-section-head h3{margin:0;font-size:15px}.arrival-countdown{color:#e7ca72;font-size:11px}
 .customer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.customer-card{border:1px solid rgba(255,255,255,.13);border-radius:13px;background:rgba(255,255,255,.055);color:#fff;padding:10px;text-align:left;cursor:pointer}.customer-card:hover,.customer-card.selected{border-color:#d8f1b8;background:rgba(94,140,76,.28)}.customer-card .customer-line{display:flex;align-items:center;gap:7px}.customer-card .avatar{font-size:24px}.customer-card strong{font-size:13px}.customer-card .order{margin-top:7px;color:#f1d68a;font-size:12px}.customer-card .reward{margin-top:3px;color:#a9c5a4;font-size:10px}.customer-empty{padding:20px;text-align:center;color:#93a096;font-size:12px}
 .order-actions{margin:9px 0 13px;padding:10px;border-radius:12px;background:rgba(0,0,0,.17);font-size:12px}.order-actions p{margin:0 0 8px}.order-actions button{width:100%;border:0;border-radius:10px;padding:9px;background:#527e4c;color:#fff;font-weight:700;cursor:pointer}.order-actions button:disabled{opacity:.42;cursor:not-allowed}
+.bar-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}.bar-slot{border:1px solid rgba(255,255,255,.13);border-radius:12px;background:rgba(255,255,255,.055);color:#fff;padding:10px 5px;cursor:pointer}.bar-slot.selected{border-color:#d8f1b8;background:rgba(94,140,76,.28)}.bar-slot:disabled{cursor:not-allowed;opacity:.7}.bar-slot strong,.bar-slot span{display:block}.bar-slot span{margin-top:3px;color:#a9c5a4;font-size:10px}
+.bar-drink{padding:12px;border:1px solid rgba(255,255,255,.13);border-radius:14px;background:rgba(255,255,255,.06);margin-top:9px}.bar-drink-head{display:flex;align-items:center;gap:9px}.bar-drink-head .emoji{font-size:30px}.bar-drink p{margin:7px 0;color:#b8c6b6;font-size:11px;line-height:1.55}.bar-actions{display:flex;gap:8px}.bar-actions button,.recipe-option{flex:1;border:0;border-radius:10px;padding:9px;background:#527e4c;color:#fff;font-weight:700;cursor:pointer}.bar-actions .make{background:#78633c}.recipe-options{display:flex;gap:8px;margin-bottom:10px}.bar-message{min-height:18px;margin:10px 2px 0;color:#b9d8aa;font-size:12px}.bar-message.error{color:#ff9d91}
 
 @media(max-width:600px){
   .feature-rail{right:8px}
@@ -111,6 +113,19 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#151a27;fon
     <p class="craft-message" id="craft-message" role="status"></p>
   </aside>
 
+  <aside class="feature-drawer" id="drink-bar-drawer" aria-hidden="true">
+    <header class="drawer-head">
+      <div class="drawer-title">
+        <h2>🍹 室外吧台</h2>
+        <p id="drink-bar-status">查看六个吧台并经营饮品</p>
+      </div>
+      <button class="refresh-button" onclick="loadDrinkBars(true)" title="刷新吧台">↻</button>
+      <button class="close-button" onclick="closeFeatureDrawer()" title="收起">✕</button>
+    </header>
+    <section id="drink-bar-panel"><div class="loading">正在读取吧台…</div></section>
+    <p class="bar-message" id="drink-bar-message" role="status"></p>
+  </aside>
+
   <nav class="feature-rail" aria-label="功能入口">
     <button
       class="feature-button"
@@ -128,6 +143,15 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#151a27;fon
       title="打开饮品店制作台">
       <span class="icon">🥤</span>
       <span class="text">制作台</span>
+    </button>
+    <button
+      class="feature-button"
+      id="drink-bar-button"
+      onclick="toggleFeatureDrawer('drink-bar')"
+      title="打开吧台上架">
+      <span class="icon">🍹</span>
+      <span class="text">吧台</span>
+      <span class="feature-badge" id="drink-bar-badge" style="display:none">0</span>
     </button>
   </nav>
 </main>
@@ -153,13 +177,21 @@ let token='';
 let activeFeature=null;
 let inventoryLoading=false;
 let craftingLoading=false;
+let drinkBarLoading=false;
 let selectedRecipe=null;
+let craftRecipes=[];
 let craftQuantity=1;
+let craftOpenUnselected=false;
 let orderCraftQuantity=1;
 let customerQueue=[];
 let nextCustomerArrivalAt=null;
 let selectedOrderId=null;
 let arrivalRefreshPending=false;
+let drinkBarState={bars:[],drinks:[]};
+let selectedBarId=null;
+let requestedBarSlotNumber=null;
+let drinkBarLoadedAt=0;
+let drinkBarRefreshPending=false;
 
 function toggleFeatureDrawer(feature){
   if(activeFeature===feature){
@@ -170,13 +202,16 @@ function toggleFeatureDrawer(feature){
   activeFeature=feature;
   const drawer=feature==='inventory'
     ?document.getElementById('feature-drawer')
-    :document.getElementById('drink-shop-drawer');
+    :feature==='drink-shop'
+      ?document.getElementById('drink-shop-drawer')
+      :document.getElementById('drink-bar-drawer');
   drawer.classList.add('open');
   drawer.setAttribute('aria-hidden','false');
   document.getElementById('drawer-shade').classList.add('show');
   document.getElementById(`${feature}-button`).classList.add('active');
   if(feature==='inventory') loadInventory();
   if(feature==='drink-shop') loadCraftingStation();
+  if(feature==='drink-bar') loadDrinkBars();
 }
 
 function closeFeatureDrawer(){
@@ -185,9 +220,12 @@ function closeFeatureDrawer(){
   document.getElementById('feature-drawer').setAttribute('aria-hidden','true');
   document.getElementById('drink-shop-drawer').classList.remove('open');
   document.getElementById('drink-shop-drawer').setAttribute('aria-hidden','true');
+  document.getElementById('drink-bar-drawer').classList.remove('open');
+  document.getElementById('drink-bar-drawer').setAttribute('aria-hidden','true');
   document.getElementById('drawer-shade').classList.remove('show');
   document.getElementById('inventory-button').classList.remove('active');
   document.getElementById('drink-shop-button').classList.remove('active');
+  document.getElementById('drink-bar-button').classList.remove('active');
 }
 
 async function ensureLogin(){
@@ -296,7 +334,9 @@ async function loadCraftingStation(force=false){
       headers:{Authorization:`Bearer ${token}`},
     }).then(result=>result.json());
     if(response.code!==0) throw new Error(response.message||'制作台加载失败');
-    selectedRecipe=response.data?.recipes?.[0]||null;
+    craftRecipes=response.data?.recipes||[];
+    selectedRecipe=craftOpenUnselected?null:(craftRecipes[0]||null);
+    craftOpenUnselected=false;
     customerQueue=response.data?.customers||[];
     nextCustomerArrivalAt=response.data?.nextCustomerArrivalAt||null;
     if(!customerQueue.some(customer=>customer.orderId===selectedOrderId)){
@@ -318,14 +358,27 @@ function renderCraftingStation(){
   const station=document.getElementById('crafting-station');
   const recipe=selectedRecipe;
   if(!recipe){
-    station.innerHTML='<div class="empty">暂时没有可用配方</div>';
+    if(craftRecipes.length===0){
+      station.innerHTML='<div class="empty">暂时没有可用配方</div>';
+      return;
+    }
+    station.innerHTML=`<div class="recipe-options">${craftRecipes.map(value=>`
+      <button class="recipe-option" onclick="selectCraftRecipe(${htmlJsArgument(value.recipeId)})">
+        ${ITEM_META[value.outputItem]?.emoji||'🥤'} ${escapeHtml(value.name)}
+      </button>`).join('')}</div><div class="empty">请选择要制作的配方，数量将从 1 开始</div>`;
     return;
   }
   const max=recipe.maxCraftable||0;
   craftQuantity=Math.max(1,Math.min(99,craftQuantity));
   const material=recipe.materials[0];
   const required=(material?.requiredCount||0)*craftQuantity;
+  const remaining=Math.max(0,(material?.inventoryCount||0)-required);
+  const maximumQuantity=Math.min(99,max);
   station.innerHTML=`
+    <div class="recipe-options">${craftRecipes.map(value=>`
+      <button class="recipe-option" onclick="selectCraftRecipe(${htmlJsArgument(value.recipeId)})">
+        ${ITEM_META[value.outputItem]?.emoji||'🥤'} ${escapeHtml(value.name)}
+      </button>`).join('')}</div>
     <article class="craft-card">
       <div class="craft-recipe">
         <span class="emoji">${ITEM_META[recipe.outputItem]?.emoji||'🥤'}</span>
@@ -333,16 +386,271 @@ function renderCraftingStation(){
       </div>
       <div class="craft-material">
         材料：${escapeHtml(ITEM_META[material?.itemId]?.name||material?.itemId||'未配置')} ×${material?.requiredCount||0}/份<br>
-        库存：${material?.inventoryCount||0} · 本次消耗：${required} · 最大可制作：${max}
+        库存：${material?.inventoryCount||0} · 本次消耗：${required} · 制作后剩余：${remaining}<br>
+        最大可制作：${max}
       </div>
       <div class="craft-quantity" aria-label="制作数量">
         <button onclick="changeCraftQuantity(-1)" ${max<1||craftQuantity<=1?'disabled':''}>−</button>
         <output class="${max<1?'disabled':''}" aria-disabled="${max<1}">${craftQuantity}</output>
-        <button onclick="changeCraftQuantity(1)" ${max<1||craftQuantity>=99?'disabled':''}>＋</button>
+        <button onclick="changeCraftQuantity(1)" ${max<1||craftQuantity>=maximumQuantity?'disabled':''}>＋</button>
         <button class="max" onclick="setMaximumCraftQuantity()" ${max<1?'disabled':''}>最大</button>
       </div>
       <button class="craft-submit" onclick="craftSelectedRecipe()" ${max<craftQuantity?'disabled':''}>制作 ${craftQuantity} 份</button>
     </article>`;
+}
+
+function selectCraftRecipe(recipeId){
+  selectedRecipe=craftRecipes.find(recipe=>recipe.recipeId===recipeId)||null;
+  craftQuantity=1;
+  renderCraftingStation();
+}
+
+async function loadDrinkBars(force=false){
+  if(drinkBarLoading&&!force) return;
+  drinkBarLoading=true;
+  const panel=document.getElementById('drink-bar-panel');
+  if(force) panel.innerHTML='<div class="loading">正在刷新吧台…</div>';
+  if(!await ensureLogin()){
+    renderDrinkBarError('无法连接登录服务，请确认 8081 已启动');
+    drinkBarLoading=false;
+    return;
+  }
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/bars`,{
+      headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'吧台加载失败');
+    drinkBarState=response.data||{bars:[],drinks:[]};
+    drinkBarLoadedAt=Date.now();
+    const requestedBar=(drinkBarState.bars||[])
+      .find(bar=>bar.slotNumber===requestedBarSlotNumber);
+    if(requestedBar){
+      selectedBarId=requestedBar.barId;
+      requestedBarSlotNumber=null;
+    }else if(!drinkBarState.bars.some(bar=>bar.barId===selectedBarId)){
+      selectedBarId=drinkBarState.bars[0]?.barId||null;
+    }
+    updateDrinkBarBadge();
+    publishDrinkBarsToWorld();
+    renderDrinkBars();
+    document.getElementById('drink-bar-status').textContent='小屋左三桌、右三桌 · 每桌独立经营';
+  }catch(error){
+    renderDrinkBarError(error.message||'吧台加载失败');
+  }finally{
+    drinkBarLoading=false;
+  }
+}
+
+function renderDrinkBars(){
+  const panel=document.getElementById('drink-bar-panel');
+  const bars=drinkBarState.bars||[];
+  const drinks=drinkBarState.drinks||[];
+  const selectedBar=bars.find(bar=>bar.barId===selectedBarId)||null;
+  const collectableCount=bars.filter(bar=>bar.state==='SOLD_OUT').length;
+  panel.innerHTML=`
+    <div class="summary"><span>可收取吧台</span><strong>${collectableCount}</strong></div>
+    ${collectableCount>0
+      ?'<div class="bar-actions"><button onclick="collectAllSoldOutBars()">一键收取全部售罄收益</button></div>'
+      :''}
+    <div class="bar-grid">${bars.map(bar=>`
+      <button class="bar-slot ${bar.barId===selectedBarId?'selected':''}"
+        onclick="selectDrinkBar(${Number(bar.barId)})">
+        <strong>${bar.slotNumber} 号吧台</strong>
+        <span>${bar.state==='EMPTY'?'空闲':bar.state==='SOLD_OUT'?'已售罄':'售卖中'}</span>
+      </button>`).join('')}</div>
+    ${selectedBar===null
+      ?'<div class="empty">暂时没有可用吧台</div>'
+      :selectedBar.state==='EMPTY'
+        ?drinks.map(drink=>renderBarDrink(drink)).join('')
+        :renderBarBatch(selectedBar)}`;
+}
+
+function renderBarBatch(bar){
+  const batch=bar.batch;
+  const meta=ITEM_META[batch.itemId]||{name:batch.itemId,emoji:'🥤'};
+  const countdown=currentBarCountdown(batch);
+  const action=bar.state==='SELLING'
+    ?'<button onclick="takeDownSelectedBar()">下架并结算</button>'
+    :'<button onclick="collectSelectedBar()">收取本桌收益</button>';
+  return `<article class="bar-drink">
+    <div class="bar-drink-head"><span class="emoji">${meta.emoji}</span>
+      <strong>${bar.slotNumber} 号吧台 · ${escapeHtml(meta.name)}</strong></div>
+    <p>剩余：${batch.remainingQuantity} 份 · 已售：${batch.soldQuantity} 份<br>
+      待收收益：🪙${batch.pendingGold} · ⭐${batch.pendingExp}<br>
+      ${bar.state==='SELLING'?'下一份：'+formatBarCountdown(countdown):'状态：已售罄，等待收取'}</p>
+    <div class="bar-actions">${action}</div>
+  </article>`;
+}
+
+function currentBarCountdown(batch){
+  if(batch.nextSaleInSeconds===null||batch.nextSaleInSeconds===undefined) return null;
+  const elapsed=Math.floor((Date.now()-drinkBarLoadedAt)/1000);
+  return Math.max(0,Number(batch.nextSaleInSeconds)-elapsed);
+}
+
+function formatBarCountdown(seconds){
+  const safe=Math.max(0,Number(seconds)||0);
+  return `${Math.floor(safe/60)}:${String(safe%60).padStart(2,'0')}`;
+}
+
+function renderBarDrink(drink){
+  const meta=ITEM_META[drink.itemId]||{name:drink.name||drink.itemId,emoji:'🥤'};
+  const directAction=drink.inventoryCount>0
+    ?`<button onclick="listSelectedDrink(${htmlJsArgument(drink.recipeId)})">直接上架 ${drink.listingQuantity} 份</button>`
+    :'';
+  const makeAction=drink.inventoryCount<10
+    ?'<button class="make" onclick="openCraftingStationFromBar()">去制作</button>'
+    :'';
+  return `<article class="bar-drink">
+    <div class="bar-drink-head"><span class="emoji">${meta.emoji}</span>
+      <strong>${escapeHtml(drink.name||meta.name)}</strong></div>
+    <p>背包成品：${drink.inventoryCount} 份 · 本批上架：${drink.listingQuantity} 份<br>
+      单份预计 🪙${drink.unitGold} · ⭐${drink.unitExp}<br>
+      整批预计 🪙${drink.expectedBatchGold} · ⭐${drink.expectedBatchExp}</p>
+    <div class="bar-actions">${directAction}${makeAction}</div>
+  </article>`;
+}
+
+function selectDrinkBar(barId){
+  if(!drinkBarState.bars.some(bar=>bar.barId===barId)) return;
+  selectedBarId=barId;
+  renderDrinkBars();
+}
+
+async function listSelectedDrink(recipeId){
+  const message=document.getElementById('drink-bar-message');
+  message.className='bar-message';
+  message.textContent='正在上架…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/bars/${selectedBarId}/list`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({recipeId}),
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'上架失败');
+    message.textContent=`上架成功：${response.data.bar.batch.listedQuantity} 份，预计 🪙${response.data.expectedBatchGold} · ⭐${response.data.expectedBatchExp}`;
+    await Promise.all([loadDrinkBars(true),loadInventory(true)]);
+  }catch(error){
+    message.className='bar-message error';
+    message.textContent=error.message||'上架失败';
+  }
+}
+
+async function takeDownSelectedBar(){
+  if(!confirm('确定下架这个吧台的当前批次吗？')) return;
+  const message=document.getElementById('drink-bar-message');
+  message.className='bar-message';
+  message.textContent='正在下架并结算…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/bars/${selectedBarId}/take-down`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:'{}',
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'下架失败');
+    message.textContent=`下架成功：退回 ${response.data.returnedQuantity} 份，结算 🪙${response.data.settledGold} · ⭐${response.data.settledExp}`;
+    await Promise.all([loadDrinkBars(true),loadInventory(true)]);
+    document.getElementById('world-frame').contentWindow
+      .postMessage({type:'fruit-island:player-changed'},'*');
+  }catch(error){
+    message.className='bar-message error';
+    message.textContent=error.message||'下架失败';
+  }
+}
+
+async function collectSelectedBar(){
+  const message=document.getElementById('drink-bar-message');
+  message.className='bar-message';
+  message.textContent='正在收取本桌收益…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/bars/${selectedBarId}/collect`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:'{}',
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'收取失败');
+    message.textContent=`收取成功：🪙${response.data.settledGold} · ⭐${response.data.settledExp}`;
+    await Promise.all([loadDrinkBars(true),loadInventory(true)]);
+    notifyWorldPlayerChanged();
+  }catch(error){
+    message.className='bar-message error';
+    message.textContent=error.message||'收取失败';
+  }
+}
+
+async function collectAllSoldOutBars(){
+  const collectableCount=(drinkBarState.bars||[])
+    .filter(bar=>bar.state==='SOLD_OUT').length;
+  if(collectableCount<1) return;
+  const message=document.getElementById('drink-bar-message');
+  message.className='bar-message';
+  message.textContent='正在汇总收取售罄吧台…';
+  try{
+    const response=await fetch(`${GAME_URL}/drink-shop/bars/collect-all`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:'{}',
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'一键收取失败');
+    message.textContent=`已收取 ${response.data.collectedBarCount} 个吧台：🪙${response.data.settledGold} · ⭐${response.data.settledExp}`;
+    await Promise.all([loadDrinkBars(true),loadInventory(true)]);
+    notifyWorldPlayerChanged();
+  }catch(error){
+    message.className='bar-message error';
+    message.textContent=error.message||'一键收取失败';
+  }
+}
+
+function updateDrinkBarBadge(){
+  const collectableCount=(drinkBarState.bars||[])
+    .filter(bar=>bar.state==='SOLD_OUT').length;
+  const badge=document.getElementById('drink-bar-badge');
+  badge.textContent=String(collectableCount);
+  badge.style.display=collectableCount>0?'block':'none';
+}
+
+function publishDrinkBarsToWorld(){
+  const states=(drinkBarState.bars||[]).map(bar=>({
+    slotNumber:bar.slotNumber,
+    state:bar.state,
+  }));
+  document.getElementById('world-frame').contentWindow
+    .postMessage({type:'fruit-island:drink-bars-state',bars:states},'*');
+}
+
+function notifyWorldPlayerChanged(){
+  document.getElementById('world-frame').contentWindow
+    .postMessage({type:'fruit-island:player-changed'},'*');
+}
+
+function openDrinkBarSlot(slotNumber){
+  requestedBarSlotNumber=slotNumber;
+  const bar=(drinkBarState.bars||[]).find(value=>value.slotNumber===slotNumber);
+  if(bar){
+    selectedBarId=bar.barId;
+    requestedBarSlotNumber=null;
+  }
+  if(activeFeature!=='drink-bar') toggleFeatureDrawer('drink-bar');
+  else if(bar) renderDrinkBars();
+  else loadDrinkBars();
+}
+
+function openCraftingStationFromBar(){
+  closeFeatureDrawer();
+  craftOpenUnselected=true;
+  selectedRecipe=null;
+  craftQuantity=1;
+  toggleFeatureDrawer('drink-shop');
+}
+
+function renderDrinkBarError(message){
+  document.getElementById('drink-bar-status').textContent='吧台暂时不可用';
+  document.getElementById('drink-bar-panel').innerHTML=
+    `<div class="empty error">${escapeHtml(message)}</div>`;
+}
+
+function htmlJsArgument(value){
+  return escapeHtml(JSON.stringify(String(value)));
 }
 
 function renderCustomerQueue(){
@@ -483,7 +791,8 @@ function updateArrivalCountdown(){
 }
 
 function changeCraftQuantity(delta){
-  craftQuantity=Math.max(1,Math.min(99,craftQuantity+delta));
+  const maximumQuantity=Math.max(1,Math.min(99,selectedRecipe?.maxCraftable||1));
+  craftQuantity=Math.max(1,Math.min(maximumQuantity,craftQuantity+delta));
   renderCraftingStation();
 }
 
@@ -534,6 +843,10 @@ window.addEventListener('message',event=>{
   const worldFrame=document.getElementById('world-frame');
   if(event.source!==worldFrame.contentWindow) return;
   if(event.data?.type==='fruit-island:inventory-changed') loadInventory(true);
+  if(event.data?.type==='fruit-island:open-drink-bar'){
+    openDrinkBarSlot(Number(event.data.slotNumber));
+  }
+  if(event.data?.type==='fruit-island:drink-bars-ready') publishDrinkBarsToWorld();
 });
 
 // 抽屉展开期间定期同步，收获后无需重新打开页面。
@@ -541,9 +854,22 @@ setInterval(()=>{
   if(activeFeature==='inventory') loadInventory();
 },3000);
 setInterval(updateArrivalCountdown,1000);
+setInterval(()=>{
+  if(activeFeature!=='drink-bar'||drinkBarLoading) return;
+  const bar=(drinkBarState.bars||[]).find(item=>item.barId===selectedBarId);
+  if(bar?.state!=='SELLING') return;
+  if(currentBarCountdown(bar.batch)>0){
+    renderDrinkBars();
+    return;
+  }
+  if(drinkBarRefreshPending) return;
+  drinkBarRefreshPending=true;
+  loadDrinkBars(true).finally(()=>{drinkBarRefreshPending=false;});
+},1000);
 
-// 页面初次加载时只更新角标，不主动展开背包。
+// 页面初次加载时只更新状态与角标，不自动展开或结算吧台。
 loadInventory();
+loadDrinkBars();
 </script>
 </body>
 </html>

@@ -16,4 +16,7 @@ public interface InventoryMapper extends BaseMapperX<Inventory> {
 
     @Update("UPDATE inventory SET count=count-#{count} WHERE player_id=#{playerId} AND item_id=#{itemId} AND count>=#{count}")
     int decrementIfEnough(@Param("playerId") Long playerId, @Param("itemId") String itemId, @Param("count") int count);
+
+    @Update("UPDATE inventory SET count=count+#{count} WHERE player_id=#{playerId} AND item_id=#{itemId}")
+    int incrementExisting(@Param("playerId") Long playerId, @Param("itemId") String itemId, @Param("count") int count);
 }
