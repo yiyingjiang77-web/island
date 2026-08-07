@@ -37,6 +37,10 @@ public class GameController {
     private final PlayerLevelConfigService playerLevelConfigService;
     private final IslandGrowthService islandGrowthService;
     private final SatisfactionService satisfactionService;
+    private final FlowerConfigService flowerConfigService;
+    private final FlowerLevelConfigService flowerLevelConfigService;
+    private final PlayerFlowerRightService playerFlowerRightService;
+    private final PlayerBeehiveService playerBeehiveService;
 
     /**
      * 游戏初始化
@@ -100,6 +104,14 @@ public class GameController {
                 .orderByAsc(com.fruitisland.game.entity.PlayerLevelConfig::getLevel)
                 .list();
 
+        // 7. 花卉配置及玩家种植权
+        var flowerConfigs = flowerConfigService.listEnabled();
+        var flowerLevelConfigs = flowerLevelConfigService.list();
+        var playerFlowerRights = playerFlowerRightService.listByPlayer(player.getId());
+
+        // 8. 蜂箱状态（惰性结算产蜜）
+        var playerBeehive = playerBeehiveService.settleProduction(player.getId());
+
         GameInitVO vo = GameInitVO.of(
                 player,
                 island,
@@ -112,7 +124,11 @@ public class GameController {
                 cropGrants,
                 playerLevelConfigs,
                 islandGrowth,
-                satisfactionRewards
+                satisfactionRewards,
+                flowerConfigs,
+                flowerLevelConfigs,
+                playerFlowerRights,
+                playerBeehive
         );
         return Result.ok(vo);
     }

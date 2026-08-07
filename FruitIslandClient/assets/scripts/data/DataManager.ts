@@ -2,13 +2,18 @@ import {
   CropConfig,
   CropLevelConfig,
   CropUnlockSource,
+  FlowerConfig,
+  FlowerLevelConfig,
   GamePlayer,
   Island,
   GameInitData,
+  IslandGrowthVO,
   LandVO,
   InventoryItem,
+  PlayerBeehive,
   PlayerCrop,
   PlayerCropGrant,
+  PlayerFlowerRight,
   PlayerLevelConfig,
 } from '../types';
 import { http } from '../network/HttpClient';
@@ -38,6 +43,11 @@ export class DataManager {
   private _playerCrops: PlayerCrop[] = [];
   private _cropGrants: PlayerCropGrant[] = [];
   private _playerLevelConfigs: PlayerLevelConfig[] = [];
+  private _islandGrowth: IslandGrowthVO | null = null;
+  private _flowerConfigs: FlowerConfig[] = [];
+  private _flowerLevelConfigs: FlowerLevelConfig[] = [];
+  private _playerFlowerRights: PlayerFlowerRight[] = [];
+  private _playerBeehive: PlayerBeehive | null = null;
 
   private _loaded: boolean = false;
 
@@ -81,6 +91,11 @@ export class DataManager {
     this._playerCrops = data.playerCrops || [];
     this._cropGrants = data.cropGrants || [];
     this._playerLevelConfigs = data.playerLevelConfigs || [];
+    this._islandGrowth = data.islandGrowth || null;
+    this._flowerConfigs = data.flowerConfigs || [];
+    this._flowerLevelConfigs = data.flowerLevelConfigs || [];
+    this._playerFlowerRights = data.playerFlowerRights || [];
+    this._playerBeehive = data.playerBeehive || null;
 
     this._loaded = true;
 
@@ -90,6 +105,8 @@ export class DataManager {
     console.log(`  岛屿: ${this._island.islandName}  Lv.${this._island.level}`);
     console.log(`  土地: ${this._lands.length} 块  背包: ${this._inventory.length} 种物品`);
     console.log(`  作物配置: ${this._cropConfigs.length} 种，永久权限: ${this._playerCrops.length} 种，限时权限: ${this._cropGrants.length} 种`);
+    console.log(`  花卉配置: ${this._flowerConfigs.length} 种，花卉权限: ${this._playerFlowerRights.length} 种`);
+    console.log(`  蜂箱: ${this._playerBeehive ? this._playerBeehive.beehiveCount + ' 个' : '无'}`);
 
     return true;
   }
@@ -138,6 +155,26 @@ export class DataManager {
     return this._playerLevelConfigs;
   }
 
+  get islandGrowth(): IslandGrowthVO | null {
+    return this._islandGrowth;
+  }
+
+  get flowerConfigs(): FlowerConfig[] {
+    return this._flowerConfigs;
+  }
+
+  get flowerLevelConfigs(): FlowerLevelConfig[] {
+    return this._flowerLevelConfigs;
+  }
+
+  get playerFlowerRights(): PlayerFlowerRight[] {
+    return this._playerFlowerRights;
+  }
+
+  get playerBeehive(): PlayerBeehive | null {
+    return this._playerBeehive;
+  }
+
   /** 本地更新金币（服务器同步后也更新这里） */
   updateGold(amount: number): void {
     if (this._player) {
@@ -149,6 +186,41 @@ export class DataManager {
   updateDiamond(amount: number): void {
     if (this._player) {
       this._player.diamond = amount;
+    }
+  }
+
+  /** 查找花卉基础配置 */
+  getFlowerConfig(flowerId: string): FlowerConfig | undefined {
+    return this._flowerConfigs.find(f => f.flowerId === flowerId);
+  }
+
+  /** 查找花卉指定等级配置 */
+  getFlowerLevelConfig(flowerId: string, level: number): FlowerLevelConfig | undefined {
+    return this._flowerLevelConfigs.find(f => f.flowerId === flowerId && f.flowerLevel === level);
+  }
+
+  /** 查找玩家花卉种植权 */
+  getPlayerFlowerRight(flowerId: string): PlayerFlowerRight | undefined {
+    return this._playerFlowerRights.find(r => r.flowerId === flowerId);
+  }
+
+  /** 获取可种植的花卉列表（已购买种植权的） */
+  getPlantableFlowers(): PlayerFlowerRight[] {
+    return this._playerFlowerRights;
+  }
+
+  /** 本地更新蜂箱数据（购买/收取后无需全量刷新） */
+  updateBeehive(beehive: PlayerBeehive): void {
+    this._playerBeehive = beehive;
+  }
+
+  /** 本地更新花卉种植权（购买/升级后无需全量刷新） */
+  upsertFlowerRight(right: PlayerFlowerRight): void {
+    const idx = this._playerFlowerRights.findIndex(r => r.flowerId === right.flowerId);
+    if (idx >= 0) {
+      this._playerFlowerRights[idx] = right;
+    } else {
+      this._playerFlowerRights.push(right);
     }
   }
 }

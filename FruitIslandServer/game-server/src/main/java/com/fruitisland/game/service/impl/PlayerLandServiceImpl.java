@@ -154,53 +154,76 @@ public class PlayerLandServiceImpl
         GamePlayer player = gamePlayerService.getById(playerId);
         if (player == null) throw new RuntimeException("玩家不存在");
 
-        LandConfig landConfig = landConfigService.getById(land.getLandConfigId());
-        if (landConfig == null) throw new RuntimeException("土地配置不存在");
-
-        if ("FLOWER".equals(landConfig.getAreaType())) {
-            return plantFlower(playerId, playerLandId, cropId, land);
-        }
-        if (!"FARM".equals(landConfig.getAreaType())) {
-            throw new RuntimeException("该区域不能种植");
-        }
-
-        CropConfig cropConfig = requireCropConfig(cropId);
-        if (player.getLevel() < cropConfig.getPlayerUnlockLevel())
-            throw new RuntimeException("玩家等级不足，需要 Lv." + cropConfig.getPlayerUnlockLevel());
-
         /*
-         * 种植资格优先使用永久权限；没有永久权限时，再检查限时稀有奖励。
-         * 两种权限都只代表“可以种”，因此这里不会读取或扣减背包种子数量。
+         * 统一处理作物和花卉：
+         * 先查 crop_config，找到则走作物流程；否则查 flower_config，走花卉流程。
+         * 两种植物共享同一张 player_land 和同一套快照字段。
          */
-        PlayerCrop permanent = playerCropService.findByPlayerAndCrop(playerId, cropId);
-        PlayerCropGrant temporary = null;
-        int cropLevel;
-        String accessType;
-        Long accessGrantId = null;
-        if (permanent != null) {
-            cropLevel = permanent.getCropLevel();
-            accessType = "PERMANENT";
-        } else {
-            temporary = playerCropGrantService.findActiveGrant(
-                    playerId, cropId, LocalDateTime.now());
-            if (temporary == null) {
-                throw new RuntimeException("尚未获得该作物的种植权限");
-            }
-            cropLevel = temporary.getGrantCropLevel();
-            accessType = "TEMPORARY";
-            accessGrantId = temporary.getId();
-        }
+        CropConfig cropConfig = cropConfigService.findByCropId(cropId);
+        final int cropLevel;
+        final String accessType;
+        final Long accessGrantId;
+        final int growSeconds;
+        final int yieldCount;
+        final int harvestExp;
 
-        CropLevelConfig levelConfig = requireLevelConfig(cropId, cropLevel);
+        if (cropConfig != null && Integer.valueOf(1).equals(cropConfig.getEnabled())) {
+            // --- 作物流程 ---
+            if (player.getLevel() < cropConfig.getPlayerUnlockLevel())
+                throw new RuntimeException("玩家等级不足，需要 Lv." + cropConfig.getPlayerUnlockLevel());
+
+            PlayerCrop permanent = playerCropService.findByPlayerAndCrop(playerId, cropId);
+            PlayerCropGrant temporary = null;
+            if (permanent != null) {
+                cropLevel = permanent.getCropLevel();
+                accessType = "PERMANENT";
+            } else {
+                temporary = playerCropGrantService.findActiveGrant(
+                        playerId, cropId, LocalDateTime.now());
+                if (temporary == null) {
+                    throw new RuntimeException("尚未获得该作物的种植权限");
+                }
+                cropLevel = temporary.getGrantCropLevel();
+                accessType = "TEMPORARY";
+            }
+            accessGrantId = temporary != null ? temporary.getId() : null;
+
+            CropLevelConfig levelConfig = requireLevelConfig(cropId, cropLevel);
+            growSeconds = levelConfig.getGrowSeconds();
+            yieldCount = levelConfig.getYieldCount();
+            harvestExp = levelConfig.getHarvestExp();
+        } else {
+            // --- 花卉流程 ---
+            FlowerConfig flowerConfig = flowerConfigService.findByFlowerId(cropId);
+            if (flowerConfig == null || !Integer.valueOf(1).equals(flowerConfig.getEnabled())) {
+                throw new RuntimeException("作物或花卉配置不存在: " + cropId);
+            }
+
+            PlayerFlowerRight right = playerFlowerRightService.findByPlayerAndFlower(playerId, cropId);
+            if (right == null) {
+                throw new RuntimeException("尚未获得该花卉的种植权限");
+            }
+            cropLevel = right.getFlowerLevel();
+            accessType = "PERMANENT";
+            accessGrantId = null;
+
+            FlowerLevelConfig flowerLevelConfig =
+                    flowerLevelConfigService.findByFlowerAndLevel(cropId, cropLevel);
+            if (flowerLevelConfig == null)
+                throw new RuntimeException("花卉等级配置不存在: " + cropId + " Lv." + cropLevel);
+            growSeconds = flowerLevelConfig.getGrowSeconds();
+            yieldCount = flowerLevelConfig.getYieldCount();
+            harvestExp = flowerLevelConfig.getHarvestExp();
+        }
 
         LocalDateTime now = LocalDateTime.now();
 
         land.setStatus("PLANTED");
         land.setCropId(cropId);
         land.setCropLevel(cropLevel);
-        land.setGrowSecondsSnapshot(levelConfig.getGrowSeconds());
-        land.setYieldCountSnapshot(levelConfig.getYieldCount());
-        land.setHarvestExpSnapshot(levelConfig.getHarvestExp());
+        land.setGrowSecondsSnapshot(growSeconds);
+        land.setYieldCountSnapshot(yieldCount);
+        land.setHarvestExpSnapshot(harvestExp);
         land.setAccessType(accessType);
         land.setAccessGrantId(accessGrantId);
         land.setPlantTime(now);
@@ -213,9 +236,9 @@ public class PlayerLandServiceImpl
         record.setPlayerLandId(playerLandId);
         record.setCropId(cropId);
         record.setCropLevel(cropLevel);
-        record.setGrowSecondsSnapshot(levelConfig.getGrowSeconds());
-        record.setYieldCountSnapshot(levelConfig.getYieldCount());
-        record.setHarvestExpSnapshot(levelConfig.getHarvestExp());
+        record.setGrowSecondsSnapshot(growSeconds);
+        record.setYieldCountSnapshot(yieldCount);
+        record.setHarvestExpSnapshot(harvestExp);
         record.setAccessType(accessType);
         record.setAccessGrantId(accessGrantId);
         record.setPlantTime(now);
@@ -224,59 +247,6 @@ public class PlayerLandServiceImpl
         cropPlantService.save(record);
 
         log.info("玩家 {} 种植 {} 于土地 {}，等待浇水", playerId, cropId, playerLandId);
-        return land;
-    }
-
-    private PlayerLand plantFlower(
-            Long playerId,
-            Long playerLandId,
-            String flowerId,
-            PlayerLand land
-    ) {
-        FlowerConfig flower = flowerConfigService.findByFlowerId(flowerId);
-        if (flower == null || !Integer.valueOf(1).equals(flower.getEnabled())) {
-            throw new RuntimeException("花卉不存在或已停用: " + flowerId);
-        }
-        PlayerFlowerRight right =
-                playerFlowerRightService.findByPlayerAndFlower(playerId, flowerId);
-        if (right == null) throw new RuntimeException("尚未购买该花卉的种植权");
-
-        FlowerLevelConfig level = flowerLevelConfigService.findByFlowerAndLevel(
-                flowerId, right.getFlowerLevel());
-        if (level == null) {
-            throw new RuntimeException("缺少花卉等级配置: " + flowerId + " Lv." + right.getFlowerLevel());
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        land.setStatus("PLANTED");
-        land.setCropId(flowerId);
-        land.setCropLevel(right.getFlowerLevel());
-        land.setGrowSecondsSnapshot(level.getGrowSeconds());
-        land.setYieldCountSnapshot(level.getYieldCount());
-        land.setHarvestExpSnapshot(level.getHarvestExp());
-        land.setAccessType("PERMANENT_FLOWER");
-        land.setAccessGrantId(right.getId());
-        land.setPlantTime(now);
-        land.setFinishTime(null);
-        land.setWaterLevel(0);
-        land.setLastWateredAt(null);
-        updateById(land);
-
-        CropPlant record = new CropPlant();
-        record.setPlayerLandId(playerLandId);
-        record.setCropId(flowerId);
-        record.setCropLevel(right.getFlowerLevel());
-        record.setGrowSecondsSnapshot(level.getGrowSeconds());
-        record.setYieldCountSnapshot(level.getYieldCount());
-        record.setHarvestExpSnapshot(level.getHarvestExp());
-        record.setAccessType("PERMANENT_FLOWER");
-        record.setAccessGrantId(right.getId());
-        record.setPlantTime(now);
-        record.setFinishTime(null);
-        record.setStatus("WAITING_WATER");
-        cropPlantService.save(record);
-
-        log.info("玩家 {} 种植花卉 {} 于花园土地 {}，等待浇水", playerId, flowerId, playerLandId);
         return land;
     }
 

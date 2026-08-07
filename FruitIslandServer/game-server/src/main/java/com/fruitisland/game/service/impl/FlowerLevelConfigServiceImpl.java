@@ -6,15 +6,26 @@ import com.fruitisland.game.mapper.FlowerLevelConfigMapper;
 import com.fruitisland.game.service.FlowerLevelConfigService;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class FlowerLevelConfigServiceImpl
         extends BaseServiceImplX<FlowerLevelConfigMapper, FlowerLevelConfig>
         implements FlowerLevelConfigService {
+
     @Override
     public FlowerLevelConfig findByFlowerAndLevel(String flowerId, Integer flowerLevel) {
         return lambdaQuery()
                 .eq(FlowerLevelConfig::getFlowerId, flowerId)
                 .eq(FlowerLevelConfig::getFlowerLevel, flowerLevel)
                 .one();
+    }
+
+    @Override
+    public List<FlowerLevelConfig> listByFlower(String flowerId) {
+        return lambdaQuery()
+                .eq(FlowerLevelConfig::getFlowerId, flowerId)
+                .orderByAsc(FlowerLevelConfig::getFlowerLevel)
+                .list();
     }
 }

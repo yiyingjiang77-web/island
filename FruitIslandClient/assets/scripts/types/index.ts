@@ -53,6 +53,7 @@ export interface GamePlayer {
   nickname: string;
   level: number;
   exp: number;
+  cumulativeExp?: number;
   gold: number;
   diamond: number;
   avatarId: string;
@@ -262,6 +263,87 @@ export interface InventoryItem {
   updateTime: string;
 }
 
+// ==================== 花卉系统 (Demo2.8) ====================
+
+/** 花卉基础配置，对应 flower_config 表 */
+export interface FlowerConfig {
+  flowerId: string;
+  name: string;
+  currencyType: 'GOLD' | 'DIAMOND';
+  seedPrice: number;
+  growSeconds: number;
+  yieldCount: number;
+  harvestExp: number;
+  honeyCoefficient: number;
+  maxLevel: number;
+  enabled: number;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** 花卉各等级数值配置，对应 flower_level_config 表 */
+export interface FlowerLevelConfig {
+  id: number;
+  flowerId: string;
+  flowerLevel: number;
+  growSeconds: number;
+  yieldCount: number;
+  harvestExp: number;
+  upgradeGold: number;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** 玩家永久花卉种植权，对应 player_flower_right 表 */
+export interface PlayerFlowerRight {
+  id: number;
+  playerId: number;
+  flowerId: string;
+  flowerLevel: number;
+  unlockSource: string;
+  unlockTime: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** 玩家蜂箱状态，对应 player_beehive 表 */
+export interface PlayerBeehive {
+  id: number;
+  playerId: number;
+  beehiveCount: number;
+  honeyStored: number;
+  lastProduceTime: string;
+  lastCollectTime: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** /beehive/collect 返回的收取结果 */
+export interface HoneyCollectResult {
+  honeyCollected: number;
+}
+
+// ==================== 小岛成长 (Demo2.7) ====================
+
+/** 小岛等级奖励状态 */
+export interface IslandLevelRewardVO {
+  level: number;
+  cumulativeExp: number;
+  cropId?: string;
+  recipeId?: string;
+  claimed: boolean;
+  materialSourceHint?: string;
+  shopCapabilityHint?: string;
+}
+
+/** /game/init 中的 islandGrowth 字段 */
+export interface IslandGrowthVO {
+  cumulativeExp: number;
+  currentLevel: number;
+  nextLevelThreshold?: number;
+  rewards: IslandLevelRewardVO[];
+}
+
 /** 建筑类型 */
 export enum BuildingType {
   HOUSE = 'HOUSE',
@@ -336,6 +418,11 @@ export interface GameInitData {
   playerCrops: PlayerCrop[];
   cropGrants: PlayerCropGrant[];
   playerLevelConfigs: PlayerLevelConfig[];
+  islandGrowth?: IslandGrowthVO;
+  flowerConfigs?: FlowerConfig[];
+  flowerLevelConfigs?: FlowerLevelConfig[];
+  playerFlowerRights?: PlayerFlowerRight[];
+  playerBeehive?: PlayerBeehive;
 }
 
 // ==================== 错误码（与服务端 ErrorCode 对应） ====================

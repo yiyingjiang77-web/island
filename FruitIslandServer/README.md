@@ -14,9 +14,6 @@
 | `player_crop_grant` | 玩家限时拥有的稀有作物权限 |
 | `crop_reward_pool_item` | 可配置权重和有效期的稀有作物随机奖励池 |
 | `crop_plant` | 每次种植的等级、成熟时间、产量及权限来源快照 |
-| `flower_config` | 花卉名称、永久种植权货币与价格、蜂蜜系数 |
-| `flower_level_config` | 花卉成熟时间、产量、经验与升级金币 |
-| `player_flower_right` | 玩家永久拥有的花卉种植权和当前等级 |
 
 只有满足以下条件的稀有作物才能作为限时奖励：
 
@@ -37,10 +34,6 @@
 
 `game-server/src/main/resources/db/migration-crop-system-v2.sql`
 
-Demo2.8 花园与花卉种植执行：
-
-`game-server/src/main/resources/db/migration-demo28-flower-planting.sql`
-
 迁移脚本会把旧背包中的种子转换为对应作物的永久种植权，然后清理旧种子条目。
 
 ## 接口
@@ -50,5 +43,3 @@ Demo2.8 花园与花卉种植执行：
 - `POST /farm/plant`：校验永久/限时权限后种植，不消耗背包物品。
 - `POST /farm/water`：第一次浇水后按种植快照开始成熟倒计时。
 - `POST /farm/harvest`：按种植快照发放收获物。
-- `GET /flower/catalog`：返回八种花卉目录与当前玩家永久种植权。
-- `POST /flower/buy`：使用配置中的金币或钻石购买永久花卉种植权。

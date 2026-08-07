@@ -3,11 +3,15 @@ package com.fruitisland.game.dto;
 import com.fruitisland.game.entity.CropConfig;
 import com.fruitisland.game.entity.CropLevelConfig;
 import com.fruitisland.game.entity.CropUnlockSource;
+import com.fruitisland.game.entity.FlowerConfig;
+import com.fruitisland.game.entity.FlowerLevelConfig;
 import com.fruitisland.game.entity.GamePlayer;
 import com.fruitisland.game.entity.Inventory;
 import com.fruitisland.game.entity.Island;
+import com.fruitisland.game.entity.PlayerBeehive;
 import com.fruitisland.game.entity.PlayerCrop;
 import com.fruitisland.game.entity.PlayerCropGrant;
+import com.fruitisland.game.entity.PlayerFlowerRight;
 import com.fruitisland.game.entity.PlayerLevelConfig;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -60,6 +64,18 @@ public class GameInitVO implements Serializable {
     /** 本次登录自动补结并发放的历史满意度礼品。 */
     private List<SatisfactionStatusVO.History> autoSettledSatisfactionRewards;
 
+    /** 花卉基础配置（8 种）。 */
+    private List<FlowerConfig> flowerConfigs;
+
+    /** 花卉各等级数值配置。 */
+    private List<FlowerLevelConfig> flowerLevelConfigs;
+
+    /** 玩家永久拥有的花卉种植权。 */
+    private List<PlayerFlowerRight> playerFlowerRights;
+
+    /** 玩家蜂箱状态。 */
+    private PlayerBeehive playerBeehive;
+
     public static GameInitVO of(
             GamePlayer player,
             Island island,
@@ -72,7 +88,11 @@ public class GameInitVO implements Serializable {
             List<PlayerCropGrant> cropGrants,
             List<PlayerLevelConfig> playerLevelConfigs,
             IslandGrowthVO islandGrowth,
-            List<SatisfactionStatusVO.History> autoSettledSatisfactionRewards
+            List<SatisfactionStatusVO.History> autoSettledSatisfactionRewards,
+            List<FlowerConfig> flowerConfigs,
+            List<FlowerLevelConfig> flowerLevelConfigs,
+            List<PlayerFlowerRight> playerFlowerRights,
+            PlayerBeehive playerBeehive
     ) {
         GameInitVO vo = new GameInitVO();
         vo.setPlayer(player);
@@ -87,6 +107,10 @@ public class GameInitVO implements Serializable {
         vo.setPlayerLevelConfigs(playerLevelConfigs);
         vo.setIslandGrowth(islandGrowth);
         vo.setAutoSettledSatisfactionRewards(autoSettledSatisfactionRewards);
+        vo.setFlowerConfigs(flowerConfigs);
+        vo.setFlowerLevelConfigs(flowerLevelConfigs);
+        vo.setPlayerFlowerRights(playerFlowerRights);
+        vo.setPlayerBeehive(playerBeehive);
         return vo;
     }
 }

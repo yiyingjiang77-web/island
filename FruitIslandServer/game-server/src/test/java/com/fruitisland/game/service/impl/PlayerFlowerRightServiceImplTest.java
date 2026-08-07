@@ -4,6 +4,7 @@ import com.fruitisland.game.entity.FlowerConfig;
 import com.fruitisland.game.entity.GamePlayer;
 import com.fruitisland.game.mapper.PlayerFlowerRightMapper;
 import com.fruitisland.game.service.FlowerConfigService;
+import com.fruitisland.game.service.FlowerLevelConfigService;
 import com.fruitisland.game.service.GamePlayerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import static org.mockito.Mockito.*;
 class PlayerFlowerRightServiceImplTest {
     private PlayerFlowerRightMapper mapper;
     private FlowerConfigService configService;
+    private FlowerLevelConfigService levelConfigService;
     private GamePlayerService playerService;
     private PlayerFlowerRightServiceImpl service;
 
@@ -23,8 +25,9 @@ class PlayerFlowerRightServiceImplTest {
     void setUp() {
         mapper = mock(PlayerFlowerRightMapper.class);
         configService = mock(FlowerConfigService.class);
+        levelConfigService = mock(FlowerLevelConfigService.class);
         playerService = mock(GamePlayerService.class);
-        service = new PlayerFlowerRightServiceImpl(configService, playerService);
+        service = new PlayerFlowerRightServiceImpl(configService, levelConfigService, playerService);
         ReflectionTestUtils.setField(service, "baseMapper", mapper);
         when(mapper.insert(any())).thenReturn(1);
     }
@@ -40,7 +43,6 @@ class PlayerFlowerRightServiceImplTest {
 
         assertEquals(500L, player.getGold());
         assertEquals(1, right.getFlowerLevel());
-        assertEquals("GOLD", right.getPurchaseCurrency());
         verify(playerService).updateById(player);
     }
 
@@ -61,8 +63,8 @@ class PlayerFlowerRightServiceImplTest {
         FlowerConfig config = new FlowerConfig();
         config.setFlowerId(id);
         config.setName(id);
-        config.setPurchaseCurrency(currency);
-        config.setPurchasePrice(price);
+        config.setCurrencyType(currency);
+        config.setSeedPrice(price);
         config.setEnabled(1);
         return config;
     }

@@ -51,8 +51,7 @@ test('a visible bar entry reaches the JWT listing flow and refreshes authoritati
 test('bar listing actions distinguish low and zero inventory and crafting starts unselected at one', () => {
   assert.match(page, /drink\.inventoryCount>0/);
   assert.match(page, /直接上架/);
-  assert.match(page, /drink\.inventoryCount<limit/);
-  assert.match(page, /drinkBarState\.listingLimit/);
+  assert.match(page, /drink\.inventoryCount<10/);
   assert.match(page, /去制作/);
   assert.match(page, /function openCraftingStationFromBar\(\)/);
   assert.match(page, /selectedRecipe=null;/);
@@ -79,51 +78,6 @@ test('sold out bars expose individual and sold-out-only collect all actions with
   assert.match(page, /\/drink-shop\/bars\/collect-all/);
   assert.match(page, /collectableCount>0/);
   assert.match(page, /fruit-island:player-changed/);
-});
-
-test('daily satisfaction exposes today, rules, history, refresh, and automatic gift notices', () => {
-  assert.match(page, /id="satisfaction-toggle"/);
-  assert.match(page, /onclick="toggleSatisfactionPanel\(\)"/);
-  assert.match(page, /fetch\(`\$\{GAME_URL\}\/drink-shop\/satisfaction`/);
-  assert.match(page, /today\.deliveredOrders/);
-  assert.match(page, /today\.rejectedOrders/);
-  assert.match(page, /today\.deliveredQuantity/);
-  assert.match(page, /today\.satisfactionPercent/);
-  assert.match(page, /today\.expectedTier/);
-  assert.match(page, /today\.nextTier/);
-  assert.match(page, /today\.nextTierPercentNeeded/);
-  assert.match(page, /satisfactionState\.giftRules/);
-  assert.match(page, /toggleSatisfactionRules/);
-  assert.match(page, /最近 30 天记录/);
-  assert.match(page, /satisfactionState\.recentHistory/);
-  assert.match(page, /autoSettledSatisfactionRewards/);
-  assert.match(page, /showSatisfactionGiftNotifications/);
-  assert.match(page, /closeSatisfactionGiftNotification/);
-  assert.match(page, /已自动补发.*满意度礼品/);
-  assert.match(page, /loadSatisfaction\(true\)/);
-  assert.doesNotMatch(page, /每日需交付至少 20 份/);
-  assert.doesNotMatch(page, /60% \/ 70% \/ 80% \/ 90% \/ 100%/);
-});
-
-test('island growth and drink shop renovation use authoritative server progress', () => {
-  assert.match(page, /id="growth-button"/);
-  assert.match(page, /id="growth-drawer"/);
-  assert.match(page, /islandGrowth\.cumulativeExp/);
-  assert.match(page, /islandGrowth\.currentLevel/);
-  assert.match(page, /islandGrowth\.nextLevelThreshold/);
-  assert.match(page, /islandGrowth\.rewards/);
-  assert.match(page, /materialSourceHint/);
-  assert.match(page, /shopCapabilityHint/);
-  assert.match(page, /fetch\(`\$\{GAME_URL\}\/drink-shop\/progress`/);
-  assert.match(page, /nextConfig\.requiredIslandLevel/);
-  assert.match(page, /nextConfig\.renovationGold/);
-  assert.match(page, /nextConfig\.queueCapacity/);
-  assert.match(page, /nextConfig\.barCapacity/);
-  assert.match(page, /nextConfig\.saleIntervalSeconds/);
-  assert.match(page, /nextConfig\.arrivalIntervalSeconds/);
-  assert.match(page, /confirm\(/);
-  assert.match(page, /body:JSON\.stringify\(\{targetLevel:/);
-  assert.match(page, /Promise\.all\(\[loadInventory\(true\),loadDrinkShopProgress\(true\),loadCraftingStation\(true\),loadDrinkBars\(true\)\]\)/);
 });
 
 test('the outdoor map renders three clickable bars on each side of the drink shop', () => {

@@ -4,6 +4,16 @@
 果香小岛游戏项目，Spring Boot + MyBatis-Plus 后端 + TypeScript/HTML 客户端。
 采用 TDD 工作流，Issue 以 `.scratch/<feature>/issues/` 下 Markdown 管理。
 
+## Demo2.8 进度（截至 2026-08-07）
+- **任务 1-2（已完成）**：重建作物目录（删4种→11种，每种10级配置）、花卉系统（8种花+80级配置+player_flower_right表）
+- **任务 3（已完成）**：蜂蜜系统 — BeehiveController(purchase/collect/status)、PlayerBeehiveServiceImpl(2h周期/惰性结算/存储上限20-40-60)
+- **任务 4（已完成）**：GameController.gameInit() 整合花卉蜂蜜数据；FlowerController(purchase/upgrade)、BeehiveController 已接入
+- **任务 5（已完成）**：FlowerBeehiveHttpTest 17个测试全通过（作物目录迁移、花卉购买升级种植收获、蜂箱购买产蜜收取、玩家隔离、幂等性），全量86测试0失败
+- **关键修复**：WebConfig JWT拦截器需覆盖 `/flower/**`、`/beehive/**`、`/crop/**` 路径（原来只有 `/game/**`、`/farm/**`、`/drink-shop/**`）
+- **测试经验**：MockMvc 不支持真正的并发请求测试，并发幂等改为顺序测试验证相同业务规则
+- **客户端（已完成）**：TS 类型+API+DataManager 更新；demo2.4-island.html 加花卉商店面板+蜂箱管理面板；demo2.4-world.html 加花园区域点击种植/4×4土地格渲染/花卉种子选择
+- 文件：schema-h2.sql（flower_config/flower_level_config/player_flower_right/player_beehive）、FlowerController/BeehiveController/PlayerFlowerRightServiceImpl/PlayerBeehiveServiceImpl
+
 ## Demo2.7 进度（截至 2026-07-30）
 - **任务 01（已完成）**：建立 island_level_config 表（1-10级累计经验阈值 + 固定作物/配方）、player_island_level_reward_claim 表、game_player.cumulative_exp 字段、IslandGrowthService.initialize() 在 /game/init 时迁移并补发奖励
 - **任务 02（已完成）**：applyExperience() 切换为累计经验模式，升级时发放作物种植权和配方，69 个测试全部通过。分支 demo2.7-cumulative-exp

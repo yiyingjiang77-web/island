@@ -100,4 +100,23 @@ export const Api = {
 
   /** 制作饮品（身份由 JWT 决定） */
   DRINK_SHOP_CRAFT: '/drink-shop/craft',
+
+  // ==================== 花卉系统 (Demo2.8) ====================
+
+  /** 购买花卉永久种植权（金币或钻石） */
+  FLOWER_PURCHASE: '/flower/purchase',
+
+  /** 升级花卉等级 */
+  FLOWER_UPGRADE: '/flower/upgrade',
+
+  // ==================== 蜂箱系统 (Demo2.8) ====================
+
+  /** 购买蜂箱（递增价格，最多3个） */
+  BEEHIVE_PURCHASE: '/beehive/purchase',
+
+  /** 收取蜂蜜 */
+  BEEHIVE_COLLECT: '/beehive/collect',
+
+  /** 查看蜂箱状态（含惰性结算） */
+  BEEHIVE_STATUS: '/beehive/status',
 } as const;

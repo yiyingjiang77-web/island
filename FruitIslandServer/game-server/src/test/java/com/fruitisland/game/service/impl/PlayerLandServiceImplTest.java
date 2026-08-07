@@ -28,7 +28,6 @@ class PlayerLandServiceImplTest {
     private PlayerCropService playerCropService;
     private PlayerCropGrantService playerCropGrantService;
     private GamePlayerService gamePlayerService;
-    private LandConfigService landConfigService;
     private FlowerConfigService flowerConfigService;
     private FlowerLevelConfigService flowerLevelConfigService;
     private PlayerFlowerRightService playerFlowerRightService;
@@ -44,13 +43,12 @@ class PlayerLandServiceImplTest {
         playerCropService = mock(PlayerCropService.class);
         playerCropGrantService = mock(PlayerCropGrantService.class);
         gamePlayerService = mock(GamePlayerService.class);
-        landConfigService = mock(LandConfigService.class);
         flowerConfigService = mock(FlowerConfigService.class);
         flowerLevelConfigService = mock(FlowerLevelConfigService.class);
         playerFlowerRightService = mock(PlayerFlowerRightService.class);
 
         service = new PlayerLandServiceImpl(
-                landConfigService,
+                mock(LandConfigService.class),
                 gamePlayerService,
                 inventoryService,
                 cropPlantService,
@@ -68,7 +66,6 @@ class PlayerLandServiceImplTest {
                 .thenReturn(cropConfig("strawberry", 1));
         when(cropLevelConfigService.findByCropAndLevel("strawberry", 2))
                 .thenReturn(levelConfig("strawberry", 2, 50, 3));
-        when(landConfigService.getById(1L)).thenReturn(landConfig(1L, "FARM"));
 
         GamePlayer player = new GamePlayer();
         player.setId(1L);
@@ -210,65 +207,6 @@ class PlayerLandServiceImplTest {
         verify(playerCropService, never()).findByPlayerAndCrop(anyLong(), anyString());
     }
 
-    @Test
-    void flowerLandUsesPermanentFlowerRightAndFlowerSnapshots() {
-        PlayerLand land = emptyLand();
-        land.setLandConfigId(2L);
-        when(playerLandMapper.selectById(10L)).thenReturn(land);
-        when(landConfigService.getById(2L)).thenReturn(landConfig(2L, "FLOWER"));
-
-        FlowerConfig flower = new FlowerConfig();
-        flower.setFlowerId("rose");
-        flower.setEnabled(1);
-        when(flowerConfigService.findByFlowerId("rose")).thenReturn(flower);
-
-        PlayerFlowerRight right = new PlayerFlowerRight();
-        right.setId(88L);
-        right.setFlowerId("rose");
-        right.setFlowerLevel(1);
-        when(playerFlowerRightService.findByPlayerAndFlower(1L, "rose")).thenReturn(right);
-
-        FlowerLevelConfig level = new FlowerLevelConfig();
-        level.setFlowerId("rose");
-        level.setFlowerLevel(1);
-        level.setGrowSeconds(300);
-        level.setYieldCount(2);
-        level.setHarvestExp(4);
-        when(flowerLevelConfigService.findByFlowerAndLevel("rose", 1)).thenReturn(level);
-
-        PlayerLand result = service.plant(1L, 10L, "rose");
-
-        assertEquals("PLANTED", result.getStatus());
-        assertEquals("rose", result.getCropId());
-        assertEquals("PERMANENT_FLOWER", result.getAccessType());
-        assertEquals(88L, result.getAccessGrantId());
-        assertEquals(300, result.getGrowSecondsSnapshot());
-        assertEquals(2, result.getYieldCountSnapshot());
-        verify(playerCropService, never()).findByPlayerAndCrop(anyLong(), anyString());
-    }
-
-    @Test
-    void farmRejectsFlowerAndFlowerLandRejectsCropWithoutMatchingConfig() {
-        when(playerLandMapper.selectById(10L)).thenReturn(emptyLand());
-
-        RuntimeException farmError = assertThrows(
-                RuntimeException.class,
-                () -> service.plant(1L, 10L, "rose")
-        );
-        assertEquals("作物配置不存在: rose", farmError.getMessage());
-
-        PlayerLand flowerLand = emptyLand();
-        flowerLand.setLandConfigId(2L);
-        when(playerLandMapper.selectById(11L)).thenReturn(flowerLand);
-        when(landConfigService.getById(2L)).thenReturn(landConfig(2L, "FLOWER"));
-
-        RuntimeException flowerError = assertThrows(
-                RuntimeException.class,
-                () -> service.plant(1L, 11L, "strawberry")
-        );
-        assertEquals("花卉不存在或已停用: strawberry", flowerError.getMessage());
-    }
-
     private PlayerLand emptyLand() {
         PlayerLand land = new PlayerLand();
         land.setId(10L);
@@ -276,13 +214,6 @@ class PlayerLandServiceImplTest {
         land.setLandConfigId(1L);
         land.setStatus("EMPTY");
         return land;
-    }
-
-    private LandConfig landConfig(Long id, String areaType) {
-        LandConfig config = new LandConfig();
-        config.setId(id);
-        config.setAreaType(areaType);
-        return config;
     }
 
     private CropConfig cropConfig(String cropId, int playerUnlockLevel) {

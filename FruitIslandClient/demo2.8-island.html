@@ -53,6 +53,37 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#7cd5df;fon
 .bar-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}.bar-slot{border:1px solid rgba(255,255,255,.13);border-radius:12px;background:rgba(255,255,255,.055);color:#fff;padding:10px 5px;cursor:pointer}.bar-slot.selected{border-color:#d8f1b8;background:rgba(94,140,76,.28)}.bar-slot:disabled{cursor:not-allowed;opacity:.7}.bar-slot strong,.bar-slot span{display:block}.bar-slot span{margin-top:3px;color:#a9c5a4;font-size:10px}
 .bar-drink{padding:12px;border:1px solid rgba(255,255,255,.13);border-radius:14px;background:rgba(255,255,255,.06);margin-top:9px}.bar-drink-head{display:flex;align-items:center;gap:9px}.bar-drink-head .emoji{font-size:30px}.bar-drink p{margin:7px 0;color:#b8c6b6;font-size:11px;line-height:1.55}.bar-actions{display:flex;gap:8px}.bar-actions button,.recipe-option{flex:1;border:0;border-radius:10px;padding:9px;background:#527e4c;color:#fff;font-weight:700;cursor:pointer}.bar-actions .make{background:#78633c}.recipe-options{display:flex;gap:8px;margin-bottom:10px}.bar-message{min-height:18px;margin:10px 2px 0;color:#b9d8aa;font-size:12px}.bar-message.error{color:#ff9d91}
 
+/* 花卉商店 (Demo2.8) */
+.flower-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:10px}
+.flower-card{padding:11px;border:1px solid rgba(255,255,255,.13);border-radius:13px;background:rgba(255,255,255,.06);display:flex;flex-direction:column;gap:6px}
+.flower-card.owned{border-color:rgba(216,241,184,.4);background:rgba(94,140,76,.15)}
+.flower-card .flower-head{display:flex;align-items:center;gap:8px}
+.flower-card .flower-emoji{font-size:28px}
+.flower-card .flower-name{flex:1;font-size:14px;font-weight:700}
+.flower-card .flower-level{font-size:11px;color:#f4d36b}
+.flower-card .flower-price{font-size:12px;color:#cfe9bd}
+.flower-card .flower-price .diamond{color:#7ec8e3}
+.flower-card .flower-actions{display:flex;gap:6px}
+.flower-card .flower-actions button{flex:1;border:0;border-radius:8px;padding:7px 4px;font-size:11px;font-weight:700;cursor:pointer;color:#fff}
+.flower-card .flower-actions .buy-gold{background:#527e4c}
+.flower-card .flower-actions .buy-diamond{background:#3a6a8a}
+.flower-card .flower-actions .upgrade{background:#78633c}
+.flower-card .flower-actions button:disabled{opacity:.42;cursor:not-allowed}
+.flower-card .flower-coeff{font-size:10px;color:#a9c5a4}
+.flower-card .max-tag{font-size:10px;color:#f4d36b;font-weight:700}
+
+/* 蜂箱面板 (Demo2.8) */
+.beehive-status{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:10px;border-radius:12px;background:rgba(255,183,77,.12);font-size:13px}
+.beehive-status .hive-count{font-size:22px;font-weight:700;color:#f4d36b}
+.beehive-status .honey-stored{font-size:18px;font-weight:700;color:#e8c45f}
+.beehive-actions{display:flex;gap:8px;margin-bottom:12px}
+.beehive-actions button{flex:1;border:0;border-radius:10px;padding:10px;background:#527e4c;color:#fff;font-weight:700;cursor:pointer}
+.beehive-actions button:disabled{opacity:.42;cursor:not-allowed}
+.beehive-actions .collect{background:#b8860b}
+.beehive-info{padding:10px;border-radius:10px;background:rgba(0,0,0,.16);font-size:11px;line-height:1.6;color:#aebbac}
+.beehive-info p{margin:0 0 4px}.beehive-info p:last-child{margin:0}
+.beehive-message{min-height:18px;margin:10px 2px 0;color:#b9d8aa;font-size:12px}.beehive-message.error{color:#ff9d91}
+
 @media(max-width:600px){
   .feature-rail{right:8px}
   .feature-button{width:51px;height:51px;border-radius:15px}
@@ -153,6 +184,51 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#7cd5df;fon
     <p class="bar-message" id="drink-bar-message" role="status"></p>
   </aside>
 
+  <aside class="feature-drawer" id="flower-drawer" aria-hidden="true">
+    <header class="drawer-head">
+      <div class="drawer-title">
+        <h2>🌸 花卉商店</h2>
+        <p id="flower-status">购买花卉种植权，在花园种植</p>
+      </div>
+      <button class="refresh-button" onclick="loadFlowerShop(true)" title="刷新">↻</button>
+      <button class="close-button" onclick="closeFeatureDrawer()" title="收起">✕</button>
+    </header>
+    <div class="summary">
+      <span>已拥有花卉</span>
+      <strong id="flower-owned-count">0</strong>
+    </div>
+    <section id="flower-grid-container">
+      <div class="loading">正在读取花卉列表…</div>
+    </section>
+    <p class="beehive-message" id="flower-message" role="status"></p>
+  </aside>
+
+  <aside class="feature-drawer" id="beehive-drawer" aria-hidden="true">
+    <header class="drawer-head">
+      <div class="drawer-title">
+        <h2>🐝 蜂箱管理</h2>
+        <p id="beehive-status-text">购买蜂箱，自动产蜜</p>
+      </div>
+      <button class="refresh-button" onclick="loadBeehive(true)" title="刷新">↻</button>
+      <button class="close-button" onclick="closeFeatureDrawer()" title="收起">✕</button>
+    </header>
+    <div class="beehive-status">
+      <div><span style="color:#aebbac;font-size:11px">蜂箱</span><br><span class="hive-count" id="beehive-count">0</span> <span style="color:#aebbac;font-size:11px">/ 3</span></div>
+      <div><span style="color:#aebbac;font-size:11px">存储蜂蜜</span><br><span class="honey-stored" id="beehive-honey">0</span></div>
+    </div>
+    <div class="beehive-actions">
+      <button id="beehive-buy-btn" onclick="purchaseBeehive()">购买蜂箱</button>
+      <button class="collect" id="beehive-collect-btn" onclick="collectHoney()">收取蜂蜜</button>
+    </div>
+    <div class="beehive-info">
+      <p>🐝 蜂箱每 2 小时自动产蜜一次，产量取决于已种植花卉的数量和等级</p>
+      <p>📦 蜂箱存储上限：1箱20、2箱40、3箱60</p>
+      <p>💰 蜂箱价格：1000 / 2000 / 3000 金币</p>
+      <p>🍯 蜂蜜可在交易所出售（售价 15 金币/个）</p>
+    </div>
+    <p class="beehive-message" id="beehive-message" role="status"></p>
+  </aside>
+
   <nav class="feature-rail" aria-label="功能入口">
     <button
       class="feature-button"
@@ -188,6 +264,23 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#7cd5df;fon
       <span class="text">吧台</span>
       <span class="feature-badge" id="drink-bar-badge" style="display:none">0</span>
     </button>
+    <button
+      class="feature-button"
+      id="flower-button"
+      onclick="toggleFeatureDrawer('flower')"
+      title="打开花卉商店">
+      <span class="icon">🌸</span>
+      <span class="text">花卉</span>
+    </button>
+    <button
+      class="feature-button"
+      id="beehive-button"
+      onclick="toggleFeatureDrawer('beehive')"
+      title="打开蜂箱管理">
+      <span class="icon">🐝</span>
+      <span class="text">蜂箱</span>
+      <span class="feature-badge" id="beehive-badge" style="display:none">0</span>
+    </button>
   </nav>
 </main>
 
@@ -206,6 +299,15 @@ const ITEM_META={
   corn:{name:'玉米',emoji:'🌽'},
   moonberry:{name:'月光莓',emoji:'🫐'},
   strawberry_juice:{name:'草莓汁',emoji:'🥤'},
+  rose:{name:'玫瑰',emoji:'🌹'},
+  chrysanthemum:{name:'菊花',emoji:'🌼'},
+  jasmine:{name:'茉莉花',emoji:'🤍'},
+  osmanthus:{name:'桂花',emoji:'🌺'},
+  lavender:{name:'薰衣草',emoji:'💜'},
+  hibiscus:{name:'木槿花',emoji:'🦩'},
+  chamomile:{name:'洋甘菊',emoji:'🌻'},
+  sakura:{name:'樱花',emoji:'🌸'},
+  honey:{name:'蜂蜜',emoji:'🍯'},
 };
 
 let token='';
@@ -235,6 +337,12 @@ let selectedBarId=null;
 let requestedBarSlotNumber=null;
 let drinkBarLoadedAt=0;
 let drinkBarRefreshPending=false;
+let flowerShopLoading=false;
+let beehiveLoading=false;
+let flowerConfigs=[];
+let flowerLevelConfigs=[];
+let playerFlowerRights=[];
+let beehiveData=null;
 
 function toggleFeatureDrawer(feature){
   if(activeFeature===feature){
@@ -248,6 +356,8 @@ function toggleFeatureDrawer(feature){
     inventory:'feature-drawer',
     'drink-shop':'drink-shop-drawer',
     'drink-bar':'drink-bar-drawer',
+    flower:'flower-drawer',
+    beehive:'beehive-drawer',
   };
   const drawer=document.getElementById(drawerIds[feature]);
   if(!drawer) return;
@@ -263,23 +373,21 @@ function toggleFeatureDrawer(feature){
     loadSatisfaction();
   }
   if(feature==='drink-bar') loadDrinkBars();
+  if(feature==='flower') loadFlowerShop();
+  if(feature==='beehive') loadBeehive();
 }
 
 function closeFeatureDrawer(){
   activeFeature=null;
-  document.getElementById('feature-drawer').classList.remove('open');
-  document.getElementById('feature-drawer').setAttribute('aria-hidden','true');
-  document.getElementById('growth-drawer').classList.remove('open');
-  document.getElementById('growth-drawer').setAttribute('aria-hidden','true');
-  document.getElementById('drink-shop-drawer').classList.remove('open');
-  document.getElementById('drink-shop-drawer').setAttribute('aria-hidden','true');
-  document.getElementById('drink-bar-drawer').classList.remove('open');
-  document.getElementById('drink-bar-drawer').setAttribute('aria-hidden','true');
+  for(const id of ['feature-drawer','growth-drawer','drink-shop-drawer','drink-bar-drawer','flower-drawer','beehive-drawer']){
+    const el=document.getElementById(id);
+    if(el){el.classList.remove('open');el.setAttribute('aria-hidden','true');}
+  }
   document.getElementById('drawer-shade').classList.remove('show');
-  document.getElementById('inventory-button').classList.remove('active');
-  document.getElementById('growth-button').classList.remove('active');
-  document.getElementById('drink-shop-button').classList.remove('active');
-  document.getElementById('drink-bar-button').classList.remove('active');
+  for(const id of ['inventory-button','growth-button','drink-shop-button','drink-bar-button','flower-button','beehive-button']){
+    const el=document.getElementById(id);
+    if(el) el.classList.remove('active');
+  }
 }
 
 async function ensureLogin(){
@@ -1169,6 +1277,7 @@ window.addEventListener('message',event=>{
   const worldFrame=document.getElementById('world-frame');
   if(event.source!==worldFrame.contentWindow) return;
   if(event.data?.type==='fruit-island:inventory-changed') loadInventory(true);
+  if(event.data?.type==='fruit-island:flower-changed') loadFlowerShop(true);
   if(event.data?.type==='fruit-island:open-drink-bar'){
     openDrinkBarSlot(Number(event.data.slotNumber));
   }
@@ -1200,6 +1309,222 @@ setInterval(()=>{
 // 页面初次加载时只更新状态与角标，不自动展开或结算吧台。
 loadInventory();
 loadDrinkBars();
+loadFlowerShop();
+loadBeehive();
+
+// ==================== 花卉商店 (Demo2.8) ====================
+
+async function loadFlowerShop(force=false){
+  if(flowerShopLoading&&!force) return;
+  flowerShopLoading=true;
+  const container=document.getElementById('flower-grid-container');
+  if(force) container.innerHTML='<div class="loading">正在刷新花卉列表…</div>';
+  if(!await ensureLogin()){
+    container.innerHTML='<div class="empty error">无法连接登录服务</div>';
+    flowerShopLoading=false;
+    return;
+  }
+  try{
+    const response=await fetch(`${GAME_URL}/game/init`,{
+      headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'花卉加载失败');
+    flowerConfigs=response.data?.flowerConfigs||[];
+    flowerLevelConfigs=response.data?.flowerLevelConfigs||[];
+    playerFlowerRights=response.data?.playerFlowerRights||[];
+    renderFlowerShop();
+    document.getElementById('flower-status').textContent='购买花卉种植权，在花园种植';
+  }catch(error){
+    container.innerHTML=`<div class="empty error">${escapeHtml(error.message||'花卉加载失败')}</div>`;
+  }finally{
+    flowerShopLoading=false;
+  }
+}
+
+function renderFlowerShop(){
+  const container=document.getElementById('flower-grid-container');
+  const ownedCount=document.getElementById('flower-owned-count');
+  ownedCount.textContent=String(playerFlowerRights.length);
+
+  if(flowerConfigs.length===0){
+    container.innerHTML='<div class="empty">暂无花卉配置</div>';
+    return;
+  }
+
+  container.innerHTML='<div class="flower-grid">'+flowerConfigs.map(cfg=>{
+    const meta=ITEM_META[cfg.flowerId]||{name:cfg.flowerId,emoji:'🌺'};
+    const right=playerFlowerRights.find(r=>r.flowerId===cfg.flowerId);
+    const isOwned=!!right;
+    const isMaxLevel=right&&right.flowerLevel>=cfg.maxLevel;
+    const currencyIcon=cfg.currencyType==='DIAMOND'?'💎':'🪙';
+    const priceText=`${currencyIcon} ${cfg.seedPrice}`;
+    const coeffText=`产蜜系数 ×${cfg.honeyCoefficient}`;
+
+    let actions='';
+    if(!isOwned){
+      actions=`<div class="flower-actions">
+        <button class="${cfg.currencyType==='DIAMOND'?'buy-diamond':'buy-gold'}"
+          onclick="purchaseFlower('${cfg.flowerId}')">购买 ${priceText}</button>
+      </div>`;
+    }else if(!isMaxLevel){
+      const nextLevel=right.flowerLevel+1;
+      const levelCfg=flowerLevelConfigs.find(l=>l.flowerId===cfg.flowerId&&l.flowerLevel===nextLevel);
+      const upgradeCost=levelCfg?levelCfg.upgradeGold:'?';
+      actions=`<div class="flower-actions">
+        <button class="upgrade" onclick="upgradeFlower('${cfg.flowerId}')">升级 Lv.${right.flowerLevel}→${nextLevel} 🪙${upgradeCost}</button>
+      </div>`;
+    }else{
+      actions=`<div class="max-tag">★ 已满级 Lv.${cfg.maxLevel}</div>`;
+    }
+
+    return `<div class="flower-card ${isOwned?'owned':''}">
+      <div class="flower-head">
+        <span class="flower-emoji">${meta.emoji}</span>
+        <span class="flower-name">${escapeHtml(cfg.name)}</span>
+        ${isOwned?`<span class="flower-level">Lv.${right.flowerLevel}</span>`:''}
+      </div>
+      <div class="flower-price">${isOwned?'已拥有':priceText}</div>
+      <div class="flower-coeff">${coeffText} · 成熟${cfg.growSeconds}s · 产量${cfg.yieldCount}</div>
+      ${actions}
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function purchaseFlower(flowerId){
+  const message=document.getElementById('flower-message');
+  message.className='beehive-message';
+  message.textContent='正在购买…';
+  try{
+    const response=await fetch(`${GAME_URL}/flower/purchase`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({flowerId}),
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'购买失败');
+    const meta=ITEM_META[flowerId]||{name:flowerId};
+    message.textContent=`已购买 ${meta.name} 种植权`;
+    await loadFlowerShop(true);
+    document.getElementById('world-frame').contentWindow
+      .postMessage({type:'fruit-island:flower-changed'},'*');
+  }catch(error){
+    message.className='beehive-message error';
+    message.textContent=error.message||'购买失败';
+  }
+}
+
+async function upgradeFlower(flowerId){
+  const message=document.getElementById('flower-message');
+  message.className='beehive-message';
+  message.textContent='正在升级…';
+  try{
+    const response=await fetch(`${GAME_URL}/flower/upgrade`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({flowerId}),
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'升级失败');
+    const meta=ITEM_META[flowerId]||{name:flowerId};
+    message.textContent=`${meta.name} 已升级到 Lv.${response.data.flowerLevel}`;
+    await loadFlowerShop(true);
+    document.getElementById('world-frame').contentWindow
+      .postMessage({type:'fruit-island:flower-changed'},'*');
+  }catch(error){
+    message.className='beehive-message error';
+    message.textContent=error.message||'升级失败';
+  }
+}
+
+// ==================== 蜂箱管理 (Demo2.8) ====================
+
+async function loadBeehive(force=false){
+  if(beehiveLoading&&!force) return;
+  beehiveLoading=true;
+  if(!await ensureLogin()){
+    beehiveLoading=false;
+    return;
+  }
+  try{
+    const response=await fetch(`${GAME_URL}/beehive/status`,{
+      headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'蜂箱状态获取失败');
+    beehiveData=response.data;
+    renderBeehive();
+  }catch(error){
+    document.getElementById('beehive-message').className='beehive-message error';
+    document.getElementById('beehive-message').textContent=error.message||'蜂箱状态获取失败';
+  }finally{
+    beehiveLoading=false;
+  }
+}
+
+function renderBeehive(){
+  if(!beehiveData){
+    document.getElementById('beehive-count').textContent='0';
+    document.getElementById('beehive-honey').textContent='0';
+    document.getElementById('beehive-buy-btn').disabled=true;
+    document.getElementById('beehive-collect-btn').disabled=true;
+    return;
+  }
+  const count=beehiveData.beehiveCount||0;
+  const honey=beehiveData.honeyStored||0;
+  document.getElementById('beehive-count').textContent=String(count);
+  document.getElementById('beehive-honey').textContent=String(honey);
+
+  const buyBtn=document.getElementById('beehive-buy-btn');
+  const collectBtn=document.getElementById('beehive-collect-btn');
+  const prices=[1000,2000,3000];
+  buyBtn.disabled=count>=3;
+  buyBtn.textContent=count>=3?'已达上限':`购买蜂箱 🪙${prices[count]||'?'}`;
+  collectBtn.disabled=honey<=0;
+
+  const badge=document.getElementById('beehive-badge');
+  badge.textContent=String(honey);
+  badge.style.display=honey>0?'block':'none';
+}
+
+async function purchaseBeehive(){
+  const message=document.getElementById('beehive-message');
+  message.className='beehive-message';
+  message.textContent='正在购买蜂箱…';
+  try{
+    const response=await fetch(`${GAME_URL}/beehive/purchase`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'购买失败');
+    beehiveData=response.data;
+    message.textContent=`蜂箱已增至 ${beehiveData.beehiveCount} 个`;
+    renderBeehive();
+    document.getElementById('world-frame').contentWindow
+      .postMessage({type:'fruit-island:player-changed'},'*');
+  }catch(error){
+    message.className='beehive-message error';
+    message.textContent=error.message||'购买失败';
+  }
+}
+
+async function collectHoney(){
+  const message=document.getElementById('beehive-message');
+  message.className='beehive-message';
+  message.textContent='正在收取蜂蜜…';
+  try{
+    const response=await fetch(`${GAME_URL}/beehive/collect`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`},
+    }).then(result=>result.json());
+    if(response.code!==0) throw new Error(response.message||'收取失败');
+    const collected=response.data?.honeyCollected||0;
+    message.textContent=`已收取 🍯 ${collected} 个蜂蜜`;
+    await loadBeehive(true);
+    await loadInventory(true);
+    document.getElementById('world-frame').contentWindow
+      .postMessage({type:'fruit-island:player-changed'},'*');
+  }catch(error){
+    message.className='beehive-message error';
+    message.textContent=error.message||'收取失败';
+  }
+}
 </script>
 </body>
 </html>

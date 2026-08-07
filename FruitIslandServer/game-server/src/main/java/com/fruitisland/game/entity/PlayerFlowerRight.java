@@ -7,17 +7,26 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/** 玩家永久花卉种植权。种植不会消耗该权限。 */
+/**
+ * 玩家永久花卉种植权。
+ */
 @Data
 @TableName("player_flower_right")
 public class PlayerFlowerRight {
+
     @TableId(type = IdType.AUTO)
     private Long id;
+
     private Long playerId;
+
     private String flowerId;
+
     private Integer flowerLevel;
-    private String purchaseCurrency;
-    private LocalDateTime purchaseTime;
+
+    private String unlockSource;
+
+    private LocalDateTime unlockTime;
+
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }
