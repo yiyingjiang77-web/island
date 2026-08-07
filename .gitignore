@@ -1,0 +1,11 @@
+.DS_Store
+
+# Cocos Creator generated files
+FruitIslandClient/node_modules/
+FruitIslandClient/library/
+FruitIslandClient/local/
+FruitIslandClient/temp/
+FruitIslandClient/build/
+
+# Java/Maven generated files
+FruitIslandServer/**/target/

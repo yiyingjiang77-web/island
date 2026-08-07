@@ -1,0 +1,32 @@
+{
+  "map": {
+    "width": 48,
+    "height": 48,
+    "gridSize": 120,
+    "worldSize": 5760,
+    "waterEdge": 1,
+    "beachWidth": 1
+  },
+
+  "spawn": {
+    "gx": 27,
+    "gy": 40
+  },
+
+  "buildings": [
+    { "id": "chicken_coop", "name": "鸡舍", "type": "animal", "gx": 35, "gy": 15, "width": 6, "height": 5, "prefab": "ChickenCoop", "unlockLevel": 1 },
+    { "id": "cow_barn", "name": "牛棚", "type": "animal", "gx": 25, "gy": 7, "width": 8, "height": 6, "prefab": "CowBarn", "unlockLevel": 1 },
+    { "id": "drink_shop", "name": "饮品店", "type": "shop", "gx": 18, "gy": 31, "width": 6, "height": 5, "prefab": "DrinkShop", "unlockLevel": 4 },
+    { "id": "cake_shop", "name": "蛋糕店", "type": "shop", "gx": 15, "gy": 22, "width": 6, "height": 5, "prefab": "CakeShop", "unlockLevel": 3 },
+    { "id": "exchange_shop", "name": "交易所", "type": "shop", "gx": 15, "gy": 14, "width": 6, "height": 4, "prefab": "ExchangeShop", "unlockLevel": 6 },
+    { "id": "dock", "name": "码头", "type": "dock", "gx": 25, "gy": 42, "width": 5, "height": 4, "prefab": "Dock", "unlockLevel": 1 },
+    { "id": "bee_house", "name": "蜂箱", "type": "decoration", "gx": 26, "gy": 20, "width": 2, "height": 2, "prefab": "BeeHouse", "unlockLevel": 5 }
+  ],
+
+  "zones": [
+    { "id": "flower_a", "name": "花园 A", "type": "flower", "gx": 25, "gy": 22, "width": 4, "height": 4, "unlockLevel": 10 },
+    { "id": "flower_b", "name": "花园 B", "type": "flower", "gx": 30, "gy": 22, "width": 4, "height": 4, "unlockLevel": 13 },
+    { "id": "forest", "name": "森林", "type": "explore", "gx": 5, "gy": 33, "width": 5, "height": 8, "unlockLevel": 8 },
+    { "id": "mine", "name": "矿山", "type": "explore", "gx": 5, "gy": 5, "width": 5, "height": 6, "unlockLevel": 10 }
+  ]
+}

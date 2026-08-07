@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(mysql --version)",
+      "Bash(mysqladmin ping *)",
+      "Bash(/Users/yy/Library/Java/JavaVirtualMachines/ms-17.0.16/Contents/Home/bin/java -version)",
+      "Bash(mvn --version)",
+      "Bash(mysql -u root -proot -e \"SELECT 1\")",
+      "Bash(mysql -u root -e \"SELECT 1\")",
+      "Bash(sudo mysql -u root -e \"SELECT 1\")",
+      "Bash(mysql -u root --socket=/tmp/mysql.sock -e \"SELECT 1\")",
+      "Read(//opt/homebrew/var/mysql/**)",
+      "Bash(brew services *)",
+      "Bash(mysql -u root --password=\"\" -e \"SELECT 1\")",
+      "Bash(JAVA_HOME=/Users/yy/Library/Java/JavaVirtualMachines/ms-17.0.16/Contents/Home mvn spring-boot:run -Dspring-boot.run.profiles=test -q)",
+      "Bash(echo \"user-center PID: $!\")",
+      "Bash(echo \"game-server PID: $!\")",
+      "Read(//private/tmp/**)",
+      "Bash(JAVA_HOME=/Users/yy/Library/Java/JavaVirtualMachines/ms-17.0.16/Contents/Home mvn install -DskipTests -q)",
+      "Bash(curl -s -X POST http://localhost:8081/auth/wechat/login -H 'Content-Type: application/json' -d '{\"code\":\"dev_test_001\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s http://localhost:8082/game/init -H 'Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiLlspvkuLsiLCJpYXQiOjE3ODUyMTMwMTcsImV4cCI6MTc4NTI5OTQxN30.LyqBapAppMEErQDoY3bOSlKzynGMW1DLrfwQhB8yFKX0pD1fXDFFtN8c6SXx8LDS')",
+      "Bash(curl -s http://localhost:8082/game/init)",
+      "Bash(open /Users/yy/Documents/island/FruitIslandClient/demo0-verify.html)"
+    ]
+  }
+}

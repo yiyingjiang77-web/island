@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="780" viewBox="0 0 1120 780">
+  <defs>
+    <pattern id="grid" width="14" height="14" patternUnits="userSpaceOnUse">
+      <path d="M 14 0 L 0 0 0 14" fill="none" stroke="#597b70" stroke-width="0.55" opacity="0.42"/>
+    </pattern>
+    <style>
+      text { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; fill: #463d35; }
+      .label { font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+      .small { font-size: 12px; }
+      .legend { font-size: 15px; }
+    </style>
+  </defs>
+
+  <rect width="1120" height="780" fill="#f6f1e8"/>
+  <text x="48" y="31" font-size="22" font-weight="700">果香小岛 48×48 地图布局参考</text>
+  <text x="705" y="31" font-size="13">每格 120px · 世界 5760×5760px · 仅作背景美术定位</text>
+
+  <!-- Map frame: 48px origin, 14px per logical cell -->
+  <rect x="48" y="52" width="672" height="672" rx="18" fill="#80d7df" stroke="#315d65" stroke-width="2"/>
+  <rect x="62" y="66" width="644" height="644" rx="52" fill="#f8e7ad" stroke="#ecce84" stroke-width="1.5"/>
+  <rect x="76" y="80" width="616" height="616" rx="66" fill="#b9d68e" stroke="#759b68" stroke-width="2"/>
+  <rect x="48" y="52" width="672" height="672" fill="url(#grid)"/>
+
+  <!-- Permanent and functional map items, exact gx/gy/width/height -->
+  <g id="zones">
+    <rect x="118" y="122" width="70" height="84" rx="8" fill="#aca7a1" stroke="#625f5b" stroke-width="2"/>
+    <text class="label" x="153" y="164">矿山</text>
+
+    <rect x="118" y="514" width="70" height="112" rx="8" fill="#6ba477" stroke="#3b6e49" stroke-width="2"/>
+    <text class="label" x="153" y="570">森林</text>
+
+    <rect x="398" y="360" width="56" height="56" rx="8" fill="#d9a6c8" stroke="#946686" stroke-width="2"/>
+    <text class="label" x="426" y="388">花园A</text>
+
+    <rect x="468" y="360" width="56" height="56" rx="8" fill="#d9a6c8" stroke="#946686" stroke-width="2"/>
+    <text class="label" x="496" y="388">花园B</text>
+  </g>
+
+  <g id="buildings" fill="#f5c881" stroke="#8c6430" stroke-width="2">
+    <rect x="538" y="262" width="84" height="70" rx="8"/>
+    <text class="label" x="580" y="297">鸡舍</text>
+
+    <rect x="398" y="150" width="112" height="84" rx="8"/>
+    <text class="label" x="454" y="192">牛棚</text>
+
+    <rect x="300" y="486" width="84" height="70" rx="8" fill="#f3a9a3" stroke="#9d5754"/>
+    <text class="label" x="342" y="521">饮品店</text>
+
+    <rect x="258" y="360" width="84" height="70" rx="8" fill="#f6c0d6" stroke="#a45d7d"/>
+    <text class="label" x="300" y="395">蛋糕店</text>
+
+    <rect x="258" y="248" width="84" height="56" rx="8" fill="#8fc7bc" stroke="#4c7f75"/>
+    <text class="label" x="300" y="276">交易所</text>
+
+    <rect x="398" y="640" width="70" height="56" rx="8" fill="#b68a62" stroke="#6f4e32"/>
+    <text class="label" x="433" y="668">码头</text>
+
+    <rect x="412" y="332" width="28" height="28" rx="6" fill="#f0d26c" stroke="#98812c"/>
+    <text class="label" x="426" y="346" font-size="10">蜂箱</text>
+  </g>
+
+  <g id="spawn">
+    <circle cx="433" cy="619" r="10" fill="#ffffff" stroke="#d35654" stroke-width="3"/>
+    <circle cx="433" cy="619" r="3" fill="#d35654"/>
+    <text x="449" y="623" class="small" font-weight="700">出生点</text>
+  </g>
+
+  <!-- Visual route guide; not baked into terrain -->
+  <path d="M433 668 C430 615 380 575 342 521 C315 480 305 435 300 395 C294 350 296 315 300 276 C338 238 398 217 454 192 C500 212 548 253 580 297"
+        fill="none" stroke="#fff6d7" stroke-width="17" stroke-linecap="round" stroke-linejoin="round" opacity="0.72"/>
+  <path d="M433 668 C430 615 380 575 342 521 C315 480 305 435 300 395 C294 350 296 315 300 276 C338 238 398 217 454 192 C500 212 548 253 580 297"
+        fill="none" stroke="#c8a96f" stroke-width="2" stroke-dasharray="7 7" opacity="0.9"/>
+
+  <g transform="translate(760 75)">
+    <text x="0" y="0" font-size="20" font-weight="700">背景制作约束</text>
+    <text class="legend" x="0" y="38">• 蓝色边缘：海水，可循环纹理</text>
+    <text class="legend" x="0" y="69">• 米黄色：沙滩与海岸过渡</text>
+    <text class="legend" x="0" y="100">• 浅绿色：干净、平涂的草地</text>
+    <text class="legend" x="0" y="131">• 矿山可固定进背景层</text>
+    <text class="legend" x="0" y="162">• 道路虚线只作动线参考</text>
+    <text class="legend" x="0" y="193">• 所有建筑、农田、树木独立叠加</text>
+
+    <text x="0" y="248" font-size="20" font-weight="700">竖屏游览动线</text>
+    <text class="legend" x="0" y="286">南侧码头 / 出生点</text>
+    <text class="legend" x="22" y="316">↓ 饮品店</text>
+    <text class="legend" x="22" y="346">↓ 蛋糕店与花园</text>
+    <text class="legend" x="22" y="376">↓ 交易所与蜂箱</text>
+    <text class="legend" x="22" y="406">↓ 牛棚与鸡舍</text>
+    <text class="legend" x="22" y="436">↓ 北侧矿山</text>
+
+    <text x="0" y="493" font-size="20" font-weight="700">配色基准</text>
+    <rect x="0" y="514" width="42" height="42" rx="8" fill="#b9d68e" stroke="#6f8f62"/>
+    <rect x="54" y="514" width="42" height="42" rx="8" fill="#f8e7ad" stroke="#c7aa69"/>
+    <rect x="108" y="514" width="42" height="42" rx="8" fill="#80d7df" stroke="#559ca3"/>
+    <rect x="162" y="514" width="42" height="42" rx="8" fill="#f3a9a3" stroke="#a05e59"/>
+    <rect x="216" y="514" width="42" height="42" rx="8" fill="#f6c0d6" stroke="#a46983"/>
+  </g>
+</svg>
