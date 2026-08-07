@@ -2,7 +2,7 @@
  * 浏览器演示页使用的地图配置。
  *
  * 该文件使用普通 script，而不是 fetch JSON 或 ES module。这样从 file:// 直接打开
- * demo2.4-island.html 时也能读取配置，不会触发本地文件跨域限制。
+ * demo2.8-island.html 时也能读取配置，不会触发本地文件跨域限制。
  */
 globalThis.MapConfig = Object.freeze({
   /**
@@ -18,7 +18,7 @@ globalThis.MapConfig = Object.freeze({
    * 替换图片时如何调整：
    * - 只改变图片外观且锚点、画布留白不变时，不需要修改 gx/gy。
    * - 图片尺寸、透明留白或锚点变化后，先调整 gx/gy，使桌椅贴近小屋两侧，
-   *   再在 demo2.4-world.html 中同步检查绘制尺寸和 drinkBarRects 碰撞范围。
+   *   再在 demo2.8-world.html 中同步检查绘制尺寸和 drinkBarRects 碰撞范围。
    * - 调整后必须确认六套桌椅互不重叠、不遮挡小屋入口，并逐个点击验证槽位号。
    */
   DRINK_BARS: Object.freeze([

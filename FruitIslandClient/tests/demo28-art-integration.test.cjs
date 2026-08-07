@@ -13,9 +13,7 @@ function inlineScripts(html) {
     .filter(Boolean);
 }
 
-test('Demo2.8 keeps Demo2.4 intact and opens the new world layer', () => {
-  assert.ok(fs.existsSync(path.join(clientRoot, 'demo2.4-island.html')));
-  assert.ok(fs.existsSync(path.join(clientRoot, 'demo2.4-world.html')));
+test('Demo2.8 island embeds the Demo2.8 world layer', () => {
   assert.match(page, /<title>果香小岛 Demo2\.8/);
   assert.match(page, /src="\.\/demo2\.8-world\.html"/);
   assert.doesNotMatch(page, /src="\.\/demo2\.4-world\.html"/);
