@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — 建立畜牧配置、玩家状态与 JWT 读取接缝
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

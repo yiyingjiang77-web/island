@@ -1,6 +1,6 @@
 # Demo2.8 作物·花卉·蜂蜜系统 + 农田扩建
 
-**Status:** ready-for-agent  
+**Status:** resolved  
 **重写日期:** 2026-08-01（基于 Demo3.0 设计重写原 Demo2.8）
 
 ## Problem Statement

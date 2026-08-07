@@ -88,7 +88,8 @@ class PlayerLandServiceImplTest {
 
         assertEquals("PLANTED", result.getStatus());
         assertEquals(2, result.getCropLevel());
-        assertEquals(50, result.getGrowSecondsSnapshot());
+        // 精通加成：Lv5 玩家生长倍率 0.975，50 * 0.975 = 48.75 → ceil = 49
+        assertEquals(49, result.getGrowSecondsSnapshot());
         assertEquals(3, result.getYieldCountSnapshot());
         assertEquals(8, result.getHarvestExpSnapshot());
         assertEquals("PERMANENT", result.getAccessType());

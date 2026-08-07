@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — 解锁并升级牛棚
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

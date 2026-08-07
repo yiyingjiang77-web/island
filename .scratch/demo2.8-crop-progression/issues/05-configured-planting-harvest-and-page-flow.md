@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — 作物逐级升级并发放五十条固定配方; 03 — 通过种子商店购买额外永久种植权; 04 — 配置四个农田区块并按相邻规则购买六十四格土地
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

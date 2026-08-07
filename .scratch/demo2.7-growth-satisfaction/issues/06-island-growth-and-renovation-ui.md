@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 — 结算每日满意度与五档自动礼品
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

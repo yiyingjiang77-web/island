@@ -13,6 +13,7 @@ import com.fruitisland.game.mapper.PlayerIslandLevelRewardClaimMapper;
 import com.fruitisland.game.service.GamePlayerService;
 import com.fruitisland.game.service.PlayerCropService;
 import com.fruitisland.game.service.PlayerRecipeService;
+import com.fruitisland.game.util.LevelFormulaUtil;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -87,12 +88,17 @@ public class GamePlayerServiceImpl extends BaseServiceImplX<GamePlayerMapper, Ga
 
     private ExpGainResult applyExperience(GamePlayer player, int amount) {
         int beforeLevel = player.getLevel() == null ? 1 : player.getLevel();
-        int cumulativeExp = (player.getCumulativeExp() == null ? 0 : player.getCumulativeExp()) + amount;
+        long cumulativeExp = (player.getCumulativeExp() == null ? 0L : player.getCumulativeExp().longValue()) + amount;
 
         List<IslandLevelConfig> configs = islandLevelConfigMapper.selectList(
                 new LambdaQueryWrapper<IslandLevelConfig>()
                         .eq(IslandLevelConfig::getEnabled, 1)
                         .orderByAsc(IslandLevelConfig::getLevel));
+
+        // ── 等级计算：Lv1-20 从表查，Lv21+ 用公式 ──
+        int tableMaxLevel = configs.isEmpty() ? 1 : configs.get(configs.size() - 1).getLevel();
+        long tableMaxThreshold = configs.isEmpty() ? 0L
+                : configs.get(configs.size() - 1).getCumulativeExp().longValue();
 
         int newLevel = beforeLevel;
         for (IslandLevelConfig config : configs) {
@@ -100,18 +106,30 @@ public class GamePlayerServiceImpl extends BaseServiceImplX<GamePlayerMapper, Ga
                 newLevel = Math.max(newLevel, config.getLevel());
             }
         }
+        // 超过表覆盖范围时用公式递推（Lv21+）
+        if (cumulativeExp >= tableMaxThreshold && tableMaxLevel >= LevelFormulaUtil.MAX_TABLE_LEVEL) {
+            newLevel = LevelFormulaUtil.calculateLevelBeyondTable(cumulativeExp, tableMaxThreshold);
+        }
         final int resolvedLevel = newLevel;
 
-        player.setCumulativeExp(cumulativeExp);
+        player.setCumulativeExp((int) Math.min(cumulativeExp, Integer.MAX_VALUE));
         player.setLevel(resolvedLevel);
-        int currentLevelFloor = configs.stream()
-                .filter(c -> c.getLevel() <= resolvedLevel)
-                .map(IslandLevelConfig::getCumulativeExp)
-                .max(Integer::compareTo)
-                .orElse(0);
-        player.setExp(cumulativeExp - currentLevelFloor);
+
+        // ── 当前等级经验下限（用于兼容 exp 字段） ──
+        long currentLevelFloor;
+        if (resolvedLevel <= tableMaxLevel) {
+            currentLevelFloor = configs.stream()
+                    .filter(c -> c.getLevel() <= resolvedLevel)
+                    .map(IslandLevelConfig::getCumulativeExp)
+                    .max(Integer::compareTo)
+                    .orElse(0);
+        } else {
+            currentLevelFloor = LevelFormulaUtil.levelFloorBeyond(resolvedLevel, tableMaxThreshold);
+        }
+        player.setExp((int) (cumulativeExp - currentLevelFloor));
         updateById(player);
 
+        // ── 奖励发放（Lv1-20 表配置，Lv11+ 可能为 NULL） ──
         Set<Integer> claimedLevels = new HashSet<>();
         claimMapper.selectList(new LambdaQueryWrapper<PlayerIslandLevelRewardClaim>()
                         .eq(PlayerIslandLevelRewardClaim::getPlayerId, player.getId()))
@@ -120,10 +138,20 @@ public class GamePlayerServiceImpl extends BaseServiceImplX<GamePlayerMapper, Ga
         List<IslandLevelRewardVO> levelRewards = new ArrayList<>();
         for (IslandLevelConfig config : configs) {
             if (config.getLevel() <= resolvedLevel && !claimedLevels.contains(config.getLevel())) {
-                playerCropService.grantPermanent(
-                        player.getId(), config.getCropId(), "ISLAND_LEVEL_REWARD");
-                playerRecipeService.grantPermanent(
-                        player.getId(), config.getRecipeId(), "ISLAND_LEVEL_REWARD");
+                // Lv11+ 可能没有作物/配方奖励（cropId/recipeId 为 NULL）
+                if (config.getCropId() != null) {
+                    playerCropService.grantPermanent(
+                            player.getId(), config.getCropId(), "ISLAND_LEVEL_REWARD");
+                }
+                if (config.getRecipeId() != null) {
+                    playerRecipeService.grantPermanent(
+                            player.getId(), config.getRecipeId(), "ISLAND_LEVEL_REWARD");
+                }
+                // Lv5 额外授予 milk_ice_cream（使用牛棚牛奶，不依赖作物解锁）
+                if (config.getLevel() == 5) {
+                    playerRecipeService.grantPermanent(
+                            player.getId(), "milk_ice_cream", "ISLAND_LEVEL_REWARD");
+                }
                 recordClaim(player.getId(), config.getLevel());
                 levelRewards.add(new IslandLevelRewardVO(
                         config.getLevel(),
@@ -136,18 +164,25 @@ public class GamePlayerServiceImpl extends BaseServiceImplX<GamePlayerMapper, Ga
             }
         }
 
-        Integer nextLevelThreshold = configs.stream()
-                .filter(c -> c.getLevel() > resolvedLevel)
-                .map(IslandLevelConfig::getCumulativeExp)
-                .findFirst()
-                .orElse(null);
+        // ── 下一级累计经验阈值 ──
+        Integer nextLevelThreshold;
+        if (resolvedLevel < tableMaxLevel) {
+            nextLevelThreshold = configs.stream()
+                    .filter(c -> c.getLevel() > resolvedLevel)
+                    .map(IslandLevelConfig::getCumulativeExp)
+                    .findFirst()
+                    .orElse(null);
+        } else {
+            // Lv20+ 用公式计算
+            nextLevelThreshold = (int) LevelFormulaUtil.nextThresholdBeyond(resolvedLevel, tableMaxThreshold);
+        }
 
         int levelsGained = resolvedLevel - beforeLevel;
         return new ExpGainResult(
                 amount,
                 beforeLevel,
                 resolvedLevel,
-                cumulativeExp,
+                (int) Math.min(cumulativeExp, Integer.MAX_VALUE),
                 nextLevelThreshold,
                 levelsGained,
                 levelRewards);

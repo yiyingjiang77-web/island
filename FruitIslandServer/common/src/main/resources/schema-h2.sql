@@ -58,8 +58,8 @@ CREATE TABLE IF NOT EXISTS player_level_config (
 CREATE TABLE IF NOT EXISTS island_level_config (
     level INT PRIMARY KEY,
     cumulative_exp INT NOT NULL,
-    crop_id VARCHAR(64) NOT NULL,
-    recipe_id VARCHAR(64) NOT NULL,
+    crop_id VARCHAR(64),
+    recipe_id VARCHAR(64),
     material_source_hint VARCHAR(255),
     shop_capability_hint VARCHAR(255),
     enabled INT NOT NULL DEFAULT 1,
@@ -191,7 +191,9 @@ CREATE TABLE IF NOT EXISTS recipe_config (
     sale_exp INT NOT NULL DEFAULT 0,
     bar_sale_interval_seconds INT NOT NULL DEFAULT 180,
     order_weight INT NOT NULL DEFAULT 1,
-    enabled INT NOT NULL DEFAULT 1
+    enabled INT NOT NULL DEFAULT 1,
+    craft_station VARCHAR(16) NOT NULL DEFAULT 'drink_bar',
+    obtain_channel VARCHAR(32) NOT NULL DEFAULT 'island_level'
 );
 
 CREATE TABLE IF NOT EXISTS recipe_material (
@@ -434,31 +436,61 @@ INSERT INTO land_config (area_type, block_id, grid_x, grid_y, unlock_level, buy_
 ('FLOWER','Flower-B',0,2,13,800),('FLOWER','Flower-B',1,2,13,1200),('FLOWER','Flower-B',2,2,13,1500),('FLOWER','Flower-B',3,2,13,1200),
 ('FLOWER','Flower-B',0,3,13,800),('FLOWER','Flower-B',1,3,13,1200),('FLOWER','Flower-B',2,3,13,1200),('FLOWER','Flower-B',3,3,13,1500);
 
--- Item Config (基础作物 + 花卉 + 蜂蜜 + 材料)
+-- Item Config (基础作物 + 花卉 + 蜂蜜 + 材料 + 成品)
 INSERT INTO item_config (id, name, type, icon, sell_price) VALUES
-('strawberry','草莓','CROP','strawberry',5),
-('carrot','胡萝卜','CROP','carrot',8),
-('tomato','番茄','CROP','tomato',6),
-('moonberry','月光莓','CROP','moonberry',120),
-('orange','橙子','CROP','orange',10),
-('blueberry','蓝莓','CROP','blueberry',12),
-('apple','苹果','CROP','apple',14),
-('watermelon','西瓜','CROP','watermelon',16),
-('wheat','小麦','CROP','wheat',10),
-('lemon','柠檬','CROP','lemon',14),
-('cucumber','黄瓜','CROP','cucumber',12),
-('milk','牛奶','MATERIAL','milk',0),
-('egg','鸡蛋','MATERIAL','egg',0),
-('strawberry_juice','草莓汁','DRINK','strawberry_juice',0),
-('rose','玫瑰','FLOWER','rose',5),
-('chrysanthemum','菊花','FLOWER','chrysanthemum',3),
-('jasmine','茉莉花','FLOWER','jasmine',4),
-('osmanthus','桂花','FLOWER','osmanthus',5),
-('lavender','薰衣草','FLOWER','lavender',6),
-('hibiscus','洛神花','FLOWER','hibiscus',4),
-('chamomile','洋甘菊','FLOWER','chamomile',3),
-('sakura','樱花','FLOWER','sakura',10),
-('honey','蜂蜜','MATERIAL','honey',15);
+('strawberry','草莓','CROP','strawberry',2),
+('carrot','胡萝卜','CROP','carrot',2),
+('tomato','番茄','CROP','tomato',2),
+('moonberry','月光莓','CROP','moonberry',10),
+('orange','橙子','CROP','orange',3),
+('blueberry','蓝莓','CROP','blueberry',3),
+('apple','苹果','CROP','apple',4),
+('watermelon','西瓜','CROP','watermelon',5),
+('wheat','小麦','CROP','wheat',3),
+('lemon','柠檬','CROP','lemon',5),
+('cucumber','黄瓜','CROP','cucumber',4),
+('milk','牛奶','MATERIAL','milk',2),
+('egg','鸡蛋','MATERIAL','egg',2),
+('strawberry_juice','草莓汁','DRINK','strawberry_juice',10),
+('carrot_juice','胡萝卜汁','DRINK','carrot_juice',12),
+('orange_juice','橙汁','DRINK','orange_juice',14),
+('tomato_juice','番茄汁','DRINK','tomato_juice',14),
+('blueberry_juice','蓝莓汁','DRINK','blueberry_juice',12),
+('milk_ice_cream','牛奶冰淇淋','DRINK','milk_ice_cream',12),
+('apple_carrot_juice','苹果胡萝卜汁','DRINK','apple_carrot_juice',16),
+('watermelon_milk_ice_cream','西瓜牛奶冰淇淋','DRINK','watermelon_milk_ice_cream',22),
+('lemon_milk_ice_cream','柠檬牛奶冰淇淋','DRINK','lemon_milk_ice_cream',22),
+('cucumber_apple_juice','黄瓜苹果汁','DRINK','cucumber_apple_juice',18),
+('rose','玫瑰','FLOWER','rose',8),
+('chrysanthemum','菊花','FLOWER','chrysanthemum',5),
+('jasmine','茉莉花','FLOWER','jasmine',6),
+('osmanthus','桂花','FLOWER','osmanthus',10),
+('lavender','薰衣草','FLOWER','lavender',12),
+('hibiscus','洛神花','FLOWER','hibiscus',8),
+('chamomile','洋甘菊','FLOWER','chamomile',5),
+('sakura','樱花','FLOWER','sakura',15),
+('honey','蜂蜜','MATERIAL','honey',8),
+('strawberry_cake','草莓蛋糕','CAKE','strawberry_cake',60),
+('carrot_cake','胡萝卜蛋糕','CAKE','carrot_cake',48),
+('apple_cake','苹果蛋糕','CAKE','apple_cake',56),
+('blueberry_cake','蓝莓蛋糕','CAKE','blueberry_cake',64),
+('lemon_cake','柠檬蛋糕','CAKE','lemon_cake',72),
+('rose_cake','玫瑰蛋糕','CAKE','rose_cake',60),
+('chrysanthemum_cake','菊花酥','CAKE','chrysanthemum_cake',40),
+('jasmine_mousse','茉莉慕斯','CAKE','jasmine_mousse',64),
+('osmanthus_cake','桂花糕','CAKE','osmanthus_cake',72),
+('lavender_macaron','薰衣草马卡龙','CAKE','lavender_macaron',80),
+('hibiscus_jelly','洛神花果冻','CAKE','hibiscus_jelly',52),
+('sakura_cake','樱花蛋糕','CAKE','sakura_cake',100),
+('chamomile_cookie','洋甘菊饼干','CAKE','chamomile_cookie',44),
+('mushroom_pie','蘑菇咸派','CAKE','mushroom_pie',48),
+('shiitake_bun','香菇芝士包','CAKE','shiitake_bun',56),
+('chanterelle_tart','鸡油菌塔','CAKE','chanterelle_tart',64),
+('truffle_cake','松露巧克力蛋糕','CAKE','truffle_cake',128),
+('mushroom','口蘑','MATERIAL','mushroom',5),
+('shiitake','香菇','MATERIAL','shiitake',8),
+('chanterelle','鸡油菌','MATERIAL','chanterelle',15),
+('truffle','松露','MATERIAL','truffle',40);
 
 INSERT INTO crop_config
 (crop_id,name,rarity,reward_eligible,permanent_unlock_enabled,upgrade_enabled,
@@ -477,59 +509,102 @@ INSERT INTO crop_config
 
 INSERT INTO recipe_config
 (id,name,output_item,make_time,unlock_level,sale_gold,sale_exp,
- bar_sale_interval_seconds,order_weight,enabled) VALUES
-('strawberry_juice','草莓汁','strawberry_juice',0,1,30,5,180,100,1),
-('carrot_juice','胡萝卜汁','carrot_juice',0,2,35,5,180,100,1),
-('orange_juice','橙汁','orange_juice',0,3,40,6,180,100,1),
-('tomato_juice','番茄汁','tomato_juice',0,4,40,6,180,100,1),
-('milk_ice_cream','牛奶冰淇淋','milk_ice_cream',0,5,55,8,180,100,1),
-('apple_carrot_juice','苹果胡萝卜汁','apple_carrot_juice',0,6,50,7,180,100,1),
-('watermelon_milk_ice_cream','西瓜牛奶冰淇淋','watermelon_milk_ice_cream',0,7,65,9,180,100,1),
-('strawberry_cake','草莓蛋糕','strawberry_cake',0,8,80,12,180,100,1),
-('lemon_milk_ice_cream','柠檬牛奶冰淇淋','lemon_milk_ice_cream',0,9,70,10,180,100,1),
-('cucumber_apple_juice','黄瓜苹果汁','cucumber_apple_juice',0,10,60,8,180,100,1);
+ bar_sale_interval_seconds,order_weight,enabled,craft_station,obtain_channel) VALUES
+('strawberry_juice','草莓汁','strawberry_juice',0,1,25,10,180,100,1,'drink_bar','island_level'),
+('carrot_juice','胡萝卜汁','carrot_juice',0,2,30,12,180,100,1,'drink_bar','island_level'),
+('orange_juice','橙汁','orange_juice',0,3,35,15,180,100,1,'drink_bar','island_level'),
+('tomato_juice','番茄汁','tomato_juice',0,4,35,15,180,100,1,'drink_bar','island_level'),
+('blueberry_juice','蓝莓汁','blueberry_juice',0,5,30,12,180,100,1,'drink_bar','island_level'),
+('milk_ice_cream','牛奶冰淇淋','milk_ice_cream',0,5,30,18,180,100,1,'drink_bar','island_level'),
+('apple_carrot_juice','苹果胡萝卜汁','apple_carrot_juice',0,6,40,20,180,100,1,'drink_bar','island_level'),
+('watermelon_milk_ice_cream','西瓜牛奶冰淇淋','watermelon_milk_ice_cream',0,7,55,25,180,100,1,'drink_bar','island_level'),
+('strawberry_cake','草莓蛋糕','strawberry_cake',0,8,150,30,180,100,1,'cake_shop','island_level'),
+('lemon_milk_ice_cream','柠檬牛奶冰淇淋','lemon_milk_ice_cream',0,9,55,30,180,100,1,'drink_bar','island_level'),
+('cucumber_apple_juice','黄瓜苹果汁','cucumber_apple_juice',0,10,45,25,180,100,1,'drink_bar','island_level');
+
+-- 蛋糕类配方（Demo2.10）
+INSERT INTO recipe_config
+(id,name,output_item,make_time,unlock_level,sale_gold,sale_exp,
+ bar_sale_interval_seconds,order_weight,enabled,craft_station,obtain_channel) VALUES
+('carrot_cake','胡萝卜蛋糕','carrot_cake',0,8,120,25,180,100,1,'cake_shop','island_level'),
+('apple_cake','苹果蛋糕','apple_cake',0,8,140,28,180,100,1,'cake_shop','island_level'),
+('blueberry_cake','蓝莓蛋糕','blueberry_cake',0,8,160,32,180,100,1,'cake_shop','island_level'),
+('lemon_cake','柠檬蛋糕','lemon_cake',0,8,180,35,180,100,1,'cake_shop','island_level'),
+('rose_cake','玫瑰蛋糕','rose_cake',0,8,150,35,180,100,1,'cake_shop','exchange_shop'),
+('chrysanthemum_cake','菊花酥','chrysanthemum_cake',0,8,100,20,180,100,1,'cake_shop','exchange_shop'),
+('jasmine_mousse','茉莉慕斯','jasmine_mousse',0,8,160,32,180,100,1,'cake_shop','exchange_shop'),
+('osmanthus_cake','桂花糕','osmanthus_cake',0,8,180,35,180,100,1,'cake_shop','exchange_shop'),
+('lavender_macaron','薰衣草马卡龙','lavender_macaron',0,8,200,45,180,100,1,'cake_shop','exchange_shop'),
+('hibiscus_jelly','洛神花果冻','hibiscus_jelly',0,8,130,28,180,100,1,'cake_shop','exchange_shop'),
+('sakura_cake','樱花蛋糕','sakura_cake',0,8,250,50,180,100,1,'cake_shop','exchange_shop'),
+('chamomile_cookie','洋甘菊饼干','chamomile_cookie',0,8,110,22,180,100,1,'cake_shop','exchange_shop'),
+('mushroom_pie','蘑菇咸派','mushroom_pie',0,8,120,25,180,100,1,'cake_shop','exchange_shop'),
+('shiitake_bun','香菇芝士包','shiitake_bun',0,8,140,28,180,100,1,'cake_shop','exchange_shop'),
+('chanterelle_tart','鸡油菌塔','chanterelle_tart',0,8,160,32,180,100,1,'cake_shop','exchange_shop'),
+('truffle_cake','松露巧克力蛋糕','truffle_cake',0,8,320,70,180,100,1,'cake_shop','exchange_shop');
 
 INSERT INTO recipe_material (recipe_id,item_id,count) VALUES
 ('strawberry_juice','strawberry',2),
 ('carrot_juice','carrot',2),
 ('orange_juice','orange',2),
 ('tomato_juice','tomato',2),
+('blueberry_juice','blueberry',2),
 ('milk_ice_cream','milk',2),
 ('apple_carrot_juice','apple',1),
 ('apple_carrot_juice','carrot',1),
 ('watermelon_milk_ice_cream','watermelon',2),
 ('watermelon_milk_ice_cream','milk',1),
-('strawberry_cake','strawberry',2),
-('strawberry_cake','wheat',2),
-('strawberry_cake','egg',1),
+('strawberry_cake','strawberry',3),
+('strawberry_cake','wheat',3),
+('strawberry_cake','egg',2),
+('strawberry_cake','milk',1),
 ('lemon_milk_ice_cream','lemon',2),
 ('lemon_milk_ice_cream','milk',1),
 ('cucumber_apple_juice','cucumber',1),
 ('cucumber_apple_juice','apple',1);
 
+-- 蛋糕类配方材料（Demo2.10）
+INSERT INTO recipe_material (recipe_id,item_id,count) VALUES
+('carrot_cake','carrot',3),('carrot_cake','wheat',3),('carrot_cake','egg',2),('carrot_cake','milk',1),
+('apple_cake','apple',3),('apple_cake','wheat',3),('apple_cake','egg',1),('apple_cake','milk',1),
+('blueberry_cake','blueberry',3),('blueberry_cake','wheat',3),('blueberry_cake','egg',1),('blueberry_cake','milk',1),
+('lemon_cake','lemon',2),('lemon_cake','wheat',3),('lemon_cake','apple',1),('lemon_cake','milk',1),
+('rose_cake','rose',2),('rose_cake','wheat',2),('rose_cake','egg',1),
+('chrysanthemum_cake','chrysanthemum',2),('chrysanthemum_cake','wheat',2),('chrysanthemum_cake','milk',1),
+('jasmine_mousse','jasmine',2),('jasmine_mousse','wheat',1),('jasmine_mousse','egg',2),('jasmine_mousse','milk',1),
+('osmanthus_cake','osmanthus',2),('osmanthus_cake','wheat',2),('osmanthus_cake','honey',1),
+('lavender_macaron','lavender',1),('lavender_macaron','wheat',1),('lavender_macaron','egg',2),('lavender_macaron','milk',1),
+('hibiscus_jelly','hibiscus',2),('hibiscus_jelly','honey',1),('hibiscus_jelly','milk',1),
+('sakura_cake','sakura',2),('sakura_cake','wheat',2),('sakura_cake','egg',1),('sakura_cake','milk',1),
+('chamomile_cookie','chamomile',2),('chamomile_cookie','wheat',2),('chamomile_cookie','egg',1),
+('mushroom_pie','mushroom',3),('mushroom_pie','wheat',2),('mushroom_pie','egg',1),('mushroom_pie','milk',1),
+('shiitake_bun','shiitake',3),('shiitake_bun','wheat',2),('shiitake_bun','milk',1),
+('chanterelle_tart','chanterelle',2),('chanterelle_tart','wheat',1),('chanterelle_tart','egg',1),('chanterelle_tart','milk',1),
+('truffle_cake','truffle',1),('truffle_cake','wheat',2),('truffle_cake','egg',1),('truffle_cake','milk',1);
+
 INSERT INTO crop_level_config
 (crop_id,crop_level,grow_seconds,yield_count,harvest_exp,upgrade_gold) VALUES
-('strawberry',1,60,2,4,0),('strawberry',2,57,3,5,200),('strawberry',3,54,3,5,400),('strawberry',4,51,4,6,800),('strawberry',5,48,4,6,1400),
-('strawberry',6,45,5,7,2200),('strawberry',7,42,5,8,3200),('strawberry',8,39,6,9,4400),('strawberry',9,36,6,10,5800),('strawberry',10,30,7,11,7400),
-('carrot',1,180,3,6,0),('carrot',2,171,4,7,400),('carrot',3,162,4,8,800),('carrot',4,153,5,9,1600),('carrot',5,144,5,10,2800),
-('carrot',6,135,6,11,4400),('carrot',7,126,6,12,6400),('carrot',8,117,7,14,8800),('carrot',9,108,7,15,11600),('carrot',10,90,8,17,14800),
-('orange',1,240,3,8,0),('orange',2,228,4,9,500),('orange',3,216,4,10,1000),('orange',4,204,5,12,2000),('orange',5,192,5,13,3500),
-('orange',6,180,6,14,5500),('orange',7,168,6,16,8000),('orange',8,156,7,18,11000),('orange',9,144,7,20,14500),('orange',10,120,8,22,18500),
-('tomato',1,240,3,8,0),('tomato',2,228,4,9,500),('tomato',3,216,4,10,1000),('tomato',4,204,5,12,2000),('tomato',5,192,5,13,3500),
-('tomato',6,180,6,14,5500),('tomato',7,168,6,16,8000),('tomato',8,156,7,18,11000),('tomato',9,144,7,20,14500),('tomato',10,120,8,22,18500),
-('blueberry',1,300,4,10,0),('blueberry',2,285,5,12,600),('blueberry',3,270,5,13,1200),('blueberry',4,255,6,14,2400),('blueberry',5,240,6,16,4200),
-('blueberry',6,225,7,18,6600),('blueberry',7,210,7,20,9600),('blueberry',8,195,8,22,13200),('blueberry',9,180,8,25,17400),('blueberry',10,150,8,28,22200),
-('apple',1,360,4,12,0),('apple',2,342,5,14,700),('apple',3,324,5,16,1400),('apple',4,306,6,17,2800),('apple',5,288,6,19,4900),
-('apple',6,270,7,22,7700),('apple',7,252,7,24,11200),('apple',8,234,8,27,15400),('apple',9,216,8,30,20300),('apple',10,180,8,34,25900),
-('watermelon',1,480,3,14,0),('watermelon',2,456,4,16,900),('watermelon',3,432,4,18,1800),('watermelon',4,408,5,20,3600),('watermelon',5,384,5,22,6300),
-('watermelon',6,360,6,25,9900),('watermelon',7,336,6,28,14400),('watermelon',8,312,7,32,19800),('watermelon',9,288,7,35,26100),('watermelon',10,240,8,39,33300),
-('wheat',1,300,5,10,0),('wheat',2,285,6,12,800),('wheat',3,270,6,13,1600),('wheat',4,255,7,14,3200),('wheat',5,240,7,16,5600),
-('wheat',6,225,8,18,8800),('wheat',7,210,8,20,12800),('wheat',8,195,8,22,17600),('wheat',9,180,8,25,23200),('wheat',10,150,8,28,29600),
-('lemon',1,420,4,12,0),('lemon',2,399,5,14,900),('lemon',3,378,5,16,1800),('lemon',4,357,6,17,3600),('lemon',5,336,6,19,6300),
-('lemon',6,315,7,22,9900),('lemon',7,294,7,24,14400),('lemon',8,273,8,27,19800),('lemon',9,252,8,30,26100),('lemon',10,210,8,34,33300),
-('cucumber',1,360,4,12,0),('cucumber',2,342,5,14,800),('cucumber',3,324,5,16,1600),('cucumber',4,306,6,17,3200),('cucumber',5,288,6,19,5600),
-('cucumber',6,270,7,22,8800),('cucumber',7,252,7,24,12800),('cucumber',8,234,8,27,17600),('cucumber',9,216,8,30,23200),('cucumber',10,180,8,34,29600),
-('moonberry',1,600,2,25,0);
+('strawberry',1,60,2,1,0),('strawberry',2,57,3,1,200),('strawberry',3,54,3,1,400),('strawberry',4,51,4,2,800),('strawberry',5,48,4,2,1400),
+('strawberry',6,45,5,2,2200),('strawberry',7,42,5,2,3200),('strawberry',8,39,6,3,4400),('strawberry',9,36,6,3,5800),('strawberry',10,30,7,3,7400),
+('carrot',1,180,3,2,0),('carrot',2,171,4,2,400),('carrot',3,162,4,2,800),('carrot',4,153,5,3,1600),('carrot',5,144,5,3,2800),
+('carrot',6,135,6,3,4400),('carrot',7,126,6,3,6400),('carrot',8,117,7,4,8800),('carrot',9,108,7,4,11600),('carrot',10,90,8,4,14800),
+('orange',1,240,3,3,0),('orange',2,228,4,3,500),('orange',3,216,4,3,1000),('orange',4,204,5,3,2000),('orange',5,192,5,4,3500),
+('orange',6,180,6,4,5500),('orange',7,168,6,4,8000),('orange',8,156,7,4,11000),('orange',9,144,7,4,14500),('orange',10,120,8,4,18500),
+('tomato',1,240,3,3,0),('tomato',2,228,4,3,500),('tomato',3,216,4,3,1000),('tomato',4,204,5,4,2000),('tomato',5,192,5,4,3500),
+('tomato',6,180,6,4,5500),('tomato',7,168,6,4,8000),('tomato',8,156,7,5,11000),('tomato',9,144,7,5,14500),('tomato',10,120,8,6,18500),
+('blueberry',1,300,4,3,0),('blueberry',2,285,5,3,600),('blueberry',3,270,5,3,1200),('blueberry',4,255,6,3,2400),('blueberry',5,240,6,4,4200),
+('blueberry',6,225,7,4,6600),('blueberry',7,210,7,4,9600),('blueberry',8,195,8,4,13200),('blueberry',9,180,8,4,17400),('blueberry',10,150,8,4,22200),
+('apple',1,360,4,4,0),('apple',2,342,5,4,700),('apple',3,324,5,4,1400),('apple',4,306,6,4,2800),('apple',5,288,6,4,4900),
+('apple',6,270,7,5,7700),('apple',7,252,7,5,11200),('apple',8,234,8,5,15400),('apple',9,216,8,5,20300),('apple',10,180,8,5,25900),
+('watermelon',1,480,3,5,0),('watermelon',2,456,4,5,900),('watermelon',3,432,4,5,1800),('watermelon',4,408,5,5,3600),('watermelon',5,384,5,5,6300),
+('watermelon',6,360,6,5,9900),('watermelon',7,336,6,6,14400),('watermelon',8,312,7,6,19800),('watermelon',9,288,7,6,26100),('watermelon',10,240,8,6,33300),
+('wheat',1,300,5,4,0),('wheat',2,285,6,4,800),('wheat',3,270,6,4,1600),('wheat',4,255,7,4,3200),('wheat',5,240,7,4,5600),
+('wheat',6,225,8,5,8800),('wheat',7,210,8,5,12800),('wheat',8,195,8,5,17600),('wheat',9,180,8,5,23200),('wheat',10,150,8,5,29600),
+('lemon',1,420,4,5,0),('lemon',2,399,5,5,900),('lemon',3,378,5,5,1800),('lemon',4,357,6,5,3600),('lemon',5,336,6,5,6300),
+('lemon',6,315,7,5,9900),('lemon',7,294,7,6,14400),('lemon',8,273,8,6,19800),('lemon',9,252,8,6,26100),('lemon',10,210,8,6,33300),
+('cucumber',1,360,4,5,0),('cucumber',2,342,5,5,800),('cucumber',3,324,5,5,1600),('cucumber',4,306,6,5,3200),('cucumber',5,288,6,5,5600),
+('cucumber',6,270,7,5,8800),('cucumber',7,252,7,6,12800),('cucumber',8,234,8,6,17600),('cucumber',9,216,8,6,23200),('cucumber',10,180,8,6,29600),
+('moonberry',1,600,2,5,0);
 
 INSERT INTO player_level_config (level,required_exp,reward_gold) VALUES
 (1,100,50),(2,150,75),(3,220,100),(4,300,125),(5,400,150),
@@ -543,12 +618,22 @@ INSERT INTO island_level_config
 (2,100,'carrot','carrot_juice',NULL,NULL,1),
 (3,250,'orange','orange_juice',NULL,NULL,1),
 (4,450,'tomato','tomato_juice',NULL,NULL,1),
-(5,700,'blueberry','milk_ice_cream','解锁牛棚后可获得牛奶材料','饮品店达到5级后可制作冰淇淋',1),
+(5,700,'blueberry','blueberry_juice',NULL,NULL,1),
 (6,1000,'apple','apple_carrot_juice',NULL,NULL,1),
 (7,1400,'watermelon','watermelon_milk_ice_cream','解锁牛棚后可获得牛奶材料','饮品店达到5级后可制作冰淇淋',1),
 (8,1900,'wheat','strawberry_cake','解锁鸡舍后可获得鸡蛋材料','解锁蛋糕店后可制作蛋糕',1),
 (9,2500,'lemon','lemon_milk_ice_cream','解锁牛棚后可获得牛奶材料','饮品店达到5级后可制作冰淇淋',1),
-(10,3200,'cucumber','cucumber_apple_juice',NULL,NULL,1);
+(10,3200,'cucumber','cucumber_apple_juice',NULL,NULL,1),
+(11,5195,NULL,NULL,NULL,NULL,1),
+(12,7453,NULL,NULL,NULL,NULL,1),
+(13,9981,NULL,NULL,NULL,NULL,1),
+(14,12787,NULL,NULL,NULL,NULL,1),
+(15,15877,NULL,NULL,NULL,NULL,1),
+(16,19257,NULL,NULL,NULL,NULL,1),
+(17,22932,NULL,NULL,NULL,NULL,1),
+(18,26909,NULL,NULL,NULL,NULL,1),
+(19,31193,NULL,NULL,NULL,NULL,1),
+(20,35788,NULL,NULL,NULL,NULL,1);
 
 INSERT INTO crop_unlock_source
 (crop_id,source_type,currency_type,price,required_player_level,source_ref_id,enabled) VALUES
@@ -650,3 +735,134 @@ INSERT INTO flower_level_config
 ('chamomile',6,180,6,5,3300),('chamomile',7,168,6,6,4800),('chamomile',8,156,7,7,6600),('chamomile',9,144,7,8,8700),('chamomile',10,120,8,8,11100),
 ('sakura',1,480,2,5,0),('sakura',2,456,3,6,1200),('sakura',3,432,3,7,2400),('sakura',4,408,4,7,4800),('sakura',5,384,4,8,8400),
 ('sakura',6,360,5,9,13200),('sakura',7,336,5,10,19200),('sakura',8,312,6,11,26400),('sakura',9,288,6,13,34800),('sakura',10,240,7,14,44400);
+
+-- ========== Demo2.9 畜牧系统 ==========
+
+CREATE TABLE IF NOT EXISTS barn_config (
+    level INT PRIMARY KEY,
+    required_island_level INT NOT NULL,
+    upgrade_gold INT NOT NULL DEFAULT 0,
+    animal_capacity INT NOT NULL,
+    animal_added INT NOT NULL DEFAULT 0,
+    produce_cycle_seconds INT NOT NULL DEFAULT 600,
+    milk_per_cow INT NOT NULL,
+    enabled INT NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS coop_config (
+    level INT PRIMARY KEY,
+    required_island_level INT NOT NULL,
+    upgrade_gold INT NOT NULL DEFAULT 0,
+    animal_capacity INT NOT NULL,
+    animal_added INT NOT NULL DEFAULT 0,
+    produce_cycle_seconds INT NOT NULL DEFAULT 600,
+    bonus_eggs INT NOT NULL DEFAULT 0,
+    enabled INT NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS player_barn (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    player_id BIGINT NOT NULL,
+    level INT NOT NULL DEFAULT 0,
+    cow_count INT NOT NULL DEFAULT 0,
+    cycle_start_time TIMESTAMP,
+    cycle_seconds INT NOT NULL DEFAULT 600,
+    cow_count_snapshot INT NOT NULL DEFAULT 0,
+    milk_per_cow_snapshot INT NOT NULL DEFAULT 0,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (player_id)
+);
+
+CREATE TABLE IF NOT EXISTS player_coop (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    player_id BIGINT NOT NULL,
+    level INT NOT NULL DEFAULT 0,
+    chicken_count INT NOT NULL DEFAULT 0,
+    cycle_start_time TIMESTAMP,
+    cycle_seconds INT NOT NULL DEFAULT 600,
+    chicken_count_snapshot INT NOT NULL DEFAULT 0,
+    bonus_egg_snapshot INT NOT NULL DEFAULT 0,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (player_id)
+);
+
+INSERT INTO barn_config
+(level, required_island_level, upgrade_gold, animal_capacity, animal_added, produce_cycle_seconds, milk_per_cow, enabled) VALUES
+(1,5,0,1,0,600,10,1),
+(2,6,2000,2,1,600,12,1),
+(3,7,3500,3,1,600,14,1),
+(4,8,5500,3,0,600,16,1),
+(5,9,8000,4,1,600,18,1),
+(6,10,11000,4,0,600,20,1),
+(7,11,15000,4,0,600,22,1),
+(8,12,20000,5,1,600,24,1),
+(9,13,26000,5,0,600,26,1),
+(10,14,33000,6,1,600,28,1);
+
+INSERT INTO coop_config
+(level, required_island_level, upgrade_gold, animal_capacity, animal_added, produce_cycle_seconds, bonus_eggs, enabled) VALUES
+(1,8,0,1,0,600,0,1),
+(2,9,5000,2,1,600,0,1),
+(3,10,8000,3,1,600,0,1),
+(4,11,12000,3,0,570,0,1),
+(5,12,17000,4,1,570,0,1),
+(6,13,23000,5,1,570,0,1),
+(7,14,30000,5,0,570,1,1),
+(8,15,38000,6,1,570,1,1),
+(9,16,47000,7,1,570,1,1),
+(10,17,60000,8,1,570,1,1);
+
+-- ========== Demo2.10 蛋糕店系统 ==========
+
+CREATE TABLE IF NOT EXISTS cake_shop_config (
+    level INT PRIMARY KEY,
+    required_island_level INT NOT NULL,
+    upgrade_gold INT NOT NULL DEFAULT 0,
+    rack_capacity INT NOT NULL,
+    sale_interval_seconds INT NOT NULL,
+    enabled INT NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS player_cake_shop (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    player_id BIGINT NOT NULL,
+    level INT NOT NULL DEFAULT 0,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (player_id)
+);
+
+CREATE TABLE IF NOT EXISTS player_cake_rack (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    player_id BIGINT NOT NULL,
+    slot INT NOT NULL,
+    recipe_id VARCHAR(64),
+    cake_item VARCHAR(64),
+    quantity INT NOT NULL DEFAULT 0,
+    sold INT NOT NULL DEFAULT 0,
+    status VARCHAR(16) NOT NULL DEFAULT 'EMPTY',
+    sale_gold_snapshot INT NOT NULL DEFAULT 0,
+    sale_exp_snapshot INT NOT NULL DEFAULT 0,
+    sale_interval_snapshot INT NOT NULL DEFAULT 0,
+    list_time TIMESTAMP,
+    last_settle_time TIMESTAMP,
+    close_time TIMESTAMP,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (player_id, slot)
+);
+
+INSERT INTO cake_shop_config
+(level, required_island_level, upgrade_gold, rack_capacity, sale_interval_seconds, enabled) VALUES
+(1,8,5000,8,480,1),
+(2,9,8000,9,480,1),
+(3,10,12000,9,450,1),
+(4,11,17000,10,450,1),
+(5,12,23000,10,420,1),
+(6,13,30000,12,420,1),
+(7,14,38000,12,390,1),
+(8,15,47000,13,390,1),
+(9,16,58000,13,360,1),
+(10,17,70000,15,360,1);

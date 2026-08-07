@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — 建立饮品店一级至十级装修
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

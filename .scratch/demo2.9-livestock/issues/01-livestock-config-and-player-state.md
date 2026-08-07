@@ -4,7 +4,7 @@
 
 **Blocked by:** None — requires Demo2.7 island-level state and Demo2.8 inventory/material prerequisites to be resolved before implementation
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

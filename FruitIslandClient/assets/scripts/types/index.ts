@@ -390,6 +390,155 @@ export interface CustomerOrder {
   createTime: string;
 }
 
+// ==================== 畜牧系统 (Demo2.9) ====================
+
+/** 牛棚等级配置，对应 barn_config 表 */
+export interface BarnConfig {
+  level: number;
+  requiredIslandLevel: number;
+  upgradeGold: number;
+  animalCapacity: number;
+  animalAdded: number;
+  produceCycleSeconds: number;
+  milkPerCow: number;
+  enabled: number;
+}
+
+/** 鸡舍等级配置，对应 coop_config 表 */
+export interface CoopConfig {
+  level: number;
+  requiredIslandLevel: number;
+  upgradeGold: number;
+  animalCapacity: number;
+  animalAdded: number;
+  produceCycleSeconds: number;
+  bonusEggs: number;
+  enabled: number;
+}
+
+/** 玩家牛棚状态，对应 player_barn 表 */
+export interface PlayerBarn {
+  id: number;
+  playerId: number;
+  level: number;
+  cowCount: number;
+  cycleStartTime?: string;
+  cycleSeconds: number;
+  cowCountSnapshot: number;
+  milkPerCowSnapshot: number;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** 玩家鸡舍状态，对应 player_coop 表 */
+export interface PlayerCoop {
+  id: number;
+  playerId: number;
+  level: number;
+  chickenCount: number;
+  cycleStartTime?: string;
+  cycleSeconds: number;
+  chickenCountSnapshot: number;
+  bonusEggSnapshot: number;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** 畜牧建筑状态视图 */
+export interface LivestockBuildingStatus {
+  unlocked: boolean;
+  level: number;
+  animalCount: number;
+  capacity: number;
+  cycleSeconds: number;
+  remainingSeconds?: number;
+  productionPerCycle: number;
+  nextLevel?: Record<string, any>;
+  canUnlock: boolean;
+  unlockHint?: string;
+  currentConfig?: Record<string, any>;
+  allLevels: Record<string, any>[];
+}
+
+/** /livestock/status 返回的汇总状态 */
+export interface LivestockStatusVO {
+  playerGold: number;
+  islandLevel: number;
+  barn: LivestockBuildingStatus;
+  coop: LivestockBuildingStatus;
+}
+
+// ==================== Demo2.10 蛋糕店 ====================
+
+/** 蛋糕店等级配置，对应 cake_shop_config 表 */
+export interface CakeShopConfig {
+  level: number;
+  requiredIslandLevel: number;
+  upgradeGold: number;
+  rackCapacity: number;
+  saleIntervalSeconds: number;
+  enabled: number;
+}
+
+/** 玩家蛋糕店状态，对应 player_cake_shop 表 */
+export interface PlayerCakeShop {
+  id: number;
+  playerId: number;
+  level: number;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** 蛋糕店状态视图 */
+export interface CakeShopStatus {
+  unlocked: boolean;
+  level: number;
+  rackCapacity: number;
+  saleIntervalSeconds: number;
+  nextLevel?: Record<string, any>;
+  canUnlock: boolean;
+  unlockHint?: string;
+  currentConfig?: Record<string, any>;
+  allLevels: Record<string, any>[];
+}
+
+/** /cake-shop/status 返回的汇总状态 */
+export interface CakeShopStatusVO {
+  playerGold: number;
+  islandLevel: number;
+  shop: CakeShopStatus;
+}
+
+/** 蛋糕架状态 */
+export interface CakeRackStatus {
+  slot: number;
+  status: 'EMPTY' | 'SELLING' | 'SOLD_OUT';
+  recipeId?: string;
+  cakeItem?: string;
+  quantity: number;
+  sold: number;
+  remaining: number;
+  nextSoldIn?: number;
+  saleGoldPerItem?: number;
+  saleExpPerItem?: number;
+  saleIntervalSeconds?: number;
+  totalGoldReward?: number;
+  totalExpReward?: number;
+  earnedGold?: number;
+  earnedExp?: number;
+}
+
+/** 可制作的蛋糕配方 */
+export interface CakeRecipeInfo {
+  recipeId: string;
+  name: string;
+  outputItem: string;
+  saleGold: number;
+  saleExp: number;
+  maxCraftable: number;
+  materials: { itemId: string; required: number; have: number }[];
+}
+
 // ==================== 登录相关 ====================
 
 /** 微信登录请求 */

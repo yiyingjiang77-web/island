@@ -235,7 +235,9 @@ class CumulativeExpSettlementHttpTest {
     }
 
     @Test
-    void levelTenCapPreventsExceedingMaxLevel() throws Exception {
+    void playerStaysAtCurrentLevelWhenInsufficientExpForNextLevel() throws Exception {
+        // Lv10 不再是最高等级；Lv11 需要 5195 累计经验。
+        // 玩家在 Lv10(3200) 获 100 经验 → 3300 < 5195，不升级。
         jdbcTemplate.update("""
                 INSERT INTO game_player
                 (user_id, game_id, nickname, level, exp, cumulative_exp, gold, diamond)

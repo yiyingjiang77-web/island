@@ -119,4 +119,50 @@ export const Api = {
 
   /** 查看蜂箱状态（含惰性结算） */
   BEEHIVE_STATUS: '/beehive/status',
+
+  // ==================== 畜牧系统 (Demo2.9) ====================
+
+  /** 查看牛棚与鸡舍汇总状态（触发惰性结算） */
+  LIVESTOCK_STATUS: '/livestock/status',
+
+  /** 首次解锁牛棚（岛屿Lv5 + 1000金币） */
+  LIVESTOCK_BARN_UNLOCK: '/livestock/barn/unlock',
+
+  /** 升级牛棚 */
+  LIVESTOCK_BARN_UPGRADE: '/livestock/barn/upgrade',
+
+  /** 首次解锁鸡舍（岛屿Lv8 + 3000金币） */
+  LIVESTOCK_COOP_UNLOCK: '/livestock/coop/unlock',
+
+  /** 升级鸡舍 */
+  LIVESTOCK_COOP_UPGRADE: '/livestock/coop/upgrade',
+
+  // ==================== Demo2.10 蛋糕店 ====================
+
+  /** 蛋糕店状态 */
+  CAKE_SHOP_STATUS: '/cake-shop/status',
+
+  /** 解锁蛋糕店 */
+  CAKE_SHOP_UNLOCK: '/cake-shop/unlock',
+
+  /** 升级蛋糕店 */
+  CAKE_SHOP_UPGRADE: '/cake-shop/upgrade',
+
+  /** 可制作蛋糕配方列表 */
+  CAKE_SHOP_RECIPES: '/cake-shop/recipes',
+
+  /** 制作蛋糕 */
+  CAKE_SHOP_CRAFT: '/cake-shop/craft',
+
+  /** 蛋糕架状态 */
+  CAKE_SHOP_RACKS: '/cake-shop/racks',
+
+  /** 上架蛋糕 */
+  CAKE_SHOP_RACK_LIST: '/cake-shop/racks',  // + /{slot}/list
+
+  /** 下架蛋糕 */
+  CAKE_SHOP_RACK_TAKEDOWN: '/cake-shop/racks',  // + /{slot}/takedown
+
+  /** 收取售罄 */
+  CAKE_SHOP_RACK_COLLECT: '/cake-shop/racks',  // + /{slot}/collect
 } as const;

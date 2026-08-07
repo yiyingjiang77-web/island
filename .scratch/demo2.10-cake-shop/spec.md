@@ -1,6 +1,6 @@
 # Demo2.10 蛋糕店与室外蛋糕架
 
-**Status:** ready-for-agent  
+**Status:** resolved  
 **重写日期:** 2026-08-01（基于 Demo3.0 设计重写原 Demo2.10）
 
 ## Problem Statement

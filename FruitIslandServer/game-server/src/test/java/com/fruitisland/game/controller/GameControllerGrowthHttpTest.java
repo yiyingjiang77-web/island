@@ -81,11 +81,11 @@ class GameControllerGrowthHttpTest {
                         contains(true, true, true, true, true)))
                 .andExpect(jsonPath("$.data.islandGrowth.rewards[5].claimed").value(false))
                 .andExpect(jsonPath("$.data.islandGrowth.rewards[4].recipeId")
-                        .value("milk_ice_cream"))
+                        .value("blueberry_juice"))
                 .andExpect(jsonPath("$.data.islandGrowth.rewards[4].materialSourceHint")
-                        .value("解锁牛棚后可获得牛奶材料"))
+                        .doesNotExist())
                 .andExpect(jsonPath("$.data.islandGrowth.rewards[4].shopCapabilityHint")
-                        .value("饮品店达到5级后可制作冰淇淋"))
+                        .doesNotExist())
                 .andExpect(jsonPath("$.data.playerCrops.length()").value(5));
 
         mockMvc.perform(get("/game/init")
@@ -113,14 +113,14 @@ class GameControllerGrowthHttpTest {
         mockMvc.perform(get("/game/init")
                         .header("Authorization", "Bearer " + levelThreeToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.islandGrowth.rewards[*].cumulativeExp",
+                .andExpect(jsonPath("$.data.islandGrowth.rewards[0:10].cumulativeExp",
                         contains(0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200)))
-                .andExpect(jsonPath("$.data.islandGrowth.rewards[*].cropId",
+                .andExpect(jsonPath("$.data.islandGrowth.rewards[0:10].cropId",
                         contains("strawberry", "carrot", "orange", "tomato", "blueberry",
                                 "apple", "watermelon", "wheat", "lemon", "cucumber")))
-                .andExpect(jsonPath("$.data.islandGrowth.rewards[*].recipeId",
+                .andExpect(jsonPath("$.data.islandGrowth.rewards[0:10].recipeId",
                         contains("strawberry_juice", "carrot_juice", "orange_juice",
-                                "tomato_juice", "milk_ice_cream", "apple_carrot_juice",
+                                "tomato_juice", "blueberry_juice", "apple_carrot_juice",
                                 "watermelon_milk_ice_cream", "strawberry_cake",
                                 "lemon_milk_ice_cream", "cucumber_apple_juice")))
                 .andExpect(jsonPath("$.data.islandGrowth.rewards[0:3].claimed",
@@ -199,8 +199,8 @@ class GameControllerGrowthHttpTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.islandGrowth.currentLevel").value(10))
-                .andExpect(jsonPath("$.data.islandGrowth.nextLevelThreshold").doesNotExist())
-                .andExpect(jsonPath("$.data.islandGrowth.rewards[*].claimed",
+                .andExpect(jsonPath("$.data.islandGrowth.nextLevelThreshold").value(5195))
+                .andExpect(jsonPath("$.data.islandGrowth.rewards[0:10].claimed",
                         contains(true, true, true, true, true, true, true, true, true, true)))
                 .andExpect(jsonPath("$.data.islandGrowth.rewards[7].recipeId")
                         .value("strawberry_cake"))
@@ -223,7 +223,7 @@ class GameControllerGrowthHttpTest {
                 .andExpect(jsonPath("$.data.islandGrowth.cumulativeExp").value(0))
                 .andExpect(jsonPath("$.data.islandGrowth.currentLevel").value(1))
                 .andExpect(jsonPath("$.data.islandGrowth.nextLevelThreshold").value(100))
-                .andExpect(jsonPath("$.data.islandGrowth.rewards.length()").value(10))
+                .andExpect(jsonPath("$.data.islandGrowth.rewards.length()").value(20))
                 .andExpect(jsonPath("$.data.islandGrowth.rewards[0].level").value(1))
                 .andExpect(jsonPath("$.data.islandGrowth.rewards[0].cropId").value("strawberry"))
                 .andExpect(jsonPath("$.data.islandGrowth.rewards[0].recipeId").value("strawberry_juice"))

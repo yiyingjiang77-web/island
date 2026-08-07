@@ -77,6 +77,13 @@ test('map clicks can open the drink shop drawer through the parent page', () => 
   assert.match(page, /feature==='drink-shop'/);
 });
 
+test('map clicks can open the livestock drawer through the parent page', () => {
+  assert.match(world, /type:'fruit-island:open-feature',feature:'livestock'/);
+  assert.match(page, /feature==='livestock'/);
+  assert.match(world, /apiCall\('GET','\/livestock\/status'\)/);
+  assert.match(world, /fruit-island:livestock-changed/);
+});
+
 test('Demo2.8 inline scripts compile', () => {
   for (const script of [...inlineScripts(page), ...inlineScripts(world)]) {
     assert.doesNotThrow(() => new Function(script));

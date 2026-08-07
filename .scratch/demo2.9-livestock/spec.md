@@ -1,6 +1,6 @@
 # Demo2.9 牛棚、鸡舍与离线畜牧生产
 
-**Status:** ready-for-agent  
+**Status:** resolved  
 **重写日期:** 2026-08-01（基于 Demo3.0 设计对齐重写）
 
 ## Problem Statement

@@ -7,6 +7,7 @@ import com.fruitisland.game.dto.LandVO;
 import com.fruitisland.game.entity.*;
 import com.fruitisland.game.mapper.PlayerLandMapper;
 import com.fruitisland.game.service.*;
+import com.fruitisland.game.util.MasteryBonusUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -218,10 +219,14 @@ public class PlayerLandServiceImpl
 
         LocalDateTime now = LocalDateTime.now();
 
+        // ── 精通加成：生长时间缩短（种植时快照锁定） ──
+        int playerLevel = player.getLevel() == null ? 1 : player.getLevel();
+        int adjustedGrowSeconds = MasteryBonusUtil.applyGrowthBonus(growSeconds, playerLevel);
+
         land.setStatus("PLANTED");
         land.setCropId(cropId);
         land.setCropLevel(cropLevel);
-        land.setGrowSecondsSnapshot(growSeconds);
+        land.setGrowSecondsSnapshot(adjustedGrowSeconds);
         land.setYieldCountSnapshot(yieldCount);
         land.setHarvestExpSnapshot(harvestExp);
         land.setAccessType(accessType);
@@ -236,7 +241,7 @@ public class PlayerLandServiceImpl
         record.setPlayerLandId(playerLandId);
         record.setCropId(cropId);
         record.setCropLevel(cropLevel);
-        record.setGrowSecondsSnapshot(growSeconds);
+        record.setGrowSecondsSnapshot(adjustedGrowSeconds);
         record.setYieldCountSnapshot(yieldCount);
         record.setHarvestExpSnapshot(harvestExp);
         record.setAccessType(accessType);
@@ -312,8 +317,13 @@ public class PlayerLandServiceImpl
         if (harvestExp == null || harvestExp < 0)
             throw new RuntimeException("本轮作物缺少收获经验快照");
 
+        // ── 精通加成：产量提升（收获时基于当前等级） ──
         Integer cropLevel = land.getCropLevel();
-        inventoryService.addItem(playerId, cropId, yieldCount);
+        GamePlayer harvestPlayer = gamePlayerService.getById(playerId);
+        int harvestPlayerLevel = harvestPlayer.getLevel() == null ? 1 : harvestPlayer.getLevel();
+        int adjustedYield = MasteryBonusUtil.applyYieldBonus(yieldCount, harvestPlayerLevel);
+
+        inventoryService.addItem(playerId, cropId, adjustedYield);
         ExpGainResult expResult = gamePlayerService.addExp(playerId, harvestExp);
 
         CropPlant latestRecord = cropPlantService.findLatestByPlayerLand(playerLandId);
@@ -337,15 +347,17 @@ public class PlayerLandServiceImpl
         updateById(land);
 
         log.info(
-                "玩家 {} 收获土地 {} 的 {} ×{}，经验 +{}，等级 {}→{}",
-                playerId, playerLandId, cropId, yieldCount, harvestExp,
+                "玩家 {} 收获土地 {} 的 {} ×{}(基础{},精通+{}%),经验 +{},等级 {}→{}",
+                playerId, playerLandId, cropId, adjustedYield, yieldCount,
+                String.format("%.0f", (MasteryBonusUtil.yieldMultiplier(harvestPlayerLevel) - 1) * 100),
+                harvestExp,
                 expResult.getBeforeLevel(), expResult.getAfterLevel()
         );
         return HarvestResultVO.builder()
                 .playerLandId(playerLandId)
                 .cropId(cropId)
                 .cropLevel(cropLevel)
-                .yieldCount(yieldCount)
+                .yieldCount(adjustedYield)
                 .expGained(harvestExp)
                 .playerLevel(expResult.getAfterLevel())
                 .cumulativeExp(expResult.getCumulativeExp())

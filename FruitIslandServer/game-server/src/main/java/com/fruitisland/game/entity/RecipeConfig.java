@@ -23,4 +23,10 @@ public class RecipeConfig {
     private Integer barSaleIntervalSeconds;
     private Integer orderWeight;
     private Integer enabled;
+
+    /** 制作入口：drink_bar / cake_shop */
+    private String craftStation;
+
+    /** 获取渠道：island_level / exchange_shop / npc_reward */
+    private String obtainChannel;
 }

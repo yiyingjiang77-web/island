@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — 建立十种作物目录、十级配置与永久种植权
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

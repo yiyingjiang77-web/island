@@ -650,18 +650,51 @@ function renderMap(){
     const cx=(b.gx+b.w/2)*TILE, cy=(b.gy+b.h/2)*TILE, sx=cx-cam.x, sy=cy-cam.y;
     const hw=b.w*TILE/2, hh=b.h*TILE/2;
     if(sx+hw<0||sx-hw>viewWorldW||sy+hh<0||sy-hh>viewWorldH) continue;
-    const unlocked=playerLevel>=b.unlock;
-    if(!drawArtCentered(b.art,sx,sy,b.w*TILE,b.h*TILE,unlocked?1:.86)){
-      ctx.fillStyle=b.color+'88';ctx.fillRect(sx-hw,sy-hh,b.w*TILE,b.h*TILE);
+
+    // 畜牧建筑（牛棚/鸡舍）的解锁状态由服务端畜牧数据决定，而非 playerLevel
+    let unlocked, extraInfo='';
+    if(b.id==='cow_barn'){
+      const barn=livestockStatus?.barn;
+      unlocked=!!barn?.unlocked;
+      if(unlocked) extraInfo=`Lv.${barn.level} · 🐮×${barn.animalCount}`;
+    }else if(b.id==='chicken_coop'){
+      const coop=livestockStatus?.coop;
+      unlocked=!!coop?.unlocked;
+      if(unlocked) extraInfo=`Lv.${coop.level} · 🐔×${coop.animalCount}`;
+    }else if(b.id==='cake_shop'){
+      const shop=cakeShopStatus?.shop;
+      unlocked=!!shop?.unlocked;
+      if(unlocked) extraInfo=`Lv.${shop.level} · 架位${shop.rackCapacity}`;
+    }else{
+      unlocked=playerLevel>=b.unlock;
+    }
+
+    if(!drawArtCentered(b.art,sx,sy,b.w*TILE,b.h*TILE,unlocked?1:.5)){
+      ctx.fillStyle=b.color+(unlocked?'88':'44');ctx.fillRect(sx-hw,sy-hh,b.w*TILE,b.h*TILE);
       ctx.font=font(24);ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(b.icon,sx,sy);
     }
     ctx.save();
     ctx.shadowColor='rgba(83,58,36,.72)';ctx.shadowBlur=gap(4);
     ctx.font=font(12,'bold ');ctx.fillStyle='#fffdf3';ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText(`${b.icon} ${b.name}`,sx,sy+hh-gap(12));
-    if(!unlocked){
-      ctx.font=font(9,'bold ');ctx.fillStyle='#fff1bc';
-      ctx.fillText(`🔒 Lv.${b.unlock}`,sx,sy+hh+gap(4));
+    if(unlocked&&extraInfo){
+      ctx.font=font(9,'bold ');ctx.fillStyle='#c6f0a4';
+      ctx.fillText(extraInfo,sx,sy+hh+gap(4));
+    }else if(!unlocked){
+      // 畜牧建筑显示解锁条件提示
+      if(b.id==='cow_barn'){
+        ctx.font=font(9,'bold ');ctx.fillStyle='#fff1bc';
+        ctx.fillText('🔒 岛屿Lv5 · 1000⭐',sx,sy+hh+gap(4));
+      }else if(b.id==='chicken_coop'){
+        ctx.font=font(9,'bold ');ctx.fillStyle='#fff1bc';
+        ctx.fillText('🔒 岛屿Lv8 · 3000⭐',sx,sy+hh+gap(4));
+      }else if(b.id==='cake_shop'){
+        ctx.font=font(9,'bold ');ctx.fillStyle='#fff1bc';
+        ctx.fillText('🔒 岛屿Lv8 · 5000⭐',sx,sy+hh+gap(4));
+      }else{
+        ctx.font=font(9,'bold ');ctx.fillStyle='#fff1bc';
+        ctx.fillText(`🔒 Lv.${b.unlock}`,sx,sy+hh+gap(4));
+      }
     }
     ctx.restore();
   }
@@ -728,7 +761,9 @@ let playerGold=500, playerDiamond=20, playerLevel=1, playerExp=0, nextLevelExp=n
 let currentFarm=null, pendingCell=null, pendingCrop='strawberry';
 let cropConfigs=[], playerCrops=[], cropGrants=[];
 let flowerConfigs=[], playerFlowerRights=[];
-const C_EMOJI={strawberry:'🍓',cabbage:'🥬',carrot:'🥕',tomato:'🍅',potato:'🥔',chili:'🌶️',corn:'🌽',moonberry:'🫐',rose:'🌹',chrysanthemum:'🌼',jasmine:'🌼',osmanthus:'🌻',lavender:'🪻',hibiscus:'🌺',chamomile:'🌼',sakura:'🌸'};
+let livestockStatus=null; // {barn:{unlocked,level,animalCount,...}, coop:{...}}
+let cakeShopStatus=null; // {shop:{unlocked,level,...}}
+const C_EMOJI={strawberry:'🍓',carrot:'🥕',tomato:'🍅',orange:'🍊',blueberry:'🫐',apple:'🍎',watermelon:'🍉',wheat:'🌾',lemon:'🍋',cucumber:'🥒',moonberry:'🌙',rose:'🌹',chrysanthemum:'🌼',jasmine:'🌼',osmanthus:'🌻',lavender:'🪻',hibiscus:'🌺',chamomile:'🌼',sakura:'🌸'};
 const S_NAMES={LOCKED:'🔒未解锁',UNPURCHASED:'💰待购买',EMPTY:'🟫空地',PLANTED:'🌱生长中',READY:'✨可收获'};
 
 const apiEl = document.getElementById('hud-api');
@@ -773,15 +808,19 @@ async function refresh(){
     playerCrops=init.data.playerCrops||[];
     cropGrants=init.data.cropGrants||[];
   }
-  const [lands,flowers]=await Promise.all([
+  const [lands,flowers,livestock,cakeShop]=await Promise.all([
     apiCall('GET','/farm/lands'),
     apiCall('GET','/flower/catalog'),
+    apiCall('GET','/livestock/status'),
+    apiCall('GET','/cake-shop/status'),
   ]);
   if(lands?.data) allLands=lands.data;
   if(flowers?.data){
     flowerConfigs=flowers.data.flowers||[];
     playerFlowerRights=flowers.data.rights||[];
   }
+  if(livestock?.data) livestockStatus=livestock.data;
+  if(cakeShop?.data) cakeShopStatus=cakeShop.data;
   updateHUD();
   return Boolean(lands?.data && init?.data);
 }
@@ -791,6 +830,8 @@ async function refresh(){
 window.addEventListener('message',event=>{
   if(event.source!==window.parent) return;
   if(event.data?.type==='fruit-island:player-changed') refresh();
+  if(event.data?.type==='fruit-island:livestock-changed') refresh();
+  if(event.data?.type==='fruit-island:cake-shop-changed') refresh();
   if(event.data?.type==='fruit-island:drink-bars-state'){
     const states=new Map((event.data.bars||[])
       .map(bar=>[Number(bar.slotNumber),bar.state]));
@@ -924,6 +965,16 @@ function openBuilding(building){
   if(building.id==='drink_shop'){
     window.parent.postMessage({type:'fruit-island:open-feature',feature:'drink-shop'},'*');
     document.getElementById('info').textContent='🥤 已打开饮品店制作台';
+    return;
+  }
+  if(building.id==='cow_barn'||building.id==='chicken_coop'){
+    window.parent.postMessage({type:'fruit-island:open-feature',feature:'livestock'},'*');
+    document.getElementById('info').textContent=`${building.icon||''} 已打开畜牧管理`;
+    return;
+  }
+  if(building.id==='cake_shop'){
+    window.parent.postMessage({type:'fruit-island:open-feature',feature:'cake-shop'},'*');
+    document.getElementById('info').textContent=`${building.icon||''} 已打开蛋糕店`;
     return;
   }
   const unlockText=playerLevel>=building.unlock?'已开放':`Lv.${building.unlock}解锁`;
@@ -1093,7 +1144,7 @@ function loop(now){
     playerGold=500; playerDiamond=20; playerLevel=1; allLands=[];
   }
   document.getElementById('legend').innerHTML=
-    `🍰蛋糕 Lv.3 🥤饮品 Lv.4 💱交易 Lv.6 ⚓码头<br>`+
+    `🍰蛋糕店 Lv.8 🐄牛棚 Lv.5 🐔鸡舍 Lv.8 🥤饮品 Lv.4 💱交易 Lv.6 ⚓码头<br>`+
       `🐔鸡舍 🐄八牛牛棚 🌸空花园 Lv.10＋🐝双蜂箱<br>`+
     `🌲森林 Lv.8 ⛰️矿山 Lv.10 🌱农田 Lv.1~8<br>`+
     `Demo2.8 · 手绘地图素材版`;

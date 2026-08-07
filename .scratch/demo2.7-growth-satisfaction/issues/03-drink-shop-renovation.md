@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — 结算累计经验并连续发放升级奖励
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

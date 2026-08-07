@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 — 解锁并升级鸡舍
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

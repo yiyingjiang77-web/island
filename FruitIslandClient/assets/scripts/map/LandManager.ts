@@ -371,13 +371,16 @@ export class LandManager extends Component {
   private getCropEmoji(cropId?: string): string {
     const icons: Record<string, string> = {
       strawberry: '🍓',
-      cabbage: '🥬',
       carrot: '🥕',
       tomato: '🍅',
-      potato: '🥔',
-      chili: '🌶️',
-      corn: '🌽',
-      moonberry: '🫐',
+      orange: '🍊',
+      blueberry: '🫐',
+      apple: '🍎',
+      watermelon: '🍉',
+      wheat: '🌾',
+      lemon: '🍋',
+      cucumber: '🥒',
+      moonberry: '🌙',
     };
     return cropId ? icons[cropId] ?? '🌿' : '🌿';
   }

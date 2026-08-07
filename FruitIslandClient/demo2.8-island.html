@@ -84,6 +84,53 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#7cd5df;fon
 .beehive-info p{margin:0 0 4px}.beehive-info p:last-child{margin:0}
 .beehive-message{min-height:18px;margin:10px 2px 0;color:#b9d8aa;font-size:12px}.beehive-message.error{color:#ff9d91}
 
+/* 蛋糕店 (Demo2.10) */
+.cake-shop-status{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:10px;border-radius:12px;background:rgba(255,159,67,.12);font-size:12px}
+.cake-shop-status .gold{font-size:18px;font-weight:700;color:#f4d36b}
+.cake-shop-unlock{padding:14px;border:1px solid rgba(255,159,67,.25);border-radius:14px;background:rgba(255,159,67,.08);text-align:center}
+.cake-shop-unlock p{margin:0 0 10px;color:#aebbac;font-size:12px}
+.cake-shop-unlock button{width:100%;border:0;border-radius:10px;padding:10px;background:#e8893b;color:#fff;font-weight:700;cursor:pointer}
+.cake-shop-unlock button:disabled{opacity:.42;cursor:not-allowed}
+.cake-shop-upgrade{margin-bottom:10px;padding:10px;border:1px solid rgba(130,183,216,.25);border-radius:12px;background:rgba(70,118,148,.1);font-size:12px}
+.cake-shop-upgrade .up-head{display:flex;justify-content:space-between;margin-bottom:6px}
+.cake-shop-upgrade button{width:100%;border:0;border-radius:8px;padding:8px;background:#527e4c;color:#fff;font-weight:700;cursor:pointer}
+.cake-shop-upgrade button:disabled{opacity:.42;cursor:not-allowed}
+.cake-recipe-grid{display:grid;grid-template-columns:1fr;gap:9px;margin-bottom:10px}
+.cake-recipe-card{padding:11px;border:1px solid rgba(255,255,255,.13);border-radius:13px;background:rgba(255,255,255,.06)}
+.cake-recipe-card .cr-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.cake-recipe-card .cr-emoji{font-size:26px}
+.cake-recipe-card .cr-name{flex:1;font-size:14px;font-weight:700}
+.cake-recipe-card .cr-sale{font-size:11px;color:#f4d36b}
+.cake-recipe-card .cr-mats{font-size:11px;color:#aebbac;margin:4px 0 6px;line-height:1.5}
+.cake-recipe-card .cr-mats .short{color:#e74c3c}
+.cake-recipe-card .cr-actions{display:flex;align-items:center;gap:6px}
+.cake-recipe-card .cr-actions input{width:50px;text-align:center;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:rgba(0,0,0,.2);color:#fff;padding:5px;font-size:13px}
+.cake-recipe-card .cr-actions button{flex:1;border:0;border-radius:8px;padding:7px;background:#d75f4a;color:#fff;font-weight:700;cursor:pointer;font-size:12px}
+.cake-recipe-card .cr-actions button:disabled{opacity:.42;cursor:not-allowed}
+.cake-recipe-card .cr-max{font-size:10px;color:#889}
+.cake-rack-grid{display:grid;grid-template-columns:1fr;gap:9px;margin-bottom:10px}
+.cake-rack-card{padding:11px;border:1px solid rgba(255,255,255,.13);border-radius:13px;background:rgba(255,255,255,.06)}
+.cake-rack-card .rk-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.cake-rack-card .rk-slot{font-size:12px;color:#aebbac}
+.cake-rack-card .rk-status{margin-left:auto;font-size:11px;padding:2px 8px;border-radius:8px}
+.cake-rack-card .rk-selling{background:rgba(94,140,76,.3);color:#cfe9bd}
+.cake-rack-card .rk-soldout{background:rgba(244,211,107,.25);color:#f4d36b}
+.cake-rack-card .rk-empty{background:rgba(255,255,255,.08);color:#889}
+.cake-rack-card .rk-info{font-size:11px;color:#aebbac;line-height:1.6;margin:4px 0}
+.cake-rack-card .rk-info b{color:#cfe9bd}
+.cake-rack-card .rk-progress{height:7px;margin:6px 0;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden}
+.cake-rack-card .rk-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#75b768,#f0d169)}
+.cake-rack-card .rk-actions{display:flex;gap:6px;margin-top:6px}
+.cake-rack-card .rk-actions button{flex:1;border:0;border-radius:8px;padding:7px;font-size:11px;font-weight:700;cursor:pointer;color:#fff}
+.cake-rack-card .rk-actions .rk-takedown{background:#78633c}
+.cake-rack-card .rk-actions .rk-collect{background:#b8860b}
+.cake-rack-card .rk-actions button:disabled{opacity:.42;cursor:not-allowed}
+.cake-rack-list{padding:10px;border:1px dashed rgba(255,255,255,.15);border-radius:10px;text-align:center;font-size:12px;color:#aebbac}
+.cake-rack-list select{width:100%;margin:6px 0;padding:6px;border-radius:6px;background:rgba(0,0,0,.2);color:#fff;border:1px solid rgba(255,255,255,.2);font-size:12px}
+.cake-rack-list input{width:60px;text-align:center;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:rgba(0,0,0,.2);color:#fff;padding:5px;font-size:13px}
+.cake-rack-list button{width:100%;border:0;border-radius:8px;padding:8px;background:#527e4c;color:#fff;font-weight:700;cursor:pointer;margin-top:4px}
+.cake-rack-list button:disabled{opacity:.42;cursor:not-allowed}
+
 @media(max-width:600px){
   .feature-rail{right:8px}
   .feature-button{width:51px;height:51px;border-radius:15px}
@@ -229,6 +276,32 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#7cd5df;fon
     <p class="beehive-message" id="beehive-message" role="status"></p>
   </aside>
 
+  <aside class="feature-drawer" id="livestock-drawer" aria-hidden="true">
+    <header class="drawer-head">
+      <div class="drawer-title">
+        <h2>🐄 畜牧管理</h2>
+        <p id="livestock-status-text">牛棚与鸡舍生产管理</p>
+      </div>
+      <button class="refresh-button" onclick="loadLivestock(true)" title="刷新">↻</button>
+      <button class="close-button" onclick="closeFeatureDrawer()" title="收起">✕</button>
+    </header>
+    <div id="livestock-content"></div>
+    <p class="beehive-message" id="livestock-message" role="status"></p>
+  </aside>
+
+  <aside class="feature-drawer" id="cake-shop-drawer" aria-hidden="true">
+    <header class="drawer-head">
+      <div class="drawer-title">
+        <h2>🍰 蛋糕店</h2>
+        <p id="cake-shop-status-text">制作蛋糕并上架销售</p>
+      </div>
+      <button class="refresh-button" onclick="loadCakeShop(true)" title="刷新">↻</button>
+      <button class="close-button" onclick="closeFeatureDrawer()" title="收起">✕</button>
+    </header>
+    <div id="cake-shop-content"><div class="loading">正在读取蛋糕店…</div></div>
+    <p class="beehive-message" id="cake-shop-message" role="status"></p>
+  </aside>
+
   <nav class="feature-rail" aria-label="功能入口">
     <button
       class="feature-button"
@@ -281,6 +354,23 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#7cd5df;fon
       <span class="text">蜂箱</span>
       <span class="feature-badge" id="beehive-badge" style="display:none">0</span>
     </button>
+    <button
+      class="feature-button"
+      id="livestock-button"
+      onclick="toggleFeatureDrawer('livestock')"
+      title="打开畜牧管理">
+      <span class="icon">🐄</span>
+      <span class="text">畜牧</span>
+    </button>
+    <button
+      class="feature-button"
+      id="cake-shop-button"
+      onclick="toggleFeatureDrawer('cake-shop')"
+      title="打开蛋糕店">
+      <span class="icon">🍰</span>
+      <span class="text">蛋糕店</span>
+      <span class="feature-badge" id="cake-shop-badge" style="display:none">0</span>
+    </button>
   </nav>
 </main>
 
@@ -291,13 +381,16 @@ const DEV_LOGIN_CODE='dev_demo23_browser';
 
 const ITEM_META={
   strawberry:{name:'草莓',emoji:'🍓'},
-  cabbage:{name:'白菜',emoji:'🥬'},
   carrot:{name:'胡萝卜',emoji:'🥕'},
   tomato:{name:'番茄',emoji:'🍅'},
-  potato:{name:'土豆',emoji:'🥔'},
-  chili:{name:'辣椒',emoji:'🌶️'},
-  corn:{name:'玉米',emoji:'🌽'},
-  moonberry:{name:'月光莓',emoji:'🫐'},
+  orange:{name:'橙子',emoji:'🍊'},
+  blueberry:{name:'蓝莓',emoji:'🫐'},
+  apple:{name:'苹果',emoji:'🍎'},
+  watermelon:{name:'西瓜',emoji:'🍉'},
+  wheat:{name:'小麦',emoji:'🌾'},
+  lemon:{name:'柠檬',emoji:'🍋'},
+  cucumber:{name:'黄瓜',emoji:'🥒'},
+  moonberry:{name:'月光莓',emoji:'🌙'},
   strawberry_juice:{name:'草莓汁',emoji:'🥤'},
   rose:{name:'玫瑰',emoji:'🌹'},
   chrysanthemum:{name:'菊花',emoji:'🌼'},
@@ -308,6 +401,25 @@ const ITEM_META={
   chamomile:{name:'洋甘菊',emoji:'🌻'},
   sakura:{name:'樱花',emoji:'🌸'},
   honey:{name:'蜂蜜',emoji:'🍯'},
+  milk:{name:'牛奶',emoji:'🥛'},
+  egg:{name:'鸡蛋',emoji:'🥚'},
+  strawberry_cake:{name:'草莓蛋糕',emoji:'🍰'},
+  carrot_cake:{name:'胡萝卜蛋糕',emoji:'🥕'},
+  apple_cake:{name:'苹果蛋糕',emoji:'🍎'},
+  blueberry_cake:{name:'蓝莓蛋糕',emoji:'🫐'},
+  lemon_cake:{name:'柠檬蛋糕',emoji:'🍋'},
+  rose_cake:{name:'玫瑰蛋糕',emoji:'🌹'},
+  chrysanthemum_cake:{name:'菊花酥',emoji:'🌼'},
+  jasmine_mousse:{name:'茉莉慕斯',emoji:'🤍'},
+  osmanthus_cake:{name:'桂花糕',emoji:'🌺'},
+  lavender_macaron:{name:'薰衣草马卡龙',emoji:'💜'},
+  hibiscus_jelly:{name:'洛神花果冻',emoji:'🦩'},
+  sakura_cake:{name:'樱花蛋糕',emoji:'🌸'},
+  chamomile_cookie:{name:'洋甘菊饼干',emoji:'🌻'},
+  mushroom_pie:{name:'蘑菇咸派',emoji:'🥧'},
+  shiitake_bun:{name:'香菇芝士包',emoji:'🍞'},
+  chanterelle_tart:{name:'鸡油菌塔',emoji:'🧁'},
+  truffle_cake:{name:'松露巧克力蛋糕',emoji:'🍫'},
 };
 
 let token='';
@@ -358,6 +470,8 @@ function toggleFeatureDrawer(feature){
     'drink-bar':'drink-bar-drawer',
     flower:'flower-drawer',
     beehive:'beehive-drawer',
+    livestock:'livestock-drawer',
+    'cake-shop':'cake-shop-drawer',
   };
   const drawer=document.getElementById(drawerIds[feature]);
   if(!drawer) return;
@@ -375,16 +489,18 @@ function toggleFeatureDrawer(feature){
   if(feature==='drink-bar') loadDrinkBars();
   if(feature==='flower') loadFlowerShop();
   if(feature==='beehive') loadBeehive();
+  if(feature==='livestock') loadLivestock();
+  if(feature==='cake-shop') loadCakeShop();
 }
 
 function closeFeatureDrawer(){
   activeFeature=null;
-  for(const id of ['feature-drawer','growth-drawer','drink-shop-drawer','drink-bar-drawer','flower-drawer','beehive-drawer']){
+  for(const id of ['feature-drawer','growth-drawer','drink-shop-drawer','drink-bar-drawer','flower-drawer','beehive-drawer','livestock-drawer','cake-shop-drawer']){
     const el=document.getElementById(id);
     if(el){el.classList.remove('open');el.setAttribute('aria-hidden','true');}
   }
   document.getElementById('drawer-shade').classList.remove('show');
-  for(const id of ['inventory-button','growth-button','drink-shop-button','drink-bar-button','flower-button','beehive-button']){
+  for(const id of ['inventory-button','growth-button','drink-shop-button','drink-bar-button','flower-button','beehive-button','livestock-button','cake-shop-button']){
     const el=document.getElementById(id);
     if(el) el.classList.remove('active');
   }
@@ -406,6 +522,18 @@ async function ensureLogin(){
     console.warn('[Demo2.8] 登录服务不可用',error);
   }
   return false;
+}
+
+async function apiCall(method, path, body) {
+  if (!await ensureLogin()) throw new Error('登录失败');
+  const opts = { method, headers: { Authorization: `Bearer ${token}` } };
+  if (body) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const response = await fetch(`${GAME_URL}${path}`, opts).then(r => r.json());
+  if (response.code !== 0) throw new Error(response.message || '请求失败');
+  return response.data;
 }
 
 async function loadInventory(force=false){
@@ -1284,6 +1412,8 @@ window.addEventListener('message',event=>{
   if(event.data?.type==='fruit-island:open-feature'){
     const feature=event.data.feature;
     if(feature==='drink-shop'&&activeFeature!==feature) toggleFeatureDrawer(feature);
+    if(feature==='livestock'&&activeFeature!==feature) toggleFeatureDrawer(feature);
+    if(feature==='cake-shop'&&activeFeature!==feature) toggleFeatureDrawer(feature);
   }
   if(event.data?.type==='fruit-island:drink-bars-ready') publishDrinkBarsToWorld();
 });
@@ -1311,6 +1441,7 @@ loadInventory();
 loadDrinkBars();
 loadFlowerShop();
 loadBeehive();
+loadLivestock();
 
 // ==================== 花卉商店 (Demo2.8) ====================
 
@@ -1523,6 +1654,404 @@ async function collectHoney(){
   }catch(error){
     message.className='beehive-message error';
     message.textContent=error.message||'收取失败';
+  }
+}
+
+// ========== 畜牧管理 (Demo2.9) ==========
+
+let livestockLoading=false;
+
+async function loadLivestock(force=false){
+  if(livestockLoading) return;
+  if(!force && !token) return;
+  livestockLoading=true;
+  try{
+    const data=await apiCall('GET','/livestock/status');
+    renderLivestock(data);
+  }catch(e){
+    document.getElementById('livestock-message').textContent='加载失败: '+e.message;
+  }
+  livestockLoading=false;
+}
+
+function renderLivestock(data){
+  const el=document.getElementById('livestock-content');
+  const msg=document.getElementById('livestock-message');
+  msg.textContent='';
+  const barn=data.barn||{};
+  const coop=data.coop||{};
+
+  let html='<div style="display:grid;gap:12px">';
+  html+=renderBuildingCard(barn,'barn','🐄 牛棚','奶牛','milk',5,1000);
+  html+=renderBuildingCard(coop,'coop','🐔 鸡舍','鸡','egg',8,3000);
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function renderBuildingCard(b,type,title,animalLabel,productEmoji,unlockLevel,unlockGold){
+  let html=`<div style="border:1px solid rgba(220,245,195,.2);border-radius:12px;padding:12px">`;
+  html+=`<h3 style="margin:0 0 8px;font-size:15px">${title}</h3>`;
+
+  if(!b.unlocked){
+    html+=`<p style="color:#aebbac;font-size:12px;margin:4px 0">${b.unlockHint||'未解锁'}</p>`;
+    const can=b.canUnlock;
+    const action=type==='barn'?'unlockBarn()':'unlockCoop()';
+    html+=`<button onclick="${action}" ${can?'':'disabled'} style="width:100%;padding:8px;margin-top:6px;border:none;border-radius:8px;background:${can?'#4a8':'#556'};color:#fff;cursor:${can?'pointer':'not-allowed'};font-size:13px">`;
+    html+=can?`解锁（${unlockGold} 金币）`:`岛屿 ${unlockLevel} 级解锁`;
+    html+=`</button>`;
+  } else {
+    html+=`<div style="display:flex;justify-content:space-between;font-size:12px;margin:4px 0">`;
+    html+=`<span>等级 <b style="color:#8f8">Lv${b.level}</b></span>`;
+    html+=`<span>${animalLabel} <b>${b.animalCount}</b>/${b.capacity}</span>`;
+    html+=`</div>`;
+    html+=`<div style="font-size:12px;color:#aebbac;margin:4px 0">`;
+    html+=`每轮产出: <b style="color:#cfc">${b.productionPerCycle||0} ${productEmoji}</b> | 周期: ${Math.round((b.cycleSeconds||600)/60)}分钟`;
+    if(b.remainingSeconds!=null){
+      const mins=Math.floor(b.remainingSeconds/60);
+      const secs=Math.floor(b.remainingSeconds%60);
+      html+=`<br>下次产出: ${mins}分${secs}秒后`;
+    }
+    html+=`</div>`;
+    if(b.nextLevel){
+      const n=b.nextLevel;
+      html+=`<div style="font-size:11px;color:#889;margin:6px 0;padding:6px;border-radius:6px;background:rgba(255,255,255,.04)">`;
+      html+=`升级到 Lv${n.level}: 需要 ${n.requiredIslandLevel}级 + ${n.upgradeGold}金币`;
+      if(n.animalAdded>0) html+=` (+${n.animalAdded} ${animalLabel})`;
+      html+=`</div>`;
+      const upAction=type==='barn'?'upgradeBarn()':'upgradeCoop()';
+      html+=`<button onclick="${upAction}" style="width:100%;padding:8px;margin-top:4px;border:none;border-radius:8px;background:#386;color:#fff;cursor:pointer;font-size:13px">升级</button>`;
+    } else {
+      html+=`<p style="color:#fc6;font-size:12px;text-align:center;margin:6px 0">已达最高等级</p>`;
+    }
+  }
+  html+=`</div>`;
+  return html;
+}
+
+async function unlockBarn(){
+  try{
+    await apiCall('POST','/livestock/barn/unlock');
+    showLivestockMsg('牛棚解锁成功！获得 1 头奶牛 + 10 份牛奶',true);
+    await loadLivestock(true);
+  }catch(e){showLivestockMsg(e.message,false);}
+}
+
+async function upgradeBarn(){
+  try{
+    await apiCall('POST','/livestock/barn/upgrade');
+    showLivestockMsg('牛棚升级成功！',true);
+    await loadLivestock(true);
+  }catch(e){showLivestockMsg(e.message,false);}
+}
+
+async function unlockCoop(){
+  try{
+    await apiCall('POST','/livestock/coop/unlock');
+    showLivestockMsg('鸡舍解锁成功！获得 1 只鸡 + 5 个鸡蛋',true);
+    await loadLivestock(true);
+  }catch(e){showLivestockMsg(e.message,false);}
+}
+
+async function upgradeCoop(){
+  try{
+    await apiCall('POST','/livestock/coop/upgrade');
+    showLivestockMsg('鸡舍升级成功！',true);
+    await loadLivestock(true);
+  }catch(e){showLivestockMsg(e.message,false);}
+}
+
+function showLivestockMsg(msg,ok){
+  const el=document.getElementById('livestock-message');
+  el.textContent=msg;
+  el.style.color=ok?'#8f8':'#f88';
+  if(ok){
+    if(window.frames[0]) window.frames[0].postMessage({type:'fruit-island:livestock-changed'},'*');
+  }
+}
+
+// ==================== 蛋糕店 (Demo2.10) ====================
+let cakeShopLoading=false;
+let cakeShopData=null;
+let cakeRecipes=[];
+let cakeRacks=[];
+
+async function loadCakeShop(force=false){
+  if(cakeShopLoading) return;
+  if(!force && !token) return;
+  cakeShopLoading=true;
+  try{
+    const [status,recipes,racks]=await Promise.all([
+      apiCall('GET','/cake-shop/status'),
+      apiCall('GET','/cake-shop/recipes'),
+      apiCall('GET','/cake-shop/racks'),
+    ]);
+    cakeShopData=status;
+    cakeRecipes=recipes||[];
+    cakeRacks=racks||[];
+    renderCakeShop();
+  }catch(e){
+    document.getElementById('cake-shop-message').textContent='加载失败: '+e.message;
+    document.getElementById('cake-shop-message').className='beehive-message error';
+  }
+  cakeShopLoading=false;
+}
+
+function renderCakeShop(){
+  const el=document.getElementById('cake-shop-content');
+  const msg=document.getElementById('cake-shop-message');
+  msg.textContent='';
+  msg.className='beehive-message';
+  if(!cakeShopData){
+    el.innerHTML='<div class="loading">正在读取蛋糕店…</div>';
+    return;
+  }
+  const shop=cakeShopData.shop||{};
+  const gold=cakeShopData.playerGold||0;
+  let html='';
+
+  // 状态栏
+  html+=`<div class="cake-shop-status"><span>金币 <span class="gold">${gold}</span></span>`;
+  if(shop.unlocked){
+    html+=`<span>等级 <b style="color:#8f8">Lv${shop.level}</b> · 架位 ${shop.rackCapacity} · 周期 ${Math.round(shop.saleIntervalSeconds/60)}分钟</span>`;
+  }else{
+    html+=`<span style="color:#aebbac">未解锁</span>`;
+  }
+  html+=`</div>`;
+
+  if(!shop.unlocked){
+    // 未解锁
+    html+=`<div class="cake-shop-unlock">`;
+    html+=`<p>${shop.unlockHint||'需要岛屿 8 级 + 5000 金币'}</p>`;
+    const can=shop.canUnlock;
+    html+=`<button onclick="unlockCakeShop()" ${can?'':'disabled'}>${can?'解锁蛋糕店（5000 金币）':'条件不足'}</button>`;
+    html+=`</div>`;
+    el.innerHTML=html;
+    return;
+  }
+
+  // 升级区域
+  if(shop.nextLevel){
+    const n=shop.nextLevel;
+    html+=`<div class="cake-shop-upgrade">`;
+    html+=`<div class="up-head"><span>升级到 Lv${n.level}</span><span style="color:#f4d36b">${n.upgradeGold} 金币</span></div>`;
+    html+=`<div style="color:#889;font-size:10px;margin-bottom:6px">需要岛屿 ${n.requiredIslandLevel} 级 · 架位 ${n.rackCapacity} · 周期 ${Math.round(n.saleIntervalSeconds/60)}分钟</div>`;
+    const canUpgrade=cakeShopData.islandLevel>=n.requiredIslandLevel && gold>=n.upgradeGold;
+    html+=`<button onclick="upgradeCakeShop()" ${canUpgrade?'':'disabled'}>升级</button>`;
+    html+=`</div>`;
+  }else{
+    html+=`<div style="text-align:center;color:#fc6;font-size:12px;margin-bottom:10px">蛋糕店已达最高等级</div>`;
+  }
+
+  // 蛋糕架区域
+  html+=`<h3 style="margin:10px 0 6px;font-size:14px">📦 蛋糕架</h3>`;
+  html+=`<div class="cake-rack-grid">`;
+  for(const rack of cakeRacks){
+    html+=renderRackCard(rack,shop);
+  }
+  html+=`</div>`;
+
+  // 制作配方区域
+  html+=`<h3 style="margin:10px 0 6px;font-size:14px">🎂 蛋糕制作</h3>`;
+  if(cakeRecipes.length===0){
+    html+=`<div class="empty">暂无可制作的蛋糕配方</div>`;
+  }else{
+    html+=`<div class="cake-recipe-grid">`;
+    for(const recipe of cakeRecipes){
+      html+=renderRecipeCard(recipe);
+    }
+    html+=`</div>`;
+  }
+
+  el.innerHTML=html;
+}
+
+function renderRackCard(rack,shop){
+  const slot=rack.slot;
+  const status=rack.status;
+  let html=`<div class="cake-rack-card">`;
+  html+=`<div class="rk-head"><span class="rk-slot">蛋糕架 ${slot}</span>`;
+  if(status==='EMPTY'){
+    html+=`<span class="rk-status rk-empty">空闲</span></div>`;
+    // 上架表单
+    html+=`<div class="cake-rack-list">`;
+    if(cakeRecipes.length===0){
+      html+=`暂无可上架的蛋糕`;
+    }else{
+      html+=`<select id="rack-${slot}-recipe">`;
+      for(const r of cakeRecipes){
+        const meta=ITEM_META[r.outputItem]||{name:r.recipeId,emoji:'🍰'};
+        html+=`<option value="${r.recipeId}">${meta.emoji} ${meta.name} (库存可做 ${r.maxCraftable})</option>`;
+      }
+      html+=`</select>`;
+      html+=`数量: <input type="number" id="rack-${slot}-qty" value="1" min="1" max="${shop.rackCapacity}" style="width:50px">`;
+      html+=` / ${shop.rackCapacity}`;
+      html+=`<button onclick="listCake(${slot})">上架</button>`;
+    }
+    html+=`</div>`;
+  }else if(status==='SELLING'){
+    html+=`<span class="rk-status rk-selling">销售中</span></div>`;
+    const meta=ITEM_META[rack.cakeItem]||{name:rack.cakeItem,emoji:'🍰'};
+    const sold=rack.sold||0;
+    const qty=rack.quantity||0;
+    const remaining=rack.remaining||0;
+    const pct=qty>0?Math.round(sold/qty*100):0;
+    html+=`<div class="rk-info">${meta.emoji} ${meta.name} · ${sold}/${qty} 已售 · 剩余 ${remaining}</div>`;
+    html+=`<div class="rk-progress"><span style="width:${pct}%"></span></div>`;
+    html+=`<div class="rk-info">`;
+    if(rack.nextSoldIn>0){
+      const m=Math.floor(rack.nextSoldIn/60);
+      const s=Math.floor(rack.nextSoldIn%60);
+      html+=`下个售出: ${m}分${s}秒 · `;
+    }
+    html+=`单价 ${rack.saleGoldPerItem}金/${rack.saleExpPerItem}经验<br>`;
+    html+=`已赚 <b>${rack.earnedGold||0}金</b> / 总计 <b>${rack.totalGoldReward||0}金</b></div>`;
+    html+=`<div class="rk-actions">`;
+    html+=`<button class="rk-takedown" onclick="takeDownCake(${slot})">下架（退回未售+结算已售）</button>`;
+    html+=`</div>`;
+  }else if(status==='SOLD_OUT'){
+    html+=`<span class="rk-status rk-soldout">售罄</span></div>`;
+    const meta=ITEM_META[rack.cakeItem]||{name:rack.cakeItem,emoji:'🍰'};
+    html+=`<div class="rk-info">${meta.emoji} ${meta.name} · ${rack.sold}/${rack.quantity} 全部售罄</div>`;
+    html+=`<div class="rk-info">收益: <b>${rack.totalGoldReward||0}金</b> + <b>${rack.totalExpReward||0}经验</b></div>`;
+    html+=`<div class="rk-actions">`;
+    html+=`<button class="rk-collect" onclick="collectCake(${slot})">收取收益</button>`;
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+  return html;
+}
+
+function renderRecipeCard(recipe){
+  const meta=ITEM_META[recipe.outputItem]||{name:recipe.recipeId,emoji:'🍰'};
+  let html=`<div class="cake-recipe-card">`;
+  html+=`<div class="cr-head">`;
+  html+=`<span class="cr-emoji">${meta.emoji}</span>`;
+  html+=`<span class="cr-name">${meta.name}</span>`;
+  html+=`<span class="cr-sale">售价 ${recipe.saleGold}金/${recipe.saleExp}经验</span>`;
+  html+=`</div>`;
+  // 材料
+  html+=`<div class="cr-mats">`;
+  const mats=recipe.materials||[];
+  for(const m of mats){
+    const mMeta=ITEM_META[m.itemId]||{name:m.itemId,emoji:'📦'};
+    const short=m.have<m.required;
+    html+=`<span class="${short?'short':''}">${mMeta.emoji} ${mMeta.name} ${m.have}/${m.required}</span> `;
+  }
+  html+=`</div>`;
+  // 制作按钮
+  const max=recipe.maxCraftable||0;
+  html+=`<div class="cr-actions">`;
+  html+=`<span class="cr-max">可做 ${max}</span>`;
+  html+=`<input type="number" id="craft-${recipe.recipeId}-qty" value="1" min="1" max="${max}" ${max>0?'':'disabled'}>`;
+  html+=`<button onclick="craftCake('${recipe.recipeId}')" ${max>0?'':'disabled'}>制作</button>`;
+  html+=`</div>`;
+  html+=`</div>`;
+  return html;
+}
+
+async function unlockCakeShop(){
+  const msg=document.getElementById('cake-shop-message');
+  msg.textContent='正在解锁…';
+  msg.className='beehive-message';
+  try{
+    await apiCall('POST','/cake-shop/unlock');
+    msg.textContent='蛋糕店解锁成功！';
+    msg.style.color='#8f8';
+    await loadCakeShop(true);
+    if(window.frames[0]) window.frames[0].postMessage({type:'fruit-island:cake-shop-changed'},'*');
+  }catch(e){
+    msg.textContent=e.message;
+    msg.className='beehive-message error';
+  }
+}
+
+async function upgradeCakeShop(){
+  const msg=document.getElementById('cake-shop-message');
+  msg.textContent='正在升级…';
+  msg.className='beehive-message';
+  try{
+    await apiCall('POST','/cake-shop/upgrade');
+    msg.textContent='蛋糕店升级成功！';
+    msg.style.color='#8f8';
+    await loadCakeShop(true);
+    if(window.frames[0]) window.frames[0].postMessage({type:'fruit-island:cake-shop-changed'},'*');
+  }catch(e){
+    msg.textContent=e.message;
+    msg.className='beehive-message error';
+  }
+}
+
+async function craftCake(recipeId){
+  const msg=document.getElementById('cake-shop-message');
+  const qtyInput=document.getElementById(`craft-${recipeId}-qty`);
+  const qty=parseInt(qtyInput?.value||'1',10);
+  msg.textContent='正在制作…';
+  msg.className='beehive-message';
+  try{
+    const result=await apiCall('POST','/cake-shop/craft',{recipeId,quantity:qty});
+    const meta=ITEM_META[result.outputItem]||{name:result.outputItem,emoji:'🍰'};
+    msg.textContent=`制作成功！获得 ${meta.emoji} ${meta.name} ×${result.outputCount}`;
+    msg.style.color='#8f8';
+    await loadCakeShop(true);
+    await loadInventory(true);
+  }catch(e){
+    msg.textContent=e.message;
+    msg.className='beehive-message error';
+  }
+}
+
+async function listCake(slot){
+  const msg=document.getElementById('cake-shop-message');
+  const recipeSel=document.getElementById(`rack-${slot}-recipe`);
+  const qtyInput=document.getElementById(`rack-${slot}-qty`);
+  const recipeId=recipeSel?.value;
+  const qty=parseInt(qtyInput?.value||'1',10);
+  if(!recipeId){msg.textContent='请选择蛋糕';msg.className='beehive-message error';return;}
+  msg.textContent='正在上架…';
+  msg.className='beehive-message';
+  try{
+    await apiCall('POST',`/cake-shop/racks/${slot}/list`,{recipeId,quantity:qty});
+    msg.textContent='上架成功！';
+    msg.style.color='#8f8';
+    await loadCakeShop(true);
+    await loadInventory(true);
+  }catch(e){
+    msg.textContent=e.message;
+    msg.className='beehive-message error';
+  }
+}
+
+async function takeDownCake(slot){
+  const msg=document.getElementById('cake-shop-message');
+  msg.textContent='正在下架…';
+  msg.className='beehive-message';
+  try{
+    await apiCall('POST',`/cake-shop/racks/${slot}/takedown`);
+    msg.textContent='下架成功！已退回未售蛋糕并结算已售收益';
+    msg.style.color='#8f8';
+    await loadCakeShop(true);
+    await loadInventory(true);
+    if(window.frames[0]) window.frames[0].postMessage({type:'fruit-island:cake-shop-changed'},'*');
+  }catch(e){
+    msg.textContent=e.message;
+    msg.className='beehive-message error';
+  }
+}
+
+async function collectCake(slot){
+  const msg=document.getElementById('cake-shop-message');
+  msg.textContent='正在收取…';
+  msg.className='beehive-message';
+  try{
+    await apiCall('POST',`/cake-shop/racks/${slot}/collect`);
+    msg.textContent='收益已收取！';
+    msg.style.color='#8f8';
+    await loadCakeShop(true);
+    await loadInventory(true);
+    if(window.frames[0]) window.frames[0].postMessage({type:'fruit-island:cake-shop-changed'},'*');
+  }catch(e){
+    msg.textContent=e.message;
+    msg.className='beehive-message error';
   }
 }
 </script>

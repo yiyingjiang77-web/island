@@ -4,7 +4,7 @@
 
 **Blocked by:** None — requires Demo2.7 island progression to be resolved before implementation
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

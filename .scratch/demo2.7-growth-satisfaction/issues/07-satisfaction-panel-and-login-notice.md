@@ -4,7 +4,7 @@
 
 **Blocked by:** 06 — 呈现小岛成长与饮品店装修交互
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

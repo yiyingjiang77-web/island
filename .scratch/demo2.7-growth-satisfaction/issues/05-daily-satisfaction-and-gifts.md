@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 — 将饮品店等级应用到顾客队列与吧台
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

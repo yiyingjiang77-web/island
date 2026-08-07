@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — 惰性结算在线与离线牛奶生产
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Acceptance criteria
 

@@ -18,6 +18,7 @@ import com.fruitisland.game.service.GamePlayerService;
 import com.fruitisland.game.service.InventoryService;
 import com.fruitisland.game.service.RecipeConfigService;
 import com.fruitisland.game.service.DrinkShopService;
+import com.fruitisland.game.util.MasteryBonusUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -134,8 +135,11 @@ public class DrinkBarServiceImpl implements DrinkBarService {
         batch.setSoldQuantity(0);
         batch.setStatus(DrinkBarBatchStatus.SELLING.name());
         batch.setActiveMarker(1);
-        batch.setUnitGoldSnapshot(recipe.getSaleGold());
-        batch.setUnitExpSnapshot(recipe.getSaleExp());
+        // ── 精通加成：售价提升（上架时快照锁定） ──
+        int playerLevel = gamePlayerService.getById(playerId).getLevel();
+        int adjustedGold = MasteryBonusUtil.applyPriceBonus(recipe.getSaleGold(), playerLevel);
+        batch.setUnitGoldSnapshot(adjustedGold);
+        batch.setUnitExpSnapshot(recipe.getSaleExp() == null ? 0 : recipe.getSaleExp() / 2);
         batch.setSaleIntervalSecondsSnapshot(config.getSaleIntervalSeconds());
         batch.setListedAt(LocalDateTime.now(clock));
         drinkBarBatchMapper.insert(batch);
@@ -143,8 +147,8 @@ public class DrinkBarServiceImpl implements DrinkBarService {
         return new DrinkBarListingResultVO(
                 toView(bar, batch),
                 inventoryCount - listedQuantity,
-                listedQuantity * recipe.getSaleGold(),
-                listedQuantity * recipe.getSaleExp());
+                listedQuantity * adjustedGold,
+                listedQuantity * (recipe.getSaleExp() == null ? 0 : recipe.getSaleExp() / 2));
     }
 
     private RecipeConfig requireRecipe(String recipeId) {
@@ -358,8 +362,11 @@ public class DrinkBarServiceImpl implements DrinkBarService {
         int inventoryCount = inventory == null || inventory.getCount() == null
                 ? 0 : Math.max(0, inventory.getCount());
         int listingQuantity = Math.min(config.getBarCapacity(), inventoryCount);
-        int unitGold = recipe.getSaleGold() == null ? 0 : recipe.getSaleGold();
-        int unitExp = recipe.getSaleExp() == null ? 0 : recipe.getSaleExp();
+        // 精通加成：预览售价也需反映玩家等级
+        int pvLevel = gamePlayerService.getById(playerId).getLevel();
+        int unitGold = MasteryBonusUtil.applyPriceBonus(
+                recipe.getSaleGold() == null ? 0 : recipe.getSaleGold(), pvLevel);
+        int unitExp = recipe.getSaleExp() == null ? 0 : recipe.getSaleExp() / 2;
         int interval = config.getSaleIntervalSeconds();
         return new DrinkBarStateVO.DrinkView(
                 recipe.getId(),

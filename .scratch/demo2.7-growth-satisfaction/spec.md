@@ -1,6 +1,6 @@
 # Demo2.7 小岛成长、饮品店装修与每日满意度
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Problem Statement
 

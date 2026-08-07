@@ -69,7 +69,7 @@ class DrinkBarControllerHttpTest {
         jdbcTemplate.update("""
                 INSERT INTO recipe_config
                 (id, name, output_item, sale_gold, sale_exp, bar_sale_interval_seconds, enabled)
-                VALUES ('strawberry_juice', '草莓汁', 'strawberry_juice', 30, 5, 180, 1)
+                VALUES ('strawberry_juice', '草莓汁', 'strawberry_juice', 30, 10, 180, 1)
                 """);
         jdbcTemplate.update("""
                 INSERT INTO game_player (user_id, game_id, nickname, level, exp, cumulative_exp, gold, diamond)
@@ -584,15 +584,15 @@ class DrinkBarControllerHttpTest {
                 .andExpect(jsonPath("$.data.bar.batch.saleIntervalSecondsSnapshot").value(300));
         jdbcTemplate.update("""
                 UPDATE recipe_config
-                SET sale_gold = 80, sale_exp = 9, bar_sale_interval_seconds = 60
+                SET sale_gold = 80, sale_exp = 20, bar_sale_interval_seconds = 60
                 WHERE id = 'strawberry_juice'
                 """);
         listDrink(token, bar2)
                 .andExpect(jsonPath("$.data.bar.batch.unitGoldSnapshot").value(80))
-                .andExpect(jsonPath("$.data.bar.batch.unitExpSnapshot").value(9))
+                .andExpect(jsonPath("$.data.bar.batch.unitExpSnapshot").value(10))
                 .andExpect(jsonPath("$.data.bar.batch.saleIntervalSecondsSnapshot").value(300))
                 .andExpect(jsonPath("$.data.expectedBatchGold").value(160))
-                .andExpect(jsonPath("$.data.expectedBatchExp").value(18));
+                .andExpect(jsonPath("$.data.expectedBatchExp").value(20));
 
         mockMvc.perform(get("/drink-shop/bars")
                         .header("Authorization", "Bearer " + token))
@@ -600,7 +600,7 @@ class DrinkBarControllerHttpTest {
                 .andExpect(jsonPath("$.data.bars[0].batch.unitExpSnapshot").value(5))
                 .andExpect(jsonPath("$.data.bars[0].batch.saleIntervalSecondsSnapshot").value(300))
                 .andExpect(jsonPath("$.data.bars[1].batch.unitGoldSnapshot").value(80))
-                .andExpect(jsonPath("$.data.bars[1].batch.unitExpSnapshot").value(9))
+                .andExpect(jsonPath("$.data.bars[1].batch.unitExpSnapshot").value(10))
                 .andExpect(jsonPath("$.data.bars[1].batch.saleIntervalSecondsSnapshot").value(300));
     }
 
