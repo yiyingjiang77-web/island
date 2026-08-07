@@ -1022,7 +1022,7 @@ function handleLandClick(status, landConfigId, playerLandId, cropId, land=null){
   if(displayState==='EMPTY'){
     pendingCrop='';
     if(pendingCell.areaType==='FLOWER'){
-      m.textContent=playerFlowerRights.length?'🌸 选择已拥有的花种，或购买新的永久种植权':'🌸 请先购买一种永久花卉种植权';
+      m.textContent=playerFlowerRights.length?'🌸 选择花种种植':'🌸 请先在花卉商店购买花种';
       showFlowerList();
       acts.innerHTML='<button class="btn close" onclick="closeLandModal()">取消</button><button id="confirm-plant" class="btn plant" onclick="doPlant()" disabled>🌱 种花</button>';
       return;
@@ -1071,17 +1071,18 @@ function showCropList(available=getPlantableCrops()){
 function showFlowerList(){
   const ownedById=new Map(playerFlowerRights.map(right=>[right.flowerId,right]));
   const el=document.getElementById('crop-list'); el.style.display='flex';
-  el.innerHTML=flowerConfigs.map(flower=>{
+  const ownedFlowers=flowerConfigs.filter(f=>ownedById.has(f.flowerId));
+  if(ownedFlowers.length===0){
+    el.innerHTML='<div style="color:#999;text-align:center;padding:12px">未拥有任何花种，请先在花卉商店购买</div>';
+    return;
+  }
+  el.innerHTML=ownedFlowers.map(flower=>{
     const right=ownedById.get(flower.flowerId);
-    if(right){
-      return `<div class="crop-opt${flower.flowerId===pendingCrop?' sel':''}" onclick="selectCropFromBag('${flower.flowerId}')">${C_EMOJI[flower.flowerId]||'🌸'} ${flower.name} Lv.${right.flowerLevel} · 永久</div>`;
-    }
-    const currency=flower.purchaseCurrency==='DIAMOND'?'💎':'⭐';
-    return `<div class="crop-opt" onclick="buyFlower('${flower.flowerId}')">🔒 ${flower.name} · ${currency}${flower.purchasePrice}（购买）</div>`;
+    return `<div class="crop-opt${flower.flowerId===pendingCrop?' sel':''}" onclick="selectCropFromBag('${flower.flowerId}')">${C_EMOJI[flower.flowerId]||'🌸'} ${flower.name} Lv.${right.flowerLevel} · 永久</div>`;
   }).join('');
 }
 async function buyFlower(flowerId){
-  const r=await apiCall('POST','/flower/buy',{flowerId});
+  const r=await apiCall('POST','/flower/purchase',{flowerId});
   if(r?.code!==0){
     document.getElementById('msg').textContent='❌ '+(r?.message||'购买花种失败');
     return;

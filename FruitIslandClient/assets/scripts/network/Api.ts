@@ -165,4 +165,12 @@ export const Api = {
 
   /** 收取售罄 */
   CAKE_SHOP_RACK_COLLECT: '/cake-shop/racks',  // + /{slot}/collect
+
+  // ==================== Demo3.0 配方商店 ====================
+
+  /** 配方商店列表（含购买状态） */
+  RECIPE_SHOP_LIST: '/recipe-shop/list',
+
+  /** 购买配方 */
+  RECIPE_SHOP_BUY: '/recipe-shop/buy',
 } as const;

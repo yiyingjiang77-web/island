@@ -4,6 +4,19 @@
 果香小岛游戏项目，Spring Boot + MyBatis-Plus 后端 + TypeScript/HTML 客户端。
 采用 TDD 工作流，Issue 以 `.scratch/<feature>/issues/` 下 Markdown 管理。
 
+## Demo3.0 配方商店系统（截至 2026-08-07）
+- **后端架构**: RecipeShopConfig/PlayerRecipePurchase Entity+Mapper、RecipeShopService(listRecipes/buyRecipe)、RecipeShopController(GET /recipe-shop/list, POST /recipe-shop/buy)
+- **RecipeShopVO**: 含 playerGold + List<RecipeItem>，RecipeItem 有 recipeId/recipeName/shopType/price/category/purchased
+- **购买流程**: 检查配置→检查未购买→扣金币→插入player_recipe_purchase→playerRecipeService.grantPermanent(playerId, recipeId, "RECIPE_SHOP")→配方出现在制作台
+- **8个菌菇配方**: 4饮品(mushroom_tea 200/mushroom_milkshake 300/chanterelle_soup 600/truffle_cocoa 1500) + 4蛋糕(mushroom_pie 400/shiitake_bun 500/chanterelle_tart 800/truffle_cake 2000)
+- **新食材**: peppermint(薄荷,sell 5)、chestnut(栗子,sell 8)
+- **DrinkBarServiceImpl.getBars()**: 列出 ALL enabled recipe_config（不按 player_recipe 过滤），新增drink_bar配方会改变drinks数组顺序
+- **WebConfig**: JWT拦截器需覆盖 /recipe-shop/** 路径
+- **客户端**: demo2.8-island.html 配方商店 drawer+按钮+JS(loadRecipeShop/renderRecipeShop/buyRecipe/switchRecipeTab)，含drink/cake/all标签页过滤
+- **测试**: 176测试全通过（9个RecipeShopHttpTest + 4处DrinkBarControllerHttpTest断言修复）
+- **MySQL迁移**: migration-demo30-recipe-shop.sql 已执行
+- **服务器**: PID 45633, 端口8082, Java 17 (/Users/yy/Library/Java/JavaVirtualMachines/ms-17.0.16/Contents/Home/bin/java)
+
 ## Demo3.0 无限等级体系（截至 2026-08-07）
 - **LevelFormulaUtil**: `expToNext(level) = 100 × level^1.3`，MAX_TABLE_LEVEL=20，Lv1-20表配置+Lv21+公式递推
 - **MasteryBonusUtil**: 产量+floor(Lv/5)×5%封顶+100%(Lv100)、售价+floor(Lv/10)×10%封顶+50%(Lv50)、生长-Lv×0.5%封底-40%(Lv80)

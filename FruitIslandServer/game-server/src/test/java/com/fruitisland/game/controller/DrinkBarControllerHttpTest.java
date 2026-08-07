@@ -65,6 +65,8 @@ class DrinkBarControllerHttpTest {
         jdbcTemplate.update("DELETE FROM player_recipe WHERE player_id IN (SELECT id FROM game_player WHERE user_id IN (6101, 6102))");
         jdbcTemplate.update("DELETE FROM player_drink_shop WHERE player_id IN (SELECT id FROM game_player WHERE user_id IN (6101, 6102))");
         jdbcTemplate.update("DELETE FROM game_player WHERE user_id IN (6101, 6102)");
+        jdbcTemplate.update("DELETE FROM recipe_material WHERE recipe_id IN ('mushroom_tea','mushroom_milkshake','chanterelle_soup','truffle_cocoa')");
+        jdbcTemplate.update("DELETE FROM recipe_config WHERE id IN ('mushroom_tea','mushroom_milkshake','chanterelle_soup','truffle_cocoa')");
         jdbcTemplate.update("DELETE FROM recipe_config WHERE id = 'strawberry_juice'");
         jdbcTemplate.update("""
                 INSERT INTO recipe_config

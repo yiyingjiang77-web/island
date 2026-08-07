@@ -490,7 +490,14 @@ INSERT INTO item_config (id, name, type, icon, sell_price) VALUES
 ('mushroom','口蘑','MATERIAL','mushroom',5),
 ('shiitake','香菇','MATERIAL','shiitake',8),
 ('chanterelle','鸡油菌','MATERIAL','chanterelle',15),
-('truffle','松露','MATERIAL','truffle',40);
+('truffle','松露','MATERIAL','truffle',40),
+-- 菌菇饮品配方新增食材
+('peppermint','薄荷','MATERIAL','peppermint',5),
+('chestnut','栗子','MATERIAL','chestnut',8),
+('mushroom_tea','蘑菇茶','DRINK','mushroom_tea',18),
+('mushroom_milkshake','口蘑奶昔','DRINK','mushroom_milkshake',24),
+('chanterelle_soup','鸡油菌浓汤','DRINK','chanterelle_soup',36),
+('truffle_cocoa','松露热可可','DRINK','truffle_cocoa',72);
 
 INSERT INTO crop_config
 (crop_id,name,rarity,reward_eligible,permanent_unlock_enabled,upgrade_enabled,
@@ -520,7 +527,12 @@ INSERT INTO recipe_config
 ('watermelon_milk_ice_cream','西瓜牛奶冰淇淋','watermelon_milk_ice_cream',0,7,55,25,180,100,1,'drink_bar','island_level'),
 ('strawberry_cake','草莓蛋糕','strawberry_cake',0,8,150,30,180,100,1,'cake_shop','island_level'),
 ('lemon_milk_ice_cream','柠檬牛奶冰淇淋','lemon_milk_ice_cream',0,9,55,30,180,100,1,'drink_bar','island_level'),
-('cucumber_apple_juice','黄瓜苹果汁','cucumber_apple_juice',0,10,45,25,180,100,1,'drink_bar','island_level');
+('cucumber_apple_juice','黄瓜苹果汁','cucumber_apple_juice',0,10,45,25,180,100,1,'drink_bar','island_level'),
+-- 菌菇饮品配方（Demo3.0 配方商店购买）
+('mushroom_tea','蘑菇茶','mushroom_tea',0,1,45,12,180,80,1,'drink_bar','exchange_shop'),
+('mushroom_milkshake','口蘑奶昔','mushroom_milkshake',0,1,60,15,180,80,1,'drink_bar','exchange_shop'),
+('chanterelle_soup','鸡油菌浓汤','chanterelle_soup',0,1,90,22,180,60,1,'drink_bar','exchange_shop'),
+('truffle_cocoa','松露热可可','truffle_cocoa',0,1,180,40,180,40,1,'drink_bar','exchange_shop');
 
 -- 蛋糕类配方（Demo2.10）
 INSERT INTO recipe_config
@@ -561,7 +573,12 @@ INSERT INTO recipe_material (recipe_id,item_id,count) VALUES
 ('lemon_milk_ice_cream','lemon',2),
 ('lemon_milk_ice_cream','milk',1),
 ('cucumber_apple_juice','cucumber',1),
-('cucumber_apple_juice','apple',1);
+('cucumber_apple_juice','apple',1),
+-- 菌菇饮品配方材料（Demo3.0）
+('mushroom_tea','shiitake',2),('mushroom_tea','peppermint',1),
+('mushroom_milkshake','mushroom',2),('mushroom_milkshake','milk',1),('mushroom_milkshake','honey',1),
+('chanterelle_soup','chanterelle',2),('chanterelle_soup','milk',1),('chanterelle_soup','mushroom',1),
+('truffle_cocoa','truffle',1),('truffle_cocoa','milk',1),('truffle_cocoa','honey',1);
 
 -- 蛋糕类配方材料（Demo2.10）
 INSERT INTO recipe_material (recipe_id,item_id,count) VALUES
@@ -866,3 +883,39 @@ INSERT INTO cake_shop_config
 (8,15,47000,13,390,1),
 (9,16,58000,13,360,1),
 (10,17,70000,15,360,1);
+
+-- ── Demo3.0 配方商店 ──
+CREATE TABLE IF NOT EXISTS recipe_shop_config (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    recipe_id VARCHAR(64) NOT NULL COMMENT '配方标识',
+    recipe_name VARCHAR(64) NOT NULL COMMENT '配方名称',
+    shop_type VARCHAR(16) NOT NULL COMMENT '配方类型: drink/cake',
+    price INT NOT NULL COMMENT '购买价格(金币)',
+    category VARCHAR(32) NOT NULL DEFAULT 'mushroom' COMMENT '分类: mushroom/nut/berry/herb/basic',
+    sort_order INT DEFAULT 0 COMMENT '排序',
+    enabled INT NOT NULL DEFAULT 1,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (recipe_id)
+);
+
+CREATE TABLE IF NOT EXISTS player_recipe_purchase (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    player_id BIGINT NOT NULL,
+    recipe_id VARCHAR(64) NOT NULL COMMENT '购买的配方标识',
+    price_paid INT NOT NULL COMMENT '实际支付价格',
+    purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (player_id, recipe_id)
+);
+
+-- 配方商店种子数据
+INSERT INTO recipe_shop_config (recipe_id, recipe_name, shop_type, price, category, sort_order, enabled) VALUES
+-- 菌菇饮品配方
+('mushroom_tea','蘑菇茶','drink',200,'mushroom',1,1),
+('mushroom_milkshake','口蘑奶昔','drink',300,'mushroom',2,1),
+('chanterelle_soup','鸡油菌浓汤','drink',600,'mushroom',3,1),
+('truffle_cocoa','松露热可可','drink',1500,'mushroom',4,1),
+-- 菌菇蛋糕配方
+('mushroom_pie','蘑菇咸派','cake',400,'mushroom',5,1),
+('shiitake_bun','香菇芝士包','cake',500,'mushroom',6,1),
+('chanterelle_tart','鸡油菌塔','cake',800,'mushroom',7,1),
+('truffle_cake','松露巧克力蛋糕','cake',2000,'mushroom',8,1);

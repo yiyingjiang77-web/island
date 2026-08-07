@@ -539,6 +539,24 @@ export interface CakeRecipeInfo {
   materials: { itemId: string; required: number; have: number }[];
 }
 
+// ==================== Demo3.0 配方商店 ====================
+
+/** 配方商店商品项（GET /recipe-shop/list 和 POST /recipe-shop/buy 返回） */
+export interface RecipeShopItem {
+  recipeId: string;
+  recipeName: string;
+  shopType: 'drink' | 'cake';
+  price: number;
+  category: string;
+  purchased: boolean;
+}
+
+/** GET /recipe-shop/list 返回的 VO */
+export interface RecipeShopVO {
+  playerGold: number;
+  recipes: RecipeShopItem[];
+}
+
 // ==================== 登录相关 ====================
 
 /** 微信登录请求 */
