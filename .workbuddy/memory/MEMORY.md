@@ -4,11 +4,47 @@
 果香小岛游戏项目，Spring Boot + MyBatis-Plus 后端 + TypeScript/HTML 客户端。
 采用 TDD 工作流，Issue 以 `.scratch/<feature>/issues/` 下 Markdown 管理。
 
+## Demo3.0 小动物系统设计（截至 2026-08-10）
+- **设计文档**: `prd/demo3.0-animal-system-design.md`（v9，尚未开始开发）
+- **4 只小动物**: squirrel(松鼠,Lv3解锁,ROTATION), robin(知更鸟,Lv5解锁,ROTATION), hedgehog(刺猬,Lv8解锁,ROTATION), fox(狐狸,Lv10解锁,RANDOM)
+- **好感度 20 级**: 公式 `3+level*1`，累计 247，36 天满级，每日礼物 `level*2`（Lv1=2,Lv20=40），Lv20 每日额外 3 钻石
+- **核心机制**: 前日结算 + 先领后喂 + 1天宽限衰减(-2/天,下限0) + 惰性计算 + 双向等级同步
+- **季节加成**: Lv2+ 生效 x1.5（松鼠/刺猬秋季，知更鸟夏季）
+- **食物偏好**: 代码硬编码（不建表），每只动物 2 种食物（最爱+5/喜欢+3），其他不消耗
+  - 松鼠: 最爱榛果/喜欢草莓 | 刺猬: 最爱蓝莓/喜欢苹果 | 知更鸟: 最爱桑葚/喜欢松子 | 狐狸: 最爱鸡蛋/喜欢牛奶
+- **等级奖励**: 每 2 级触发（Lv2-20），animal_level_reward 配置表，player_animal_reward_claimed 防重
+  - 松鼠/刺猬: 全程食材↔配方交替（各 3 配方）
+  - 知更鸟: 食材→作物种子(CROP_UNLOCK)↔配方交替（3 作物种子+3 配方）
+  - 狐狸: 食材→花种子(FLOWER_UNLOCK)↔配方交替（3 花种子+3 配方）
+  - CROP_UNLOCK→playerCropService.grantCropRight()，FLOWER_UNLOCK→playerFlowerRightService.grantRight()
+- **动物独家产出**: 坚果(松鼠:榛果/松子/栗子) + 菌菇(刺猬:口蘑/香菇/鸡油菌) 不可种植/购买
+- **狐狸礼物**: 紫罗兰/蒲公英/金盏花/迷迭香（v6 更换）
+- **松露/百里香移除**: truffle + truffle_cocoa + truffle_cake + thyme 全部删除
+- **12 个动物配方**: 单只动物到等级即送，obtain_channel='ANIMAL_FAVOR'
+- **统一商店**: GET /shop/list + POST /shop/buy，配方/花种子/果蔬种子 3 Tab
+  - 花种子: 薰衣草300/洋甘菊200/薄荷200/樱花10钻/金盏花400/茉莉花300
+  - 果蔬种子: 葡萄500/桃子600/香草800
+- **配方图谱**: GET /recipe/gallery，3 Tab（DRINK/ICE_CREAM/CAKE）
+- **新增字段**: item_config.obtain_type+obtain_ref_id, recipe_config.recipe_category, animal_config.unlock_level
+- **obtain_type 语义(v8)**: 表示种子来源（种植权获取方式）。ANIMAL_GIFT=动物每日礼物(不可种植), ANIMAL_FAVOR=好感度奖励种子(可种植), FLOWER_SHOP/SEED_SHOP=商店购买
+- **max_level_ever 已删除(v8)**: 钻石判定直接用 effectiveLevel == 20
+- **ShopService 授权(v8)**: PlayerFlowerRightService 新增 grantRight()(不扣钱), 与 PlayerCropService.grantPermanent() 对称
+- **reward_type 拆分(v9)**: CROP_UNLOCK(作物)→playerCropService, FLOWER_UNLOCK(花卉)→playerFlowerRightService
+- **flower_config 字段(v9)**: 购买价格迁移到 seed_shop_config，升级字段保留在 flower_config 供 FlowerController 升级端点使用
+- **recipe_category 映射(v9)**: 现有 29 个配方分类（DRINK 10 + ICE_CREAM 3 + CAKE 16），开发时批量 UPDATE
+- **grantAnimalReward 修复(v9)**: 方法签名加 LocalDate today，syncLevel 也加 today 参数
+- **sell_price = sale_gold x 0.4** 统一比例
+- **数据表(5张)**: animal_config / player_animal / animal_level_reward / player_animal_reward_claimed / seed_shop_config
+- **新增作物(6种)**: 蔓越莓/树莓/桑葙/葡萄/桃子/香草 → crop_level_config，每种不同基础值
+- **新增花卉(6种)**: 蒲公英/紫罗兰/迷迭香/薄荷/金盏花/茉莉花 → flower_config+flower_level_config
+- **API**: GET /animal/list, POST /animal/{id}/collect, POST /animal/collect-all, POST /animal/{id}/feed, GET /recipe/gallery, GET /shop/list, POST /shop/buy
+
 ## Demo3.0 配方商店系统（截至 2026-08-07）
 - **后端架构**: RecipeShopConfig/PlayerRecipePurchase Entity+Mapper、RecipeShopService(listRecipes/buyRecipe)、RecipeShopController(GET /recipe-shop/list, POST /recipe-shop/buy)
 - **RecipeShopVO**: 含 playerGold + List<RecipeItem>，RecipeItem 有 recipeId/recipeName/shopType/price/category/purchased
 - **购买流程**: 检查配置→检查未购买→扣金币→插入player_recipe_purchase→playerRecipeService.grantPermanent(playerId, recipeId, "RECIPE_SHOP")→配方出现在制作台
 - **8个菌菇配方**: 4饮品(mushroom_tea 200/mushroom_milkshake 300/chanterelle_soup 600/truffle_cocoa 1500) + 4蛋糕(mushroom_pie 400/shiitake_bun 500/chanterelle_tart 800/truffle_cake 2000)
+  - **v6 变更**: truffle_cocoa 和 truffle_cake 将在小动物系统开发时移除（松露从游戏中删除）
 - **新食材**: peppermint(薄荷,sell 5)、chestnut(栗子,sell 8)
 - **DrinkBarServiceImpl.getBars()**: 列出 ALL enabled recipe_config（不按 player_recipe 过滤），新增drink_bar配方会改变drinks数组顺序
 - **WebConfig**: JWT拦截器需覆盖 /recipe-shop/** 路径
