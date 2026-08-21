@@ -5,7 +5,7 @@
 <title>果香小岛 Demo2.8 — 手绘世界地图</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#7cd5df;display:flex;justify-content:center;align-items:center;width:100vw;height:100vh;height:100dvh;font-family:'PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden}
+body{background:#6ea046;display:flex;justify-content:center;align-items:center;width:100vw;height:100vh;height:100dvh;font-family:'PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden}
 .game{position:relative;border:3px solid #fff2d6;border-radius:22px;overflow:hidden;box-shadow:0 14px 46px rgba(64,118,104,.28)}
 canvas{display:block}
 #game{width:100%;height:100%;touch-action:none}
@@ -153,7 +153,6 @@ const wrapper=document.getElementById('game-wrapper');
 
 // ==================== Demo2.8 手绘素材 ====================
 const ART_SOURCES={
-  terrain:'./assets/art/backgrounds/island-terrain-coordinate-concept-v1.png',
   drinkShop:'./assets/art/buildings/drink-shop-v1.png',
   cakeShop:'./assets/art/buildings/cake-shop-v1.png',
   exchangeShop:'./assets/art/buildings/exchange-shop-v1.png',
@@ -496,15 +495,11 @@ function renderMap(){
   const line=size=>size/zoom;
   const gap=size=>size/zoom;
 
-  // 手绘岛屿底图；素材尚未完成加载时保留原网格地形作为安全回退。
-  if(artReady('terrain')){
-    ctx.drawImage(ART_IMAGES.terrain,-cam.x,-cam.y,WORLD,WORLD);
-  }else{
-    for(let gx=sg; gx<=eg; gx++) for(let gy=sh; gy<=eh; gy++){
-      const sx=g2w(gx)-cam.x, sy=g2w(gy)-cam.y, hs=TILE/2;
-      ctx.fillStyle=tileColor(gx,gy); ctx.fillRect(sx-hs,sy-hs,TILE,TILE);
-      ctx.strokeStyle='rgba(0,0,0,.06)'; ctx.lineWidth=line(.5); ctx.strokeRect(sx-hs,sy-hs,TILE,TILE);
-    }
+  // 网格地形渲染（移除背景图，使用 tileColor 色块）
+  for(let gx=sg; gx<=eg; gx++) for(let gy=sh; gy<=eh; gy++){
+    const sx=g2w(gx)-cam.x, sy=g2w(gy)-cam.y, hs=TILE/2;
+    ctx.fillStyle=tileColor(gx,gy); ctx.fillRect(sx-hs,sy-hs,TILE,TILE);
+    ctx.strokeStyle='rgba(0,0,0,.06)'; ctx.lineWidth=line(.5); ctx.strokeRect(sx-hs,sy-hs,TILE,TILE);
   }
   drawMapPaths();
 
@@ -1130,7 +1125,7 @@ function loop(now){
     clampCam();
   }
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  ctx.fillStyle='#7cd5df'; ctx.fillRect(0,0,CW,CH);
+  ctx.fillStyle='#6ea046'; ctx.fillRect(0,0,CW,CH);
   ctx.save(); ctx.scale(zoom,zoom); renderMap(); ctx.restore();
   drawMinimap(); updateHUD();
   requestAnimationFrame(loop);
